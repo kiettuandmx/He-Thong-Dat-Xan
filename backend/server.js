@@ -30,6 +30,9 @@ app.get("/api/test-db", async (req, res) => {
   }
 });
 
+
+// server asdasdadadadasdadasdsad
+
 // chạy server
 app.listen(PORT, () => {
   console.log(`Server Backend đang chạy tại: http://localhost:${PORT}`);
