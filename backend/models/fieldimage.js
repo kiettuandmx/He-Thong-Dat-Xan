@@ -13,6 +13,11 @@ module.exports = (sequelize, DataTypes) => {
       // define association here
     }
   }
+  FieldImage.associate = (models) => {
+  FieldImage.belongsTo(models.Field, {
+    foreignKey: 'field_id'
+  });
+};
   FieldImage.init({
     field_id: DataTypes.INTEGER,
     image_url: DataTypes.STRING

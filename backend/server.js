@@ -1,36 +1,19 @@
-const express = require("express");
+const express = require('express');
 const app = express();
-const cors = require("cors");
-const { User, Stadium } = require("./models");
+const cors = require('cors');
+
+const { sequelize } = require('./models');
+const fieldRoutes = require('./routes/fieldRoutes');
 
 app.use(cors());
 app.use(express.json());
 
-app.get("/api/hello", (req, res) => {
-  res.send("Hello World");
-});
-const PORT = 5000;
-// API kiểm tra DB
-app.get("/api/test-db", async (req, res) => {
-  try {
-    const users = await User.findAll({
-      attributes: ["name", "email", "phone"],
-    });
+app.use('/api', fieldRoutes);
 
-    res.json({
-      status: "Success",
-      message: "Kết nối Database thành công! Chào Kiet, Lam, Anh.",
-      data: users,
-    });
-  } catch (error) {
-    res.status(500).json({
-      status: "Error",
-      message: "Lỗi kết nối DB: " + error.message,
-    });
-  }
-});
+sequelize.authenticate()
+  .then(() => console.log('✅ Kết nối DB thành công'))
+  .catch(err => console.error('❌ Lỗi DB:', err));
 
-// chạy server
-app.listen(PORT, () => {
-  console.log(`Server Backend đang chạy tại: http://localhost:${PORT}`);
+app.listen(3000, () => {
+  console.log('🚀 Server chạy tại http://localhost:3000');
 });
