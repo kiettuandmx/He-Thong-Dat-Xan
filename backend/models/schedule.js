@@ -23,5 +23,14 @@ module.exports = (sequelize, DataTypes) => {
     sequelize,
     modelName: 'Schedule',
   });
+
+  // Mỗi Schedule thuộc một Field
+  Schedule.associate = function(models) {
+    Schedule.belongsTo(models.Field, {
+      foreignKey: 'field_id',
+      as: 'field'
+    });
+  };
+
   return Schedule;
 };

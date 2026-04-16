@@ -23,5 +23,14 @@ module.exports = (sequelize, DataTypes) => {
     sequelize,
     modelName: 'Location',
   });
+
+  // Một Location có nhiều Stadiums
+  Location.associate = function(models) {
+    Location.hasMany(models.Stadium, {
+      foreignKey: 'location_id',
+      as: 'stadiums'
+    });
+  };
+
   return Location;
 };

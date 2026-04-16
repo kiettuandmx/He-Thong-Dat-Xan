@@ -20,5 +20,14 @@ module.exports = (sequelize, DataTypes) => {
     sequelize,
     modelName: 'FieldImage',
   });
+
+  // Mỗi FieldImage thuộc một Field
+  FieldImage.associate = function(models) {
+    FieldImage.belongsTo(models.Field, {
+      foreignKey: 'field_id',
+      as: 'field'
+    });
+  };
+
   return FieldImage;
 };

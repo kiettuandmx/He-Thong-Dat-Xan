@@ -21,5 +21,14 @@ module.exports = (sequelize, DataTypes) => {
     sequelize,
     modelName: 'Notification',
   });
+
+  // Mỗi Notification thuộc một User
+  Notification.associate = function(models) {
+    Notification.belongsTo(models.User, {
+      foreignKey: 'user_id',
+      as: 'user'
+    });
+  };
+
   return Notification;
 };

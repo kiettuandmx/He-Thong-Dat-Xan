@@ -22,5 +22,14 @@ module.exports = (sequelize, DataTypes) => {
     sequelize,
     modelName: 'Payment',
   });
+
+  // Mỗi Payment thuộc một Booking
+  Payment.associate = function(models) {
+    Payment.belongsTo(models.Booking, {
+      foreignKey: 'booking_id',
+      as: 'booking'
+    });
+  };
+
   return Payment;
 };

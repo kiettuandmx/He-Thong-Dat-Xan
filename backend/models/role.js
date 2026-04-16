@@ -19,5 +19,14 @@ module.exports = (sequelize, DataTypes) => {
     sequelize,
     modelName: 'Role',
   });
+
+  // Một Role có nhiều Users
+  Role.associate = function(models) {
+    Role.hasMany(models.User, {
+      foreignKey: 'role_id',
+      as: 'users'
+    });
+  };
+
   return Role;
 };

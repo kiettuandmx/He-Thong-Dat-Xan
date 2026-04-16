@@ -23,5 +23,29 @@ module.exports = (sequelize, DataTypes) => {
     sequelize,
     modelName: 'Stadium',
   });
+
+  // Mỗi Stadium sở hữu bởi một User (owner)
+  // Mỗi Stadium nằm ở một Location
+  // Mỗi Stadium có nhiều Fields
+  // Mỗi Stadium có nhiều Reviews
+  Stadium.associate = function(models) {
+    Stadium.belongsTo(models.User, {
+      foreignKey: 'owner_id',
+      as: 'owner'
+    });
+    Stadium.belongsTo(models.Location, {
+      foreignKey: 'location_id',
+      as: 'location'
+    });
+    Stadium.hasMany(models.Field, {
+      foreignKey: 'stadium_id',
+      as: 'fields'
+    });
+    Stadium.hasMany(models.Review, {
+      foreignKey: 'stadium_id',
+      as: 'reviews'
+    });
+  };
+
   return Stadium;
 };

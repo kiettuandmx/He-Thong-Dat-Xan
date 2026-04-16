@@ -25,5 +25,29 @@ module.exports = (sequelize, DataTypes) => {
     sequelize,
     modelName: 'Booking',
   });
+
+  // Mỗi Booking thuộc một User
+  // Mỗi Booking thuộc một Field
+  // Mỗi Booking có thể có một Payment
+  // Mỗi Booking có thể có một Review
+  Booking.associate = function(models) {
+    Booking.belongsTo(models.User, {
+      foreignKey: 'user_id',
+      as: 'user'
+    });
+    Booking.belongsTo(models.Field, {
+      foreignKey: 'field_id',
+      as: 'field'
+    });
+    Booking.hasMany(models.Payment, {
+      foreignKey: 'booking_id',
+      as: 'payments'
+    });
+    Booking.hasOne(models.Review, {
+      foreignKey: 'booking_id',
+      as: 'review'
+    });
+  };
+
   return Booking;
 };

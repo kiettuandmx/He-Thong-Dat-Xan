@@ -23,5 +23,29 @@ module.exports = (sequelize, DataTypes) => {
     sequelize,
     modelName: 'Field',
   });
+
+  // Mỗi Field thuộc một Stadium
+  // Mỗi Field có nhiều FieldImages
+  // Mỗi Field có nhiều Schedules
+  // Mỗi Field có nhiều Bookings
+  Field.associate = function(models) {
+    Field.belongsTo(models.Stadium, {
+      foreignKey: 'stadium_id',
+      as: 'stadium'
+    });
+    Field.hasMany(models.FieldImage, {
+      foreignKey: 'field_id',
+      as: 'images'
+    });
+    Field.hasMany(models.Schedule, {
+      foreignKey: 'field_id',
+      as: 'schedules'
+    });
+    Field.hasMany(models.Booking, {
+      foreignKey: 'field_id',
+      as: 'bookings'
+    });
+  };
+
   return Field;
 };
