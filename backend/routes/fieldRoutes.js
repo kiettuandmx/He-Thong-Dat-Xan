@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 
 const {
@@ -7,29 +7,29 @@ const {
   Location,
   FieldImage,
   Schedule,
-  Review
-} = require('../models');
+  Review,
+} = require("../models");
 
 // GET ALL FIELDS
-router.get('/fields', async (req, res) => {
+router.get("/fields", async (req, res) => {
   try {
     const fields = await Field.findAll({
       include: [
         {
           model: Stadium,
-          as: 'stadium',
+          as: "stadium",
           include: [
             {
               model: Location,
-              as: 'location' // 👈 nếu bạn có define bên Stadium
-            }
-          ]
+              as: "location", // 👈 nếu bạn có define bên Stadium
+            },
+          ],
         },
         {
           model: FieldImage,
-          as: 'images'
-        }
-      ]
+          as: "images",
+        },
+      ],
     });
 
     res.json(fields);
@@ -39,37 +39,37 @@ router.get('/fields', async (req, res) => {
 });
 
 // GET FIELD BY ID
-router.get('/fields/:id', async (req, res) => {
+router.get("/fields/:id", async (req, res) => {
   try {
     const field = await Field.findByPk(req.params.id, {
       include: [
         {
           model: Stadium,
-          as: 'stadium',
+          as: "stadium",
           include: [
             {
               model: Location,
-              as: 'location'
-            }
-          ]
+              as: "location",
+            },
+          ],
         },
         {
           model: FieldImage,
-          as: 'images'
+          as: "images",
         },
         {
           model: Schedule,
-          as: 'schedules'
+          as: "schedules",
         },
         {
           model: Review,
-          as: 'reviews'
-        }
-      ]
+          as: "reviews",
+        },
+      ],
     });
 
     if (!field) {
-      return res.status(404).json({ error: 'Field not found' });
+      return res.status(404).json({ error: "Field not found" });
     }
 
     res.json(field);

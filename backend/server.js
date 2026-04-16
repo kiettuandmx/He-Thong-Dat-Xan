@@ -1,19 +1,22 @@
-const express = require('express');
+const express = require("express");
 const app = express();
-const cors = require('cors');
+const cors = require("cors");
 
-const { sequelize } = require('./models');
-const fieldRoutes = require('./routes/fieldRoutes');
-
+const { sequelize } = require("./models");
+const fieldRoutes = require("./routes/fieldRoutes");
+// 2. Sử dụng Middleware CORS
 app.use(cors());
+
 app.use(express.json());
 
-app.use('/api', fieldRoutes);
+// 3. Khai báo các Routes sau khi đã use(cors)
+app.use("/api", fieldRoutes);
 
-sequelize.authenticate()
-  .then(() => console.log('✅ Kết nối DB thành công'))
-  .catch(err => console.error('❌ Lỗi DB:', err));
+sequelize
+  .authenticate()
+  .then(() => console.log("✅ Kết nối DB thành công"))
+  .catch((err) => console.error("❌ Lỗi DB:", err));
 
-app.listen(3000, () => {
-  console.log('🚀 Server chạy tại http://localhost:3000');
+app.listen(5000, () => {
+  console.log("🚀 Server chạy tại http://localhost:5000");
 });
