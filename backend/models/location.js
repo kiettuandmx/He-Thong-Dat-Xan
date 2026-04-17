@@ -13,6 +13,11 @@ module.exports = (sequelize, DataTypes) => {
       // define association here
     }
   }
+  Location.associate = (models) => {
+  Location.hasMany(models.Stadium, {
+    foreignKey: 'location_id'
+  });
+};
   Location.init({
     address: DataTypes.STRING,
     district: DataTypes.STRING,

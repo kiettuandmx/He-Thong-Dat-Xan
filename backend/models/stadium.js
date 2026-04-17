@@ -1,18 +1,22 @@
 'use strict';
-const {
-  Model
-} = require('sequelize');
+const { Model } = require('sequelize');
+
 module.exports = (sequelize, DataTypes) => {
   class Stadium extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
-      // define association here
+      // 1 stadium có nhiều field
+      Stadium.hasMany(models.Field, {
+        foreignKey: 'stadium_id'
+      });
+
+      // stadium thuộc về location
+      Stadium.belongsTo(models.Location, {
+        foreignKey: 'location_id',
+        as: 'location'
+      });
     }
   }
+
   Stadium.init({
     name: DataTypes.STRING,
     description: DataTypes.TEXT,
@@ -22,6 +26,8 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     sequelize,
     modelName: 'Stadium',
+    tableName: 'stadiums',   // QUAN TRỌNG (fix lỗi stadia)
+    timestamps: false        // nếu DB bạn không có createdAt
   });
 
   // Mỗi Stadium sở hữu bởi một User (owner)

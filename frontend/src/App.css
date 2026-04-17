@@ -182,3 +182,29 @@
     border-right-color: var(--border);
   }
 }
+.card-hover {
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175) !important;
+}
+
+.navbar-brand {
+  letter-spacing: -1px;
+}
+
+/* Ép tất cả các container-fluid rộng hết cỡ */
+.container-fluid {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+/* Nếu bạn muốn khung ở giữa vẫn có lề nhưng rất nhỏ */
+main {
+  padding-left: 20px !important;
+  padding-right: 20px !important;
+}

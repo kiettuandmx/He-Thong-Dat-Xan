@@ -13,6 +13,11 @@ module.exports = (sequelize, DataTypes) => {
       // define association here
     }
   }
+  Schedule.associate = (models) => {
+  Schedule.belongsTo(models.Field, {
+    foreignKey: 'field_id'
+  });
+};
   Schedule.init({
     field_id: DataTypes.INTEGER,
     date: DataTypes.DATE,
