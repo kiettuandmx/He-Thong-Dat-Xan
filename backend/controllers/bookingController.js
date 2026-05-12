@@ -5,6 +5,11 @@ const Stadium = db.Stadium;
 const User = db.User;
 const { Op, fn, col, literal } = require('sequelize');
 const { getIO, userSockets } = require('../socket');
+const {
+    normalizeCouponCode,
+    findValidCoupon,
+    calculateDiscountAmount
+} = require('../utils/couponUtils');
 
 const createNotification = async (user_id, content) => {
     const noti = await db.Notification.create({
@@ -28,7 +33,28 @@ const createNotification = async (user_id, content) => {
 exports.createBooking = async (req, res) => {
     const transaction = await db.sequelize.transaction();
     try {
-        const { field_id, stadium_id, user_id, booking_date, start_time, end_time, total_price, amount_paid, payment_type } = req.body;
+        const {
+            field_id,
+            stadium_id,
+            booking_date,
+            start_time,
+            end_time,
+            payment_type,
+            payment_method,
+            coupon_code
+        } = req.body;
+        const user_id = req.user?.id;
+
+        if (!user_id) {
+            await transaction.rollback();
+            return res.status(401).json({ success: false, message: "Vui long dang nhap de dat san" });
+        }
+
+        const fieldRecord = await Field.findByPk(field_id, { transaction });
+        if (!fieldRecord) {
+            await transaction.rollback();
+            return res.status(404).json({ success: false, message: "Khong tim thay san" });
+        }
 
         // Chuẩn hóa giờ (thêm :00 nếu chỉ có HH:mm)
         const normalizedStartTime = start_time.length === 5 ? `${start_time}:00` : start_time;
@@ -57,9 +83,38 @@ exports.createBooking = async (req, res) => {
         }
 
         const holdUntilTime = new Date();
+        const normalizedCouponCode = normalizeCouponCode(coupon_code);
+        const basePrice = Number(fieldRecord.price_per_hour) || 0;
+        let finalTotalPrice = Math.max(0, Math.round(basePrice));
+        let appliedDiscount = 0;
+        let amount_paid = payment_type === 'deposit'
+            ? Math.round(finalTotalPrice * 0.5)
+            : finalTotalPrice;
+
+        if (normalizedCouponCode) {
+            const validationResult = await findValidCoupon({
+                Coupon: db.Coupon,
+                Booking,
+                code: normalizedCouponCode,
+                userId: user_id,
+                transaction
+            });
+
+            if (validationResult.error) {
+                await transaction.rollback();
+                return res.status(400).json({ success: false, message: validationResult.error });
+            }
+
+            appliedDiscount = calculateDiscountAmount(validationResult.coupon, basePrice);
+            finalTotalPrice = Math.max(0, Math.round(basePrice - appliedDiscount));
+            amount_paid = payment_type === 'deposit'
+                ? Math.round(finalTotalPrice * 0.5)
+                : finalTotalPrice;
+            await validationResult.coupon.increment('used_count', { by: 1, transaction });
+        }
         holdUntilTime.setMinutes(holdUntilTime.getMinutes() + 5); // Lock 5 phút
         // --- PHẦN XỬ LÝ KHUYẾN MÃI ---
-        if (coupon_code) {
+        if (false && coupon_code) {
             const coupon = await db.Coupon.findOne({
                 where: { code: coupon_code, is_active: true },
                 transaction
@@ -77,14 +132,15 @@ exports.createBooking = async (req, res) => {
             booking_date,
             start_time,
             end_time,
-            total_price,
+            total_price: finalTotalPrice,
             status: 'pending',
             amount_paid: amount_paid,
             payment_type: payment_type,
-            payment_method: 'Online',
+            payment_method: payment_method || 'Online',
             payment_status: 'unpaid',
             hold_until: holdUntilTime,
-            coupon_code: coupon_code || null
+            coupon_code: normalizedCouponCode || null,
+            discount_amount: appliedDiscount
         }, { transaction });
 
         await transaction.commit();

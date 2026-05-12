@@ -13,5 +13,6 @@ router.delete('/:id', verifyToken, checkRole(['admin']), couponController.delete
 router.get('/code/:code', couponController.getCouponByCode);
 router.post('/validate', couponController.validateCoupon);
 router.post('/assign-monthly', verifyToken, checkRole(['admin']), couponController.assignMonthlyCoupon);
+router.post('/assign-new-customer', verifyToken, checkRole(['admin']), couponController.assignNewCustomerCoupon);
 
 module.exports = router;
