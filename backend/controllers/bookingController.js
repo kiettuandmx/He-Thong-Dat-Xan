@@ -58,7 +58,18 @@ exports.createBooking = async (req, res) => {
 
         const holdUntilTime = new Date();
         holdUntilTime.setMinutes(holdUntilTime.getMinutes() + 5); // Lock 5 phút
+        // --- PHẦN XỬ LÝ KHUYẾN MÃI ---
+        if (coupon_code) {
+            const coupon = await db.Coupon.findOne({
+                where: { code: coupon_code, is_active: true },
+                transaction
+            });
 
+            if (coupon) {
+                // Tăng số lần sử dụng của mã giảm giá thêm 1
+                await coupon.increment('used_count', { by: 1, transaction });
+            }
+        }
         const newBooking = await Booking.create({
             field_id,
             stadium_id,
@@ -72,16 +83,17 @@ exports.createBooking = async (req, res) => {
             payment_type: payment_type,
             payment_method: 'Online',
             payment_status: 'unpaid',
-            hold_until: holdUntilTime
+            hold_until: holdUntilTime,
+            coupon_code: coupon_code || null
         }, { transaction });
 
         await transaction.commit();
 
         // Broadcast sự kiện giữ chỗ cho tất cả client
         const io = getIO();
-        io.emit('slotLocked', { 
-            field_id, 
-            date: booking_date, 
+        io.emit('slotLocked', {
+            field_id,
+            date: booking_date,
             start_time: normalizedStartTime,
             locked_by_user: user_id
         });
@@ -451,10 +463,10 @@ exports.cancelBooking = async (req, res) => {
         const { getIO } = require('../socket');
         try {
             const io = getIO();
-            io.emit('slotReleased', { 
-                field_id: booking.field_id, 
-                date: booking.booking_date, 
-                start_time: booking.start_time 
+            io.emit('slotReleased', {
+                field_id: booking.field_id,
+                date: booking.booking_date,
+                start_time: booking.start_time
             });
         } catch (e) {
             console.log("Socket emit error on cancel:", e.message);
@@ -495,10 +507,10 @@ exports.updatePaymentStatus = async (req, res) => {
 
         // Broadcast sự kiện xác nhận đặt sân thành công
         const io = getIO();
-        io.emit('slotConfirmed', { 
-            field_id: booking.field_id, 
-            date: booking.booking_date, 
-            start_time: booking.start_time 
+        io.emit('slotConfirmed', {
+            field_id: booking.field_id,
+            date: booking.booking_date,
+            start_time: booking.start_time
         });
 
         res.json({

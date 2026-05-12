@@ -37,7 +37,7 @@ const FootballPage = () => {
         <div className="position-relative z-index-1">
           <h1 className="display-4 fw-bold">Sân Bóng Đá</h1>
           <p className="lead opacity-75">
-            Tổng hợp những sân cỏ nhân tạo chất lượng nhất TP. HCM
+            Tổng hợp những sân cỏ chất lượng nhất TP. HCM
           </p>
         </div>
         <i

@@ -20,10 +20,12 @@ import PaymentMoMo from './pages/PaymentMoMo';
 import Home from './components/Home';
 import StadiumDetail from './pages/StadiumDetail';
 import OwnerDashboard from './pages/OwnerDashboard';
+import OwnerSchedule from './pages/OwnerSchedule';
 import OwnerReviews from './pages/OwnerReviews';
 import MyReviews from './components/MyReviews';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Contact from './pages/Contact';
 import AddFieldPage from './pages/AddFieldPage';
 import EditFieldPage from './pages/EditFieldPage';
 import NotificationComponent from './components/NotificationComponent';
@@ -63,6 +65,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
+            <Route path="/contact" element={<Contact />} />
           </Route>
 
           {/* 2. Protected Routes cho mọi User */}
@@ -87,6 +90,7 @@ function App() {
             <Route element={<MainLayout />}>
               <Route path="/owner/stadiums" element={<ManageStadiums />} />
               <Route path="/owner/fields" element={<OwnerStadiums />} />
+              <Route path="/owner/schedule" element={<OwnerSchedule />} />
               <Route path="/owner/dashboard" element={<OwnerDashboard />} />
               <Route path="/history" element={<BookingHistory />} />
               <Route path="/owner/edit-field/:id" element={<EditField />} />

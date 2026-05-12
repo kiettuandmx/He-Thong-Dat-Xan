@@ -8,17 +8,38 @@ const MainLayout = () => {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLegalModal, setShowLegalModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('privacy');
 
   const handleSidebarOpen = () => setSidebarOpen(true);
   const handleSidebarClose = () => setSidebarOpen(false);
-  const handleLegalOpen = () => setShowLegalModal(true);
-  const handleLegalClose = () => setShowLegalModal(false);
-
+  const handleLegalOpen = (tabName = 'privacy') => {
+    setActiveTab(tabName); // Đặt tab mục tiêu (privacy hoặc terms)
+    setShowLegalModal(true); // Mở modal
+  };
+  const handleLegalClose = () => {
+    setShowLegalModal(false);
+    setActiveTab('privacy'); // Reset về tab đầu tiên khi đóng
+  };
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
+
+
+  const SidebarLink = ({ to, icon, label, onClick, iconColor = "text-success" }) => (
+    <Link
+      to={to}
+      onClick={onClick}
+      className="d-flex align-items-center gap-3 rounded-3 p-2 text-decoration-none transition-all sidebar-item"
+      style={{ color: '#475569', fontSize: '0.95rem' }}
+    >
+      <div className="p-2 rounded-3 shadow-sm bg-white d-flex align-items-center justify-content-center" style={{ width: '38px', height: '38px' }}>
+        <i className={`bi ${icon} ${iconColor} fs-5`}></i>
+      </div>
+      <span className="fw-medium">{label}</span>
+    </Link>
+  );
   // Hàm kiểm tra link đang hoạt động để highlight
   const isActive = (path) => location.pathname === path;
 
@@ -43,23 +64,23 @@ const MainLayout = () => {
     >
       {/* NAVBAR */}
       <nav
-        className="navbar navbar-expand-lg sticky-top"
+        className="navbar navbar-expand-lg sticky-top shadow-sm"
         style={{
           zIndex: 1000,
           backdropFilter: 'blur(20px)',
-          backgroundColor: 'rgba(255, 255, 255, 0.85)',
-          borderBottom: '1px solid rgba(0, 0, 0, 0.05)', // Viền rất nhạt
-          padding: '1rem 0',
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
+          padding: '0.6rem 0', // Thu nhỏ padding để thanh gọn hơn
         }}
       >
         <div className="container-fluid px-lg-5">
           {/* LOGO */}
           <Link
-            className="navbar-brand fw-black fs-2"
+            className="navbar-brand fw-bold fs-3"
             to="/"
             style={{
               color: '#1B4332',
-              letterSpacing: '-1.5px',
+              letterSpacing: '-1px',
               fontWeight: '800',
             }}
           >
@@ -67,7 +88,7 @@ const MainLayout = () => {
           </Link>
 
           <button
-            className="navbar-toggler border-0"
+            className="navbar-toggler border-0 shadow-none"
             type="button"
             data-bs-toggle="collapse"
             data-bs-target="#navbarNav"
@@ -77,87 +98,58 @@ const MainLayout = () => {
 
           <div className="collapse navbar-collapse" id="navbarNav">
             {/* MENU CHÍNH */}
-            <ul className="navbar-nav ms-lg-4 gap-3">
+            <ul className="navbar-nav ms-lg-4 gap-2">
               <li className="nav-item">
-                <Link className="nav-link" style={getLinkStyle('/')} to="/">
-                  Trang chủ
-                </Link>
+                <Link className="nav-link" style={{ ...getLinkStyle('/'), fontSize: '14px' }} to="/">Trang chủ</Link>
               </li>
               <li className="nav-item">
-                <Link
-                  className="nav-link"
-                  style={getLinkStyle('/football')}
-                  to="/football"
-                >
-                  Bóng đá
-                </Link>
+                <Link className="nav-link" style={{ ...getLinkStyle('/football'), fontSize: '14px' }} to="/football">Bóng đá</Link>
               </li>
               <li className="nav-item">
-                <Link
-                  className="nav-link"
-                  style={getLinkStyle('/badminton')}
-                  to="/badminton"
-                >
-                  Cầu lông
-                </Link>
+                <Link className="nav-link" style={{ ...getLinkStyle('/badminton'), fontSize: '14px' }} to="/badminton">Cầu lông</Link>
               </li>
               <li className="nav-item">
-                <Link
-                  className="nav-link"
-                  style={getLinkStyle('/pickleball')}
-                  to="/pickleball"
-                >
-                  Pickleball
-                </Link>
+                <Link className="nav-link" style={{ ...getLinkStyle('/pickleball'), fontSize: '14px' }} to="/pickleball">Pickleball</Link>
+              </li>
+              <li className="nav-item">
+                <Link className="nav-link" style={{ ...getLinkStyle('/contact'), fontSize: '14px' }} to="/contact">Liên hệ</Link>
               </li>
 
               {/* KHỐI QUẢN TRỊ CHO CHỦ SÂN (ROLE 2) */}
               {(user?.user?.role_id == 2 || user?.user?.role == 2) && (
-                <li className="nav-item d-flex align-items-center gap-1 ms-lg-3 ps-lg-3 border-start">
-                  <Link
-                    className="nav-link px-2"
-                    style={getLinkStyle('/owner/dashboard')}
-                    to="/owner/dashboard"
-                  >
-                    <div className="d-flex align-items-center gap-1">
-                      <i
-                        className="bi bi-graph-up text-orange-500"
-                        style={{ color: '#f59e0b' }}
-                      ></i>
-                      <span style={{ fontSize: '14px' }}>Thống kê</span>
+                <li className="nav-item d-flex align-items-center gap-1 ms-lg-4 ps-lg-4 border-start" style={{ borderColor: '#e2e8f0' }}>
+                  <Link className="nav-link px-2 text-center" to="/owner/dashboard">
+                    <div className="d-flex flex-column align-items-center gap-0">
+                      <i className="bi bi-graph-up" style={{ color: '#f59e0b', fontSize: '16px' }}></i>
+                      <span style={{ fontSize: '11px', fontWeight: '600', color: '#334155' }}>Thống kê</span>
                     </div>
                   </Link>
 
-                  <Link
-                    className="nav-link px-2"
-                    style={getLinkStyle('/owner/stadiums')}
-                    to="/owner/stadiums"
-                  >
-                    <div className="d-flex align-items-center gap-1">
-                      <i className="bi bi-building text-success"></i>
-                      <span style={{ fontSize: '14px' }}>Khu sân</span>
+                  <Link className="nav-link px-2 text-center" to="/owner/schedule">
+                    <div className="d-flex flex-column align-items-center gap-0">
+                      <i className="bi bi-calendar3 text-primary" style={{ fontSize: '16px' }}></i>
+                      <span style={{ fontSize: '11px', fontWeight: '600', color: '#334155' }}>Xem lịch</span>
                     </div>
                   </Link>
 
-                  <Link
-                    className="nav-link px-2"
-                    style={getLinkStyle('/owner/fields')}
-                    to="/owner/fields"
-                  >
-                    <div className="d-flex align-items-center gap-1">
-                      <i className="bi bi-grid-3x3-gap text-success"></i>
-                      <span style={{ fontSize: '14px' }}>Danh sách sân</span>
+                  <Link className="nav-link px-2 text-center" to="/owner/stadiums">
+                    <div className="d-flex flex-column align-items-center gap-0">
+                      <i className="bi bi-building text-success" style={{ fontSize: '16px' }}></i>
+                      <span style={{ fontSize: '11px', fontWeight: '600', color: '#334155' }}>Khu sân</span>
                     </div>
                   </Link>
 
-                  <Link
-                    className="nav-link px-2"
-                    style={getLinkStyle('/history')}
-                    to="/history"
-                  >
-                    <div className="d-flex align-items-center gap-1">
-                      <i className="bi bi-calendar-check text-primary"></i>
-                      <span style={{ fontSize: '14px' }}>Duyệt đơn</span>
+                  <Link className="nav-link px-2 text-center" to="/owner/fields">
+                    <div className="d-flex flex-column align-items-center gap-0">
+                      <i className="bi bi-grid-3x3-gap text-success" style={{ fontSize: '16px' }}></i>
+                      <span style={{ fontSize: '11px', fontWeight: '600', color: '#334155' }}>Danh sách sân</span>
+                    </div>
+                  </Link>
+
+                  <Link className="nav-link px-2 text-center" to="/history">
+                    <div className="d-flex flex-column align-items-center gap-0">
+                      <i className="bi bi-calendar-check text-primary" style={{ fontSize: '16px' }}></i>
+                      <span style={{ fontSize: '11px', fontWeight: '600', color: '#334155' }}>Duyệt đơn</span>
                     </div>
                   </Link>
                 </li>
@@ -211,210 +203,253 @@ const MainLayout = () => {
         </div>
       </nav>
 
-      {sidebarOpen && (
-        <div
-          onClick={handleSidebarClose}
+      <>
+        {/* Overlay - Làm mờ nền chuyên nghiệp hơn */}
+        {sidebarOpen && (
+          <div
+            onClick={handleSidebarClose}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(15, 23, 42, 0.4)',
+              backdropFilter: 'blur(4px)', // Thêm hiệu ứng blur nền cực xịn
+              zIndex: 1040,
+              transition: 'all 0.3s ease'
+            }}
+          />
+        )}
+
+        <aside
           style={{
             position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.36)',
-            zIndex: 1040,
+            top: 0,
+            right: 0,
+            height: '100vh',
+            width: '340px',
+            maxWidth: '100%',
+            padding: '2rem 1.5rem',
+            backgroundColor: '#ffffff',
+            boxShadow: '-10px 0 30px rgba(15, 23, 42, 0.1)',
+            transform: sidebarOpen ? 'translateX(0)' : 'translateX(100%)',
+            transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)', // Animation mượt hơn
+            zIndex: 1050,
+            display: 'flex',
+            flexDirection: 'column',
+            overflowY: 'auto'
           }}
-        />
-      )}
-
-      <aside
-        style={{
-          position: 'fixed',
-          top: 0,
-          right: 0,
-          height: '100vh',
-          width: '320px',
-          maxWidth: '100%',
-          padding: '1.5rem',
-          backgroundColor: '#ffffff',
-          boxShadow: 'rgba(15, 23, 42, 0.18) 0px 28px 90px',
-          transform: sidebarOpen ? 'translateX(0)' : 'translateX(120%)',
-          transition: 'transform 0.28s ease',
-          zIndex: 1050,
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <div className="d-flex align-items-start justify-content-between mb-4">
-          <div>
-            <p className="text-success text-uppercase small mb-2">Tài khoản</p>
+        >
+          {/* Header Section */}
+          <div className="d-flex align-items-center justify-content-between mb-5">
             <div className="d-flex align-items-center gap-3">
               <div
-                className="bg-success text-white rounded-circle d-flex align-items-center justify-content-center"
-                style={{ width: '46px', height: '46px', fontWeight: 800 }}
+                className="bg-success shadow-sm text-white rounded-circle d-flex align-items-center justify-content-center"
+                style={{
+                  width: '52px',
+                  height: '52px',
+                  fontSize: '1.2rem',
+                  fontWeight: 'bold',
+                  background: 'linear-gradient(135deg, #28a745 0%, #1e7e34 100%)'
+                }}
               >
                 {user?.user?.name?.charAt(0).toUpperCase()}
               </div>
               <div>
-                <h5 className="fw-bold mb-1" style={{ color: '#1f2937' }}>
+                <h5 className="fw-bold mb-0" style={{ color: '#0f172a', letterSpacing: '-0.02em' }}>
                   {user?.user?.name}
                 </h5>
-                <p className="text-muted small mb-0">Chào mừng bạn trở lại</p>
+                <span className="badge bg-light text-success border border-success-subtle fw-normal">Thành viên S.Book</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn-close shadow-none"
+              onClick={handleSidebarClose}
+              aria-label="Close"
+            ></button>
+          </div>
+
+          {/* Menu Group 1: Hoạt động */}
+          <div className="mb-4">
+            <p className="text-muted text-uppercase fw-bold mb-3" style={{ fontSize: '0.75rem', letterSpacing: '0.1em' }}>
+              Hoạt động cá nhân
+            </p>
+            <nav className="d-flex flex-column gap-1">
+              <SidebarLink to="/profile" icon="bi-person-circle" label="Hồ sơ cá nhân" onClick={handleSidebarClose} />
+              <SidebarLink to="/history" icon="bi-calendar-check" label="Lịch sử đặt sân" onClick={handleSidebarClose} />
+              <SidebarLink to="/favorites" icon="bi-heart" label="Sân bóng yêu thích" onClick={handleSidebarClose} iconColor="text-danger" />
+              <SidebarLink to="/my-reviews" icon="bi-star" label="Đánh giá của tôi" onClick={handleSidebarClose} iconColor="text-warning" />
+            </nav>
+          </div>
+
+          <hr className="my-4 opacity-10" />
+
+          {/* Menu Group 2: Hệ thống */}
+          <div className="mb-4">
+            <p className="text-muted text-uppercase fw-bold mb-3" style={{ fontSize: '0.75rem', letterSpacing: '0.1em' }}>
+              Thông tin & Hỗ trợ
+            </p>
+            <div className="d-flex flex-column gap-2">
+              <button
+                onClick={() => { handleSidebarClose(); handleLegalOpen(); }}
+                className="btn btn-link text-decoration-none text-start p-0 d-flex align-items-center justify-content-between text-dark group"
+              >
+                <div className="d-flex align-items-center gap-3">
+                  <div className="bg-light p-2 rounded-3"><i className="bi bi-shield-check text-success"></i></div>
+                  <span style={{ fontSize: '0.95rem' }}>Chính sách & Điều khoản</span>
+                </div>
+                <i className="bi bi-chevron-right small text-muted"></i>
+              </button>
+
+              <div className="d-flex align-items-center justify-content-between py-2 mt-2">
+                <div className="d-flex align-items-center gap-3 text-dark">
+                  <div className="bg-light p-2 rounded-3"><i className="bi bi-translate text-success"></i></div>
+                  <span style={{ fontSize: '0.95rem' }}>Ngôn ngữ</span>
+                </div>
+                <span className="badge bg-light text-dark fw-normal border">Tiếng Việt</span>
               </div>
             </div>
           </div>
-          <button
-            type="button"
-            className="btn btn-light btn-sm rounded-circle border"
-            onClick={handleSidebarClose}
-            style={{ width: '36px', height: '36px' }}
-          >
-            <i className="bi bi-x-lg"></i>
-          </button>
-        </div>
 
-        <div className="mb-4">
-          <p className="text-success fw-semibold mb-3">Hoạt động</p>
-          <Link
-            to="/profile"
-            onClick={handleSidebarClose}
-            className="d-flex align-items-center gap-2 rounded-4 p-3 mb-3 text-decoration-none"
-            style={{ background: '#f6fdf5', color: '#1f2937' }}
-          >
-            <i className="bi bi-person-fill fs-5 text-success"></i>
-            Hồ sơ
-          </Link>
-          <Link
-            to="/history"
-            onClick={handleSidebarClose}
-            className="d-flex align-items-center gap-2 rounded-4 p-3 mb-3 text-decoration-none"
-            style={{ background: '#f6fdf5', color: '#1f2937' }}
-          >
-            <i className="bi bi-calendar-check fs-5 text-success"></i>
-            Danh sách lịch đã đặt
-          </Link>
-          <Link
-            to="/favorites"
-            onClick={handleSidebarClose}
-            className="d-flex align-items-center gap-2 rounded-4 p-3 mb-3 text-decoration-none"
-            style={{ background: '#f6fdf5', color: '#1f2937' }}
-          >
-            <i className="bi bi-heart-fill fs-5 text-danger"></i>
-            Sân yêu thích
-          </Link>
-          <Link
-            to="/my-reviews"
-            onClick={handleSidebarClose}
-            className="d-flex align-items-center gap-2 rounded-4 p-3 text-decoration-none"
-            style={{ background: '#f6fdf5', color: '#1f2937' }}
-          >
-            <i className="bi bi-star-fill fs-5 text-warning"></i>
-            Đánh giá
-          </Link>
-          <Link
-  to="/login"
-  onClick={() => {
-    handleSidebarClose(); // Đóng sidebar trước
-    handleLogout();      // Gọi hàm đăng xuất (xóa token/localStorage)
-  }}
-  className="d-flex align-items-center gap-2 rounded-4 p-3 text-decoration-none mt-2"
-  style={{ background: '#fff5f5', color: '#dc3545' }} // Chuyển sang tông đỏ nhạt cho chuyên nghiệp
->
-  <i className="bi bi-box-arrow-right fs-5"></i>
-  <span className="fw-bold">Đăng xuất</span>
-</Link>
-        </div>
-
-        <div className="mb-4">
-          <p className="text-success fw-semibold mb-3">Hệ thống</p>
-          <button
-            type="button"
-            onClick={() => {
-              handleSidebarClose();
-              handleLegalOpen();
-            }}
-            className="d-flex align-items-center justify-content-between w-100 bg-white border-0 rounded-4 shadow-sm p-3 mb-3"
-            style={{ color: '#1f2937' }}
-          >
-            <span>
-              <span className="d-flex align-items-center gap-2 mb-1">
-                <i className="bi bi-shield-lock text-success fs-5"></i>
-                Điều khoản và chính sách
-              </span>
-              <div className="small text-muted" style={{ lineHeight: 1.4 }}>
-                Xem nội dung về quyền lợi, trách nhiệm và bảo mật thông tin.
-              </div>
-            </span>
-            <i className="bi bi-chevron-right text-muted"></i>
-          </button>
-          <button
-            type="button"
-            className="d-flex align-items-center justify-content-between w-100 bg-white border-0 rounded-4 shadow-sm p-3"
-            onClick={handleSidebarClose}
-            style={{ color: '#1f2937' }}
-          >
-            <span className="d-flex align-items-center gap-2">
-              <i className="bi bi-translate text-success fs-5"></i>
-              Ngôn ngữ - Tiếng Việt
-            </span>
-            <i className="bi bi-chevron-right text-muted"></i>
-          </button>
-        </div>
-
-        <button
-          type="button"
-          className="btn btn-danger w-100 rounded-4 fw-semibold mt-auto"
-          onClick={() => {
-            handleSidebarClose();
-            handleLogout();
-          }}
-          style={{ padding: '0.95rem 1.25rem' }}
-        >
-          <i className="bi bi-box-arrow-right me-2"></i>
-          Đăng xuất
-        </button>
-      </aside>
+          {/* Logout Section - Đẩy xuống cuối */}
+          <div className="mt-auto pt-4">
+            <button
+              type="button"
+              className="btn btn-outline-danger w-100 rounded-4 border-2 fw-bold d-flex align-items-center justify-content-center gap-2"
+              onClick={() => {
+                handleSidebarClose();
+                handleLogout();
+              }}
+              style={{ padding: '0.8rem' }}
+            >
+              <i className="bi bi-box-arrow-right"></i>
+              Đăng xuất
+            </button>
+            <p className="text-center text-muted mt-3 mb-0" style={{ fontSize: '0.7rem' }}>Phiên bản 2.0.1 - S.BOOK Team</p>
+          </div>
+        </aside>
+      </>
 
       {showLegalModal && (
         <div
           className="position-fixed inset-0 d-flex align-items-center justify-content-center"
-          style={{ zIndex: 1060, backgroundColor: 'rgba(15, 23, 42, 0.55)' }}
+          style={{
+            zIndex: 2000,
+            backgroundColor: 'rgba(15, 23, 42, 0.7)',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backdropFilter: 'blur(4px)'
+          }}
           onClick={handleLegalClose}
         >
           <div
-            className="bg-white rounded-4 shadow p-4"
-            style={{ width: 'min(680px, 95vw)', maxHeight: '80vh', overflowY: 'auto' }}
+            className="bg-white rounded-4 shadow-lg p-0 d-flex flex-column"
+            style={{
+              width: '95vw',
+              height: '90vh',
+              maxWidth: '1200px'
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="d-flex justify-content-between align-items-start mb-4">
-              <div>
-                <h5 className="fw-bold mb-1">Điều khoản và chính sách</h5>
-                <p className="text-muted mb-0" style={{ fontSize: '0.95rem' }}>
-                  Nội dung điều khoản và chính sách sử dụng dịch vụ.
-                </p>
+            {/* Header với Tabs */}
+            <div className="p-4 border-bottom bg-light rounded-top-4">
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h4 className="fw-bold mb-0 text-success">PHÁP LÝ & QUY ĐỊNH S.BOOK</h4>
+                <button
+                  type="button"
+                  className="btn-close shadow-none"
+                  onClick={handleLegalClose}
+                ></button>
               </div>
-              <button
-                type="button"
-                className="btn btn-light btn-sm rounded-circle border"
-                onClick={handleLegalClose}
-                style={{ width: '36px', height: '36px' }}
-              >
-                <i className="bi bi-x-lg"></i>
-              </button>
+
+              {/* Thanh điều hướng Tab */}
+              <div className="d-flex gap-2">
+                <button
+                  className={`btn btn-sm rounded-pill px-4 fw-bold ${activeTab === 'privacy' ? 'btn-success' : 'btn-outline-secondary border-0'}`}
+                  onClick={() => setActiveTab('privacy')}
+                >
+                  1. CHÍNH SÁCH BẢO MẬT
+                </button>
+                <button
+                  className={`btn btn-sm rounded-pill px-4 fw-bold ${activeTab === 'terms' ? 'btn-success' : 'btn-outline-secondary border-0'}`}
+                  onClick={() => setActiveTab('terms')}
+                >
+                  2. QUY CHẾ HOẠT ĐỘNG
+                </button>
+              </div>
             </div>
-            <div style={{ lineHeight: 1.8, color: '#344054' }}>
-              <p className="fw-semibold">1. Điều khoản sử dụng</p>
-              <p>
-                Người dùng đồng ý sử dụng hệ thống theo quy định, không chia sẻ tài khoản và chịu trách nhiệm về thông tin đặt sân.
-              </p>
-              <p className="fw-semibold">2. Chính sách bảo mật</p>
-              <p>
-                Chúng tôi bảo vệ dữ liệu cá nhân, cam kết không chia sẻ thông tin cho bên thứ ba khi chưa được phép.
-              </p>
-              <p className="fw-semibold">3. Quyền lợi và trách nhiệm</p>
-              <p>
-                Người dùng có quyền truy cập, chỉnh sửa và xóa thông tin cá nhân theo quy định, cùng tuân thủ các điều kiện đặt sân và thanh toán.
-              </p>
+
+            {/* Nội dung thay đổi theo Tab */}
+            <div className="p-4 flex-grow-1 overflow-auto" style={{ lineHeight: 1.7, color: '#344054', textAlign: 'justify' }}>
+
+              {activeTab === 'privacy' ? (
+                /* NỘI DUNG CHÍNH SÁCH BẢO MẬT */
+                <>
+                  <h5 className="fw-bold text-dark mb-3 text-uppercase">Chính sách bảo vệ thông tin cá nhân</h5>
+                  <section className="mb-4">
+                    <h6 className="fw-bold text-success">1. Mục đích thu thập thông tin cá nhân</h6>
+                    <p>Thông tin bao gồm tên, địa chỉ, số điện thoại, email... thu thập nhằm phục vụ Giao dịch, Hỗ trợ, Thanh toán và Pháp lý nội bộ của S.Book.</p>
+                    <ul>
+                      <li><strong>Giao dịch:</strong> Chuyển tiếp đơn đặt lịch đến các cơ sở thể thao đối tác tại TP.HCM.</li>
+                      <li><strong>Hỗ trợ:</strong> Xác minh độ tin cậy và thông báo lịch đặt.</li>
+                    </ul>
+                  </section>
+                  <section className="mb-4">
+                    <h6 className="fw-bold text-success">2. Phạm vi sử dụng & Thời gian lưu trữ</h6>
+                    <p>S.Book cam kết không mua bán dữ liệu cho bên thứ ba. Dữ liệu được lưu trữ cho đến khi hoàn thành mục đích hoặc khi thành viên yêu cầu hủy bỏ.</p>
+                  </section>
+                  <section className="mb-4">
+                    <h6 className="fw-bold text-success">3. Cam kết bảo mật</h6>
+                    <p>Áp dụng các biện pháp an ninh nghiêm ngặt để chống mất mát dữ liệu. Chỉ tiết lộ thông tin khi có yêu cầu pháp lý từ cơ quan Nhà nước.</p>
+                  </section>
+                </>
+              ) : (
+                /* NỘI DUNG QUY CHẾ HOẠT ĐỘNG */
+                <>
+                  <h5 className="fw-bold text-dark mb-3 text-uppercase">Quy chế hoạt động nền tảng S.Book</h5>
+                  <div className="alert alert-success border-0 rounded-3 small">
+                    S.BOOK là nền tảng kết nối người chơi và các cơ sở thể thao, cho phép tìm kiếm và đặt lịch trực tuyến minh bạch.
+                  </div>
+
+                  <section className="mb-4">
+                    <h6 className="fw-bold text-success">I. Nguyên tắc chung</h6>
+                    <p>Nền tảng vận hành bởi Ban quản trị S.Book. Thành viên tham gia dựa trên tinh thần tự nguyện, tôn trọng quyền lợi hợp pháp và tuân thủ pháp luật Việt Nam.</p>
+                  </section>
+
+                  <section className="mb-4">
+                    <h6 className="fw-bold text-success">II. Quy trình giao dịch cho Khách hàng</h6>
+                    <ol>
+                      <li>Tìm kiếm sân theo môn, khu vực và thời gian.</li>
+                      <li>Chọn sân và kiểm tra lịch trống.</li>
+                      <li>Nhập mã giảm giá và chọn hình thức thanh toán.</li>
+                      <li>Nhận xác nhận qua Email/App.</li>
+                    </ol>
+                  </section>
+
+                  <section className="mb-4">
+                    <h6 className="fw-bold text-success">III. Giải quyết tranh chấp</h6>
+                    <p>Tiếp nhận khiếu nại qua Hotline: <strong>098 242 13 13</strong> hoặc Email: <strong>support@sbook.vn</strong>. Mọi tranh chấp được ưu tiên giải quyết qua thương lượng thiện chí.</p>
+                  </section>
+
+                  <section className="mb-4 bg-light p-3 rounded-3">
+                    <h6 className="fw-bold text-danger">IV. Hành vi nghiêm cấm</h6>
+                    <ul className="mb-0">
+                      <li>Sử dụng công cụ can thiệp hệ thống dữ liệu.</li>
+                      <li>Đăng tải nội dung đồi trụy hoặc sai sự thật.</li>
+                      <li>Tạo đơn hàng giả gây lũng đoạn thị trường.</li>
+                    </ul>
+                  </section>
+                </>
+              )}
+
+              <div className="text-center mt-5 mb-3 py-3 border-top">
+                <h6 className="fw-bold text-success">S.Book - Nền tảng đặt sân trực tuyến hàng đầu tại TP. Hồ Chí Minh.</h6>
+                <small className="text-muted">Cập nhật lần cuối: Tháng 5/2026</small>
+              </div>
             </div>
-            <div className="text-end mt-4">
-              <button className="btn btn-success" onClick={handleLegalClose}>
-                Đóng
+
+            {/* Footer cố định */}
+            <div className="p-3 border-top text-end bg-light rounded-bottom-4">
+              <button className="btn btn-success px-5 fw-bold" onClick={handleLegalClose}>
+                TÔI ĐÃ HIỂU VÀ ĐỒNG Ý
               </button>
             </div>
           </div>
@@ -455,8 +490,24 @@ const MainLayout = () => {
                 <div className="col-4">
                   <p className="fw-bold small mb-2">Hỗ trợ</p>
                   <ul className="list-unstyled mb-0" style={{ fontSize: '12px' }}>
-                    <li><a href="#" className="text-decoration-none text-muted">Điều khoản</a></li>
-                    <li><a href="#" className="text-decoration-none text-muted">Bảo mật</a></li>
+                    <li>
+                      <span
+                        className="text-decoration-none text-muted"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => handleLegalOpen('terms')} // Mở tab Quy chế/Điều khoản
+                      >
+                        Điều khoản
+                      </span>
+                    </li>
+                    <li>
+                      <span
+                        className="text-decoration-none text-muted"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => handleLegalOpen('privacy')} // Mở tab Bảo mật
+                      >
+                        Chính sách
+                      </span>
+                    </li>
                   </ul>
                 </div>
                 <div className="col-4">
