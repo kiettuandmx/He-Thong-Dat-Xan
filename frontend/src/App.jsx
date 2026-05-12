@@ -30,7 +30,6 @@ import NotificationComponent from './components/NotificationComponent';
 import FavoritesPage from './pages/FavoritesPage';
 import RefundHistory from './pages/RefundHistory';
 import AdminRefundHistory from './pages/AdminRefundHistory';
-import UserCashFlow from './pages/UserCashFlow';
 
 // Layout & Pages
 import MainLayout from './components/MainLayout';
@@ -51,17 +50,15 @@ function App() {
     user = userData?.user;
     role = user?.role;
   } catch (error) {
-    console.error("Lỗi đọc dữ liệu user:", error);
+    console.error('Lỗi đọc dữ liệu user:', error);
   }
 
   return (
     <AuthProvider>
       <ToastContainer />
       <BrowserRouter>
-        {user && (
-          <NotificationComponent type={role === 2 ? 'owner' : 'user'} />
-        )}
-        
+        {user && <NotificationComponent type={role === 2 ? 'owner' : 'user'} />}
+
         <Routes>
           {/* 1. PUBLIC & GENERAL ROUTES */}
           <Route element={<MainLayout />}>
@@ -104,12 +101,25 @@ function App() {
             <Route path="add-field" element={<AddFieldPage />} />
             <Route path="edit-field/:id" element={<EditFieldPage />} />
             <Route path="refund-history" element={<AdminRefundHistory />} />
-            <Route path="user-cash-flow/:userId" element={<UserCashFlow />} />
           </Route>
 
           {/* 4. ERROR PAGES */}
-          <Route path="/403" element={<div className="text-center mt-5"><h1>403 - Không có quyền!</h1></div>} />
-          <Route path="*" element={<div className="text-center mt-5"><h1>404 - Không tồn tại!</h1></div>} />
+          <Route
+            path="/403"
+            element={
+              <div className="text-center mt-5">
+                <h1>403 - Không có quyền!</h1>
+              </div>
+            }
+          />
+          <Route
+            path="*"
+            element={
+              <div className="text-center mt-5">
+                <h1>404 - Không tồn tại!</h1>
+              </div>
+            }
+          />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

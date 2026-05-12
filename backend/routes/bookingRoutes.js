@@ -23,11 +23,6 @@ router.get(
   verifyToken,
   bookingController.getAdminRefundHistory,
 );
-router.get(
-  "/cash-flow/:userId",
-  verifyToken,
-  bookingController.getUserCashFlow,
-);
 
 // --- 3. CÁC ROUTE CÓ HÀNH ĐỘNG VỚI ID (PUT/PATCH/POST) ---
 router.put("/approve/:id", verifyToken, bookingController.approveBooking);

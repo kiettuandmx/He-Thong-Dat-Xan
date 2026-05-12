@@ -169,7 +169,9 @@ const MainLayout = () => {
                   >
                     <div className="d-flex align-items-center gap-1">
                       <i className="bi bi-arrow-counterclockwise text-danger"></i>
-                      <span style={{ fontSize: '14px' }}>Lịch sử hoàn tiền</span>
+                      <span style={{ fontSize: '14px' }}>
+                        Lịch sử hoàn tiền
+                      </span>
                     </div>
                   </Link>
                 </li>
@@ -322,8 +324,8 @@ const MainLayout = () => {
           <Link
             to="/login"
             onClick={() => {
-              handleSidebarClose(); 
-              handleLogout();      
+              handleSidebarClose();
+              handleLogout();
             }}
             className="d-flex align-items-center gap-2 rounded-4 p-3 text-decoration-none mt-2"
             style={{ background: '#fff5f5', color: '#dc3545' }}
@@ -391,7 +393,11 @@ const MainLayout = () => {
         >
           <div
             className="bg-white rounded-4 shadow p-4"
-            style={{ width: 'min(680px, 95vw)', maxHeight: '80vh', overflowY: 'auto' }}
+            style={{
+              width: 'min(680px, 95vw)',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="d-flex justify-content-between align-items-start mb-4">
@@ -413,15 +419,19 @@ const MainLayout = () => {
             <div style={{ lineHeight: 1.8, color: '#344054' }}>
               <p className="fw-semibold">1. Điều khoản sử dụng</p>
               <p>
-                Người dùng đồng ý sử dụng hệ thống theo quy định, không chia sẻ tài khoản và chịu trách nhiệm về thông tin đặt sân.
+                Người dùng đồng ý sử dụng hệ thống theo quy định, không chia sẻ
+                tài khoản và chịu trách nhiệm về thông tin đặt sân.
               </p>
               <p className="fw-semibold">2. Chính sách bảo mật</p>
               <p>
-                Chúng tôi bảo vệ dữ liệu cá nhân, cam kết không chia sẻ thông tin cho bên thứ ba khi chưa được phép.
+                Chúng tôi bảo vệ dữ liệu cá nhân, cam kết không chia sẻ thông
+                tin cho bên thứ ba khi chưa được phép.
               </p>
               <p className="fw-semibold">3. Quyền lợi và trách nhiệm</p>
               <p>
-                Người dùng có quyền truy cập, chỉnh sửa và xóa thông tin cá nhân theo quy định, cùng tuân thủ các điều kiện đặt sân và thanh toán.
+                Người dùng có quyền truy cập, chỉnh sửa và xóa thông tin cá nhân
+                theo quy định, cùng tuân thủ các điều kiện đặt sân và thanh
+                toán.
               </p>
             </div>
             <div className="text-end mt-4">
@@ -446,10 +456,16 @@ const MainLayout = () => {
         <div className="container">
           <div className="row g-3 mb-3">
             <div className="col-lg-4 col-md-12">
-              <h6 className="fw-bold mb-2" style={{ color: '#2D6A4F' }}>S.BOOK SYSTEM</h6>
-              <p className="text-muted mb-0" style={{ fontSize: '12px', maxWidth: '300px' }}>
+              <h6 className="fw-bold mb-2" style={{ color: '#2D6A4F' }}>
+                S.BOOK SYSTEM
+              </h6>
+              <p
+                className="text-muted mb-0"
+                style={{ fontSize: '12px', maxWidth: '300px' }}
+              >
                 Hệ thống đặt sân thể thao chuyên nghiệp. <br />
-                <i className="bi bi-geo-alt-fill me-1"></i> Quận 9, TP. Hồ Chí Minh
+                <i className="bi bi-geo-alt-fill me-1"></i> Quận 9, TP. Hồ Chí
+                Minh
               </p>
             </div>
 
@@ -457,23 +473,50 @@ const MainLayout = () => {
               <div className="row">
                 <div className="col-4">
                   <p className="fw-bold small mb-2">Dịch vụ</p>
-                  <ul className="list-unstyled mb-0" style={{ fontSize: '12px' }}>
-                    <li><a href="#" className="text-decoration-none text-muted">Đặt sân</a></li>
-                    <li><a href="#" className="text-decoration-none text-muted">Bảng giá</a></li>
+                  <ul
+                    className="list-unstyled mb-0"
+                    style={{ fontSize: '12px' }}
+                  >
+                    <li>
+                      <a href="#" className="text-decoration-none text-muted">
+                        Đặt sân
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" className="text-decoration-none text-muted">
+                        Bảng giá
+                      </a>
+                    </li>
                   </ul>
                 </div>
                 <div className="col-4">
                   <p className="fw-bold small mb-2">Hỗ trợ</p>
-                  <ul className="list-unstyled mb-0" style={{ fontSize: '12px' }}>
-                    <li><a href="#" className="text-decoration-none text-muted">Điều khoản</a></li>
-                    <li><a href="#" className="text-decoration-none text-muted">Bảo mật</a></li>
+                  <ul
+                    className="list-unstyled mb-0"
+                    style={{ fontSize: '12px' }}
+                  >
+                    <li>
+                      <a href="#" className="text-decoration-none text-muted">
+                        Điều khoản
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" className="text-decoration-none text-muted">
+                        Bảo mật
+                      </a>
+                    </li>
                   </ul>
                 </div>
                 <div className="col-4">
                   <p className="fw-bold small mb-2">Liên hệ</p>
-                  <ul className="list-unstyled mb-0" style={{ fontSize: '12px' }}>
+                  <ul
+                    className="list-unstyled mb-0"
+                    style={{ fontSize: '12px' }}
+                  >
                     <li className="text-muted text-truncate">028.123.456</li>
-                    <li className="text-muted text-truncate">support@sbook.vn</li>
+                    <li className="text-muted text-truncate">
+                      support@sbook.vn
+                    </li>
                   </ul>
                 </div>
               </div>
@@ -482,21 +525,42 @@ const MainLayout = () => {
             <div className="col-lg-3 col-md-4 text-lg-end">
               <p className="fw-bold small mb-2 text-uppercase">Thanh toán</p>
               <div className="d-flex justify-content-lg-end gap-2 mb-2">
-                <img src="https://vinadesign.vn/uploads/images/2023/05/vnpay-logo-vinadesign-25-12-57-55.jpg" alt="VNPAY" height="15" className="border rounded px-1" />
-                <img src="https://developers.momo.vn/v3/assets/images/MOMO-Logo-App-6262c3743a290ef02396a24ea2b66c35.png" alt="MOMO" height="15" className="border rounded px-1" />
+                <img
+                  src="https://vinadesign.vn/uploads/images/2023/05/vnpay-logo-vinadesign-25-12-57-55.jpg"
+                  alt="VNPAY"
+                  height="15"
+                  className="border rounded px-1"
+                />
+                <img
+                  src="https://developers.momo.vn/v3/assets/images/MOMO-Logo-App-6262c3743a290ef02396a24ea2b66c35.png"
+                  alt="MOMO"
+                  height="15"
+                  className="border rounded px-1"
+                />
               </div>
               <div className="d-flex justify-content-lg-end gap-3 text-muted">
-                <a href="#" className="text-inherit"><i className="bi bi-facebook"></i></a>
-                <a href="#" className="text-inherit"><i className="bi bi-youtube"></i></a>
+                <a href="#" className="text-inherit">
+                  <i className="bi bi-facebook"></i>
+                </a>
+                <a href="#" className="text-inherit">
+                  <i className="bi bi-youtube"></i>
+                </a>
               </div>
             </div>
           </div>
 
           <hr className="my-2 opacity-10" />
 
-          <div className="d-flex justify-content-between align-items-center" style={{ fontSize: '11px' }}>
-            <span className="text-muted">&copy; {new Date().getFullYear()} S.BOOK SYSTEM</span>
-            <span className="fw-bold text-success">Team 4_23DTHB7 - HUTECH</span>
+          <div
+            className="d-flex justify-content-between align-items-center"
+            style={{ fontSize: '11px' }}
+          >
+            <span className="text-muted">
+              &copy; {new Date().getFullYear()} S.BOOK SYSTEM
+            </span>
+            <span className="fw-bold text-success">
+              Team 4_23DTHB7 - HUTECH
+            </span>
           </div>
         </div>
       </footer>
