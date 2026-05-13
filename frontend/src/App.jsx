@@ -28,8 +28,8 @@ import AddFieldPage from './pages/AddFieldPage';
 import EditFieldPage from './pages/EditFieldPage';
 import NotificationComponent from './components/NotificationComponent';
 import FavoritesPage from './pages/FavoritesPage';
-import RefundHistory from './pages/RefundHistory';
 import AdminRefundHistory from './pages/AdminRefundHistory';
+import PaymentHistory from './pages/PaymentHistory';
 
 // Layout & Pages
 import MainLayout from './components/MainLayout';
@@ -71,6 +71,7 @@ function App() {
             <Route path="/badminton" element={<BadmintonPage />} />
             <Route path="/pickleball" element={<PickleballPage />} />
             <Route path="/history" element={<BookingHistory />} />
+            <Route path="/payment-history" element={<PaymentHistory />} />
             <Route path="/favorites" element={<FavoritesPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/field/:id" element={<FieldDetail />} />
@@ -89,7 +90,7 @@ function App() {
               <Route path="/owner/fields" element={<OwnerStadiums />} />
               <Route path="/owner/edit-field/:id" element={<EditField />} />
               <Route path="/owner/reviews" element={<OwnerReviews />} />
-              <Route path="/owner/refund-history" element={<RefundHistory />} />
+              <Route path="/owner/payment-history" element={<PaymentHistory />} />
             </Route>
           </Route>
 

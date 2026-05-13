@@ -6,10 +6,20 @@ const { verifyToken } = require("../middleware/authMiddleware");
 // --- 1. CÁC ROUTE CÓ CHỮ CỐ ĐỊNH (PHẢI LÊN TRÊN CÙNG) ---
 router.post("/book", verifyToken, bookingController.createBooking);
 router.get("/history", verifyToken, bookingController.getUserHistory);
+router.get(
+  "/payment-history",
+  verifyToken,
+  bookingController.getUserPaymentHistory,
+);
 router.get("/notifications", verifyToken, bookingController.getNotifications);
 router.put("/notifications/read", verifyToken, bookingController.markAsRead);
 // --- 2. CÁC ROUTE CÓ TIỀN TỐ (OWNER) ---
 router.get("/refund-history", verifyToken, bookingController.getRefundHistory);
+router.get(
+  "/owner/payment-history",
+  verifyToken,
+  bookingController.getOwnerPaymentHistory,
+);
 
 router.get("/owner/:ownerId", verifyToken, bookingController.getOwnerBookings);
 router.get(

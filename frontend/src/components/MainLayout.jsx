@@ -111,6 +111,18 @@ const MainLayout = () => {
                 </Link>
               </li>
 
+              {user && !(user?.user?.role_id == 2 || user?.user?.role == 2) && (
+                <li className="nav-item">
+                  <Link
+                    className="nav-link"
+                    style={getLinkStyle('/payment-history')}
+                    to="/payment-history"
+                  >
+                    Lịch sử thanh toán
+                  </Link>
+                </li>
+              )}
+
               {/* KHỐI QUẢN TRỊ CHO CHỦ SÂN (ROLE 2) */}
               {(user?.user?.role_id == 2 || user?.user?.role == 2) && (
                 <li className="nav-item d-flex align-items-center gap-1 ms-lg-3 ps-lg-3 border-start">
@@ -164,14 +176,12 @@ const MainLayout = () => {
                   {/* THÊM MỚI: Lịch sử hoàn tiền */}
                   <Link
                     className="nav-link px-2"
-                    style={getLinkStyle('/owner/refund-history')}
-                    to="/owner/refund-history"
+                    style={getLinkStyle('/owner/payment-history')}
+                    to="/owner/payment-history"
                   >
                     <div className="d-flex align-items-center gap-1">
-                      <i className="bi bi-arrow-counterclockwise text-danger"></i>
-                      <span style={{ fontSize: '14px' }}>
-                        Lịch sử hoàn tiền
-                      </span>
+                      <i className="bi bi-receipt text-success"></i>
+                      <span style={{ fontSize: '14px' }}>Lịch sử thanh toán</span>
                     </div>
                   </Link>
                 </li>
@@ -302,6 +312,15 @@ const MainLayout = () => {
           >
             <i className="bi bi-calendar-check fs-5 text-success"></i>
             Danh sách lịch đã đặt
+          </Link>
+          <Link
+            to={user?.user?.role_id == 2 || user?.user?.role == 2 ? '/owner/payment-history' : '/payment-history'}
+            onClick={handleSidebarClose}
+            className="d-flex align-items-center gap-2 rounded-4 p-3 mb-3 text-decoration-none"
+            style={{ background: '#f6fdf5', color: '#1f2937' }}
+          >
+            <i className="bi bi-receipt fs-5 text-success"></i>
+            Lịch sử thanh toán
           </Link>
           <Link
             to="/favorites"

@@ -5,6 +5,41 @@ const Stadium = db.Stadium;
 const User = db.User;
 const { Op, fn, col, literal } = require("sequelize");
 const { getIO, userSockets } = require("../socket");
+const {
+  buildPaymentHistoryTransactions,
+  filterTransactionsByDateRange,
+  paginateTransactions,
+  resolveHistoryFilters,
+  toNumber,
+} = require("../utils/paymentHistory");
+
+function calculatePaymentHistorySummary(transactions) {
+  const totalPayment = transactions
+    .filter((transaction) => transaction.type === "payment")
+    .reduce((sum, transaction) => sum + toNumber(transaction.amount), 0);
+  const totalRefund = transactions
+    .filter((transaction) => transaction.type === "refund")
+    .reduce((sum, transaction) => sum + toNumber(transaction.refundAmount), 0);
+
+  return {
+    totalPayment,
+    totalRefund,
+    netRevenue: totalPayment - totalRefund,
+  };
+}
+
+function normalizePositiveInteger(value, fallback) {
+  const numericValue = Number(value);
+  return Number.isInteger(numericValue) && numericValue > 0 ? numericValue : fallback;
+}
+
+function isPaymentHistoryFilterError(error) {
+  return error instanceof Error && error.message.startsWith("Invalid ");
+}
+
+function shouldPreserveProcessedBookingStatus(status) {
+  return ["confirmed", "refunded", "rejected", "cancelled"].includes(status);
+}
 
 const createNotification = async (user_id, content) => {
   const noti = await db.Notification.create({
@@ -282,6 +317,166 @@ exports.getOwnerBookings = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+exports.getUserPaymentHistory = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Khong xac dinh duoc nguoi dung.",
+      });
+    }
+
+    const filters = resolveHistoryFilters(req.query);
+    const bookings = await Booking.findAll({
+      where: { user_id: userId },
+      include: [
+        {
+          model: Field,
+          as: "field",
+          attributes: ["name"],
+          include: [
+            {
+              model: Stadium,
+              as: "stadium",
+              attributes: ["name"],
+            },
+          ],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    const filteredTransactions = filterTransactionsByDateRange(
+      buildPaymentHistoryTransactions(bookings),
+      filters.startDate,
+      filters.endDate,
+    );
+    const safeLimit = normalizePositiveInteger(req.query.limit, 10);
+    const currentPage = normalizePositiveInteger(req.query.page, 1);
+    const transactions = paginateTransactions(filteredTransactions, currentPage, safeLimit);
+    const summary = calculatePaymentHistorySummary(filteredTransactions);
+
+    return res.status(200).json({
+      success: true,
+      transactions,
+      total: filteredTransactions.length,
+      hasMore: currentPage * safeLimit < filteredTransactions.length,
+      currentPage,
+      limit: safeLimit,
+      summary: {
+        totalPayment: summary.totalPayment,
+        totalRefund: summary.totalRefund,
+      },
+    });
+  } catch (error) {
+    if (isPaymentHistoryFilterError(error)) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+exports.getOwnerPaymentHistory = async (req, res) => {
+  try {
+    const ownerId = req.user?.id;
+
+    if (!ownerId) {
+      return res.status(401).json({
+        success: false,
+        message: "Khong xac dinh duoc chu san.",
+      });
+    }
+
+    const filters = resolveHistoryFilters(req.query);
+    const stadiums = await Stadium.findAll({
+      where: { owner_id: ownerId },
+      attributes: ["id"],
+    });
+    const stadiumIds = stadiums.map((stadium) => stadium.id);
+    const safeLimit = normalizePositiveInteger(req.query.limit, 10);
+    const currentPage = normalizePositiveInteger(req.query.page, 1);
+
+    if (stadiumIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        transactions: [],
+        total: 0,
+        hasMore: false,
+        currentPage,
+        limit: safeLimit,
+        summary: {
+          totalPayment: 0,
+          totalRefund: 0,
+          netRevenue: 0,
+        },
+      });
+    }
+
+    const bookings = await Booking.findAll({
+      where: { stadium_id: stadiumIds },
+      include: [
+        {
+          model: Field,
+          as: "field",
+          attributes: ["name"],
+          include: [
+            {
+              model: Stadium,
+              as: "stadium",
+              attributes: ["name"],
+            },
+          ],
+        },
+        {
+          model: User,
+          as: "user",
+          attributes: ["name", "phone"],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    const filteredTransactions = filterTransactionsByDateRange(
+      buildPaymentHistoryTransactions(bookings),
+      filters.startDate,
+      filters.endDate,
+    );
+    const transactions = paginateTransactions(filteredTransactions, currentPage, safeLimit);
+    const summary = calculatePaymentHistorySummary(filteredTransactions);
+
+    return res.status(200).json({
+      success: true,
+      transactions,
+      total: filteredTransactions.length,
+      hasMore: currentPage * safeLimit < filteredTransactions.length,
+      currentPage,
+      limit: safeLimit,
+      summary,
+    });
+  } catch (error) {
+    if (isPaymentHistoryFilterError(error)) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 // 4. Hàm duyệt đơn: Cập nhật status thành 'confirmed'
 exports.approveBooking = async (req, res) => {
   try {
@@ -516,7 +711,7 @@ exports.cancelBooking = async (req, res) => {
 
     // 5. Thực hiện hủy
     booking.status = "cancelled";
-    booking.hold_until = null; // Xóa thời gian giữ chỗ
+    booking.hold_until = null;
     await booking.save();
 
     // Broadcast sự kiện giải phóng sân
@@ -557,22 +752,36 @@ exports.updatePaymentStatus = async (req, res) => {
     }
 
     // Cập nhật các thông tin thanh toán
-    booking.payment_status = payment_status || "paid";
-    booking.payment_method = payment_method || "Online";
-    booking.hold_until = null; // Xóa giữ chỗ vì đã thanh toán
+    const nextPaymentStatus = payment_status || booking.payment_status || "unpaid";
+
+    booking.payment_status = nextPaymentStatus;
+    booking.payment_method = payment_method || booking.payment_method || "Online";
+    if (
+      nextPaymentStatus !== "unpaid" &&
+      booking.payment_recorded_at == null
+    ) {
+      booking.payment_recorded_at = booking.payment_completed_at || new Date();
+    }
+    if (nextPaymentStatus !== "unpaid") {
+      booking.hold_until = null;
+    }
 
     // Sau khi thanh toán xong, giữ status là 'pending' để chủ sân duyệt
-    booking.status = "pending";
+    if (!shouldPreserveProcessedBookingStatus(booking.status)) {
+      booking.status = "pending";
+    }
 
     await booking.save();
 
     // Broadcast sự kiện xác nhận đặt sân thành công
-    const io = getIO();
-    io.emit("slotConfirmed", {
-      field_id: booking.field_id,
-      date: booking.booking_date,
-      start_time: booking.start_time,
-    });
+    if (nextPaymentStatus !== "unpaid") {
+      const io = getIO();
+      io.emit("slotConfirmed", {
+        field_id: booking.field_id,
+        date: booking.booking_date,
+        start_time: booking.start_time,
+      });
+    }
 
     res.json({
       success: true,

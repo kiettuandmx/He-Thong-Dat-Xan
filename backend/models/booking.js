@@ -41,6 +41,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING(50),
       defaultValue: 'cash'
     },
+    payment_recorded_at: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
 
     status: {
       type: DataTypes.STRING(255),
