@@ -672,7 +672,7 @@ exports.refundBooking = async (req, res) => {
 exports.cancelBooking = async (req, res) => {
   console.log(
     "===> Đã chạm vào API Update Payment với ID:",
-    req.params.bookingId,
+    req.params.id,
   );
   try {
     const { id } = req.params;

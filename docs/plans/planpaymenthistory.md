@@ -2,7 +2,7 @@
 
 **Ngày tạo:** 2026-05-13  
 **Người tạo:** Fullstack Developer  
-**Trạng thái:** Chờ triển khai
+**Trạng thái:** Đã triển khai
 
 ---
 
@@ -41,7 +41,7 @@
 - **Khoảng ngày chi tiết:** Chọn từ ngày → đến ngày (YYYY-MM-DD)
 - **Lọc tháng/năm:** Lọc nhanh theo tháng/năm
 
-**Mặc định:** Ngày hiện tại (2026-05-13)  
+**Mặc định:** Tháng hiện tại  
 **Tính năng:** Người dùng có thể tùy chỉnh để xem các ngày cũ hơn
 
 ### 3. Phân Trang
@@ -63,12 +63,12 @@
 
 **Query Parameters:**
 ```
-- startDate (YYYY-MM-DD) - Mặc định: ngày hiện tại
-- endDate (YYYY-MM-DD) - Mặc định: ngày hiện tại
+- startDate (YYYY-MM-DD) - Tùy chọn
+- endDate (YYYY-MM-DD) - Tùy chọn
 - month (MM) - Lọc theo tháng
 - year (YYYY) - Lọc theo năm
 - limit (number) - Mặc định: 10
-- offset (number) - Mặc định: 0
+- page (number) - Mặc định: 1
 ```
 
 **Response Success (200):**
@@ -106,12 +106,12 @@
 ```
 
 **Logic Xử Lý:**
-- Lấy tất cả Booking của user, nhưng chỉ hiển thị booking có phát sinh giao dịch tài chính
+- Lấy tất cả Booking của user, nhưng chỉ hiển thị booking có phát sinh giao dịch tài chính thật sự
 - Với mỗi booking:
-  - Tạo 1 transaction "payment" nếu `amount_paid > 0`
+  - Tạo 1 transaction "payment" nếu `amount_paid > 0` và có bằng chứng đã thanh toán
   - Tạo 1 transaction "refund" nếu `refunded_at != null`
 - Kết hợp dữ liệu từ Booking + Field → Stadium
-- Sắp xếp theo `createdAt/refunded_at` giảm dần
+- Sắp xếp theo `payment_recorded_at/refunded_at` giảm dần, có fallback về dữ liệu cũ
 - Áp dụng filter theo khoảng ngày hoặc tháng/năm
 
 ---
@@ -228,8 +228,9 @@ router.get("/owner/payment-history", verifyToken, bookingController.getOwnerPaym
 
 ---
 
-### Models (Không cần thay đổi)
+### Models
 - Sử dụng Booking model hiện có
+- Đã bổ sung `payment_recorded_at` để lưu mốc ghi nhận thanh toán thực tế
 - Payment model hiện tại chưa được sử dụng, có thể nâng cấp sau
 
 ---
@@ -251,17 +252,17 @@ router.get("/owner/payment-history", verifyToken, bookingController.getOwnerPaym
 
 ## ✅ Checklist Triển Khai
 
-- [ ] Tạo method `getUserPaymentHistory()` trong bookingController
-- [ ] Tạo method `getOwnerPaymentHistory()` trong bookingController
-- [ ] Thêm routes vào bookingRoutes.js
-- [ ] Tạo PaymentHistory.jsx component
-- [ ] Tạo paymentHistoryService.js
-- [ ] Add route `/payment-history` trong frontend router
-- [ ] Test endpoint User
-- [ ] Test endpoint Owner
-- [ ] Test filter theo ngày/tháng
-- [ ] Test load more / pagination
-- [ ] Tạo DAILY_REPORT_PAYMENT_HISTORY.md
+- [x] Tạo method `getUserPaymentHistory()` trong bookingController
+- [x] Tạo method `getOwnerPaymentHistory()` trong bookingController
+- [x] Thêm routes vào bookingRoutes.js
+- [x] Tạo PaymentHistory.jsx component
+- [x] Tạo paymentHistoryService.js
+- [x] Add route `/payment-history` trong frontend router
+- [x] Test endpoint User
+- [x] Test endpoint Owner
+- [x] Test filter theo ngày/tháng
+- [x] Test load more / pagination
+- [x] Tạo DAILY_REPORT_PAYMENT_HISTORY.md
 
 ---
 
@@ -272,6 +273,8 @@ router.get("/owner/payment-history", verifyToken, bookingController.getOwnerPaym
 3. **Owner filter:** Chỉ show booking của sân của owner đó
 4. **Mặc định ngày:** Mặc định hiển thị dữ liệu của tháng hiện tại
 5. **Doanh thu thực:** Owner = amount - refundAmount (chỉ tính khi refunded)
+6. **Bằng chứng thanh toán:** Không hiển thị payment transaction nếu booking chưa có bằng chứng thanh toán thành công
+7. **Mốc thanh toán:** Dùng `payment_recorded_at` để tránh lệch lịch sử theo tháng/ngày
 
 ## Cập Nhật Triển Khai Thực Tế
 
@@ -282,6 +285,8 @@ router.get("/owner/payment-history", verifyToken, bookingController.getOwnerPaym
 
 ---
 
-## 🚀 Sẵn Sàng Triển Khai
+## ✅ Kết Quả Triển Khai
 
-Tất cả quyết định đã được xác nhận, sẵn sàng bắt đầu code!
+- Backend đã có 2 endpoint lịch sử thanh toán cho user và owner.
+- Frontend đã có màn `PaymentHistory` dùng chung cho user và owner.
+- Build frontend và test backend đều pass.
