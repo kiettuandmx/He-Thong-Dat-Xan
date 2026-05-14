@@ -2,6 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Swal from 'sweetalert2';
+import {
+  getBrowseFieldsPathByRole,
+  getHistoryPathByRole,
+  getStoredAuthData,
+} from '../utils/authHelpers';
 
 const PaymentMoMo = () => {
     const { bookingId } = useParams();
@@ -53,7 +58,7 @@ const PaymentMoMo = () => {
         
         if (timeLeft <= 0) {
             Swal.fire("Hết giờ!", "Thời gian giữ chỗ đã hết! Hệ thống đã hủy đơn của bạn.", "error")
-            .then(() => navigate('/history'));
+            .then(() => navigate(getHistoryPathByRole(getStoredAuthData())));
             return;
         }
 
@@ -89,7 +94,7 @@ const PaymentMoMo = () => {
             );
 
             Swal.fire("Thành công", "Xác nhận thanh toán thành công! Vui lòng chờ chủ sân duyệt.", "success")
-            .then(() => navigate('/history'));
+            .then(() => navigate(getHistoryPathByRole(getStoredAuthData())));
         } catch (error) {
             console.error("Lỗi xác nhận:", error);
             Swal.fire("Lỗi", "Có lỗi xảy ra khi xác nhận thanh toán.", "error");
@@ -116,13 +121,17 @@ const PaymentMoMo = () => {
                     });
                     
                     if (bookingData?.field_id) {
-                        navigate(`/field/${bookingData.field_id}`);
+                        navigate(
+                          location.pathname.startsWith('/admin/')
+                            ? `/admin/field/${bookingData.field_id}`
+                            : `/field/${bookingData.field_id}`
+                        );
                     } else {
-                        navigate(-1);
+                        navigate(getBrowseFieldsPathByRole(getStoredAuthData()));
                     }
                 } catch (error) {
                     console.error("Lỗi khi hủy đơn hàng:", error);
-                    navigate(-1);
+                    navigate(getBrowseFieldsPathByRole(getStoredAuthData()));
                 }
             }
         });

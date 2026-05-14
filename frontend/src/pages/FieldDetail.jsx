@@ -1,13 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { useAuth } from '../context/AuthContext';
+import {
+  getBrowseFieldsPathByRole,
+  getCurrentUserId,
+  getHistoryPathByRole,
+} from '../utils/authHelpers';
 
 const FieldDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
+  const isAdminFlow = location.pathname.startsWith('/admin/');
 
   const [paymentMethod, setPaymentMethod] = useState('vnpay'); // Mặc định chọn VNPay
   const [field, setField] = useState(null);
@@ -28,21 +35,17 @@ const FieldDetail = () => {
     { id: 1, time: '05:00 - 06:00', start: '05:00', end: '06:00' },
     { id: 2, time: '06:00 - 07:00', start: '06:00', end: '07:00' },
     { id: 3, time: '07:00 - 08:00', start: '07:00', end: '08:00' },
-    { id: 4, time: '09:00 - 10:00', start: '09:00', end: '10:00' },
-    { id: 5, time: '11:00 - 12:00', start: '11:00', end: '12:00' },
-    { id: 6, time: '13:00 - 14:00', start: '13:00', end: '14:00' },
-    { id: 7, time: '15:00 - 16:00', start: '15:00', end: '16:00' },
-    { id: 8, time: '17:00 - 18:00', start: '17:00', end: '18:00' },
-    { id: 9, time: '18:00 - 19:00', start: '18:00', end: '19:00' },
-    { id: 10, time: '19:00 - 20:00', start: '19:00', end: '20:00' },
-    { id: 11, time: '20:00 - 21:00', start: '20:00', end: '21:00' },
-    { id: 12, time: '21:00 - 22:00', start: '21:00', end: '22:00' },
+    { id: 4, time: '17:00 - 18:00', start: '17:00', end: '18:00' },
+    { id: 5, time: '18:00 - 19:00', start: '18:00', end: '19:00' },
+    { id: 6, time: '19:00 - 20:00', start: '19:00', end: '20:00' },
+    { id: 7, time: '20:00 - 21:00', start: '20:00', end: '21:00' },
+    { id: 8, time: '21:00 - 22:00', start: '21:00', end: '22:00' },
   ];
 
   // Socket effect cho việc lắng nghe Realtime Lock
   useEffect(() => {
     const socket = io('http://localhost:5000');
-
+    
     // Lấy thông tin user hiện tại để so sánh
     const authData = localStorage.getItem('user');
     let currentUserId = null;
@@ -53,7 +56,7 @@ const FieldDetail = () => {
         // Ignore parsing errors
       }
     }
-
+    
     socket.on('slotLocked', (data) => {
       // data: { field_id, date, start_time, locked_by_user }
       if (data.field_id === Number(id)) {
@@ -61,16 +64,16 @@ const FieldDetail = () => {
         setLockedSlots(prev => [...prev, slotKey]);
         // Tự động bỏ chọn nếu user đang chọn slot bị lock
         setSelectedSlot(prevSlotId => {
-          const lockedSlotInfo = timeSlots.find(s => s.start === data.start_time.substring(0, 5));
-          if (lockedSlotInfo && lockedSlotInfo.id === prevSlotId && data.date === selectedDate) {
-            // Bỏ qua alert và không bỏ chọn nếu chính user hiện tại là người khóa
-            if (data.locked_by_user && data.locked_by_user === currentUserId) {
-              return prevSlotId;
-            }
-            alert("Sân vừa được người khác đặt giữ chỗ, vui lòng chọn giờ khác!");
-            return null;
-          }
-          return prevSlotId;
+           const lockedSlotInfo = timeSlots.find(s => s.start === data.start_time.substring(0,5));
+           if (lockedSlotInfo && lockedSlotInfo.id === prevSlotId && data.date === selectedDate) {
+               // Bỏ qua alert và không bỏ chọn nếu chính user hiện tại là người khóa
+               if (data.locked_by_user && data.locked_by_user === currentUserId) {
+                   return prevSlotId;
+               }
+               alert("Sân vừa được người khác đặt giữ chỗ, vui lòng chọn giờ khác!");
+               return null;
+           }
+           return prevSlotId;
         });
       }
     });
@@ -85,7 +88,7 @@ const FieldDetail = () => {
     socket.on('slotConfirmed', (data) => {
       if (data.field_id === Number(id)) {
         // Cập nhật lại thông tin sân từ server
-        fetchFieldDetail();
+        fetchFieldDetail(); 
       }
     });
 
@@ -98,28 +101,28 @@ const FieldDetail = () => {
 
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
+    
     // 1. Kiểm tra nếu là ngày trong quá khứ
     if (selectedDate < today) return true;
 
     // 2. Kiểm tra nếu là ngày hôm nay và khung giờ đã qua
     if (selectedDate === today) {
-      const now = new Date();
-      const currentHour = now.getHours();
-      const currentMinute = now.getMinutes();
-
-      const [slotHour, slotMinute] = slot.start.split(':').map(Number);
-
-      // Nếu giờ của slot nhỏ hơn giờ hiện tại, hoặc bằng giờ hiện tại nhưng phút đã qua
-      if (slotHour < currentHour || (slotHour === currentHour && slotMinute <= currentMinute)) {
-        return true;
-      }
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        
+        const [slotHour, slotMinute] = slot.start.split(':').map(Number);
+        
+        // Nếu giờ của slot nhỏ hơn giờ hiện tại, hoặc bằng giờ hiện tại nhưng phút đã qua
+        if (slotHour < currentHour || (slotHour === currentHour && slotMinute <= currentMinute)) {
+            return true;
+        }
     }
 
     // 3. Kiểm tra realtime lock list
     const isLocked = lockedSlots.some(key => {
-      const [lockDate, lockTime] = key.split('|');
-      return lockDate === selectedDate && lockTime.substring(0, 5) === slot.start;
+        const [lockDate, lockTime] = key.split('|');
+        return lockDate === selectedDate && lockTime.substring(0, 5) === slot.start;
     });
     if (isLocked) return true;
 
@@ -177,15 +180,12 @@ const FieldDetail = () => {
       return;
     }
 
-    try {
-      const payload = {
-        code: couponCode,
-        user_id: user.id,
-        total_price: field?.price_per_hour || 0
-      };
-      console.log('[VALIDATE COUPON FRONTEND]', payload);
-
-      const res = await axios.post('http://localhost:5000/api/coupons/validate', payload);
+      try {
+        const res = await axios.post('http://localhost:5000/api/coupons/validate', {
+          code: couponCode,
+          user_id: getCurrentUserId(user),
+          total_price: field?.price_per_hour || 0
+        });
 
       if (res.data.valid) {
         setCouponDiscount(res.data.discount_amount);
@@ -193,7 +193,6 @@ const FieldDetail = () => {
         alert(`Mã giảm giá hợp lệ! Giảm ${res.data.discount_amount.toLocaleString()} VND`);
       }
     } catch (error) {
-      console.log('[VALIDATE COUPON ERROR]', error.response?.data);
       setCouponError(error.response?.data?.message || 'Mã giảm giá không hợp lệ');
       setCouponDiscount(0);
     }
@@ -212,7 +211,7 @@ const FieldDetail = () => {
 
 
   const handleBooking = async () => {
-    // 1. Lấy thông tin xác thực (Giữ nguyên logic của Lâm)
+    // 1. Lấy thông tin xác thực
     const authData = localStorage.getItem('user');
     let token = null;
     let userId = null;
@@ -223,6 +222,7 @@ const FieldDetail = () => {
         token = parsedData.token;
         userId = parsedData.user?.id;
       } catch (err) {
+        console.error('Lỗi phân tích dữ liệu xác thực:', err);
         token = authData;
       }
     }
@@ -239,13 +239,11 @@ const FieldDetail = () => {
       return;
     }
 
-    // 3. TÍNH TOÁN TIỀN BẠC (Đã sửa logic)
-    // Giả sử mỗi slot là 1 giờ, nếu có logic tính nhiều giờ Lâm hãy nhân thêm ở đây
+    // 3. Tính toán tiền bạc - QUAN TRỌNG: Lam kiểm tra biến payOption
+    // Đảm bảo payOption chỉ nhận giá trị 'deposit' hoặc 'full'
     const totalPrice = Number(field.price_per_hour) - couponDiscount;
     const isDeposit = payOption === 'deposit';
     const amountToPay = isDeposit ? totalPrice * 0.5 : totalPrice;
-    // Làm tròn để tránh số thập phân gửi lên server
-
 
     const bookingData = {
       user_id: userId,
@@ -254,44 +252,48 @@ const FieldDetail = () => {
       booking_date: selectedDate,
       start_time: selectedSlotData.start,
       end_time: selectedSlotData.end,
-      total_price: Math.round(totalPriceAfterDiscount), // Tổng tiền cuối cùng sau giảm
-      amount_paid: amountToPay,
-      payment_type: payOption,
+      total_price: totalPrice,
+      amount_paid: amountToPay, // Gửi số tiền thực tế khách TRẢ LÚC NÀY
+      payment_type: payOption, // Gửi 'deposit' hoặc 'full'
       payment_method: paymentMethod,
       status: 'pending',
       coupon_code: couponCode || null,
-      discount_amount: couponDiscount || 0
     };
 
+    // DEBUG: Lam check console xem bookingData gửi đi có đúng payment_type chưa nhé
     console.log('Dữ liệu gửi lên:', bookingData);
 
     try {
-      // 4. Gửi yêu cầu (Thêm headers đầy đủ)
+      // 4. Gửi yêu cầu tạo đơn
       const res = await axios.post(
         'http://localhost:5000/api/bookings/book',
         bookingData,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 
+      // 5. Xử lý kết quả trả về
+      // Dựa trên Response Lam gửi nãy: res.data.data.id
       const responseData = res.data.data;
       const bookingId = responseData?.id;
 
-      if (bookingId) {
-        // SỬA LỖI: Dùng dấu backtick ` để bọc chuỗi path
-        const targetPath = paymentMethod === 'vnpay'
-          ? `/payment-vnpay/${bookingId}`
-          : `/payment-momo/${bookingId}`;
+        if (bookingId) {
+          // SỬA: Dùng dấu backtick ` để bọc chuỗi có biến ${}
+          const targetPath =
+            paymentMethod === 'vnpay'
+            ? isAdminFlow
+              ? `/admin/payment-vnpay/${bookingId}`
+              : `/payment-vnpay/${bookingId}`
+            : isAdminFlow
+              ? `/admin/payment-momo/${bookingId}`
+              : `/payment-momo/${bookingId}`;
 
         navigate(targetPath, {
           state: {
             amount: amountToPay,
             bookingId: bookingId,
-            // SỬA LỖI: Dùng dấu backtick cho description
+            // SỬA: Dùng dấu backtick cho description luôn
             description: isDeposit
               ? `Coc 50% san ${field.name}`
               : `Thanh toan san ${field.name}`,
@@ -299,7 +301,7 @@ const FieldDetail = () => {
         });
       } else {
         alert('Đặt sân thành công!');
-        navigate('/history');
+        navigate(getHistoryPathByRole(user));
       }
     } catch (err) {
       console.error('Lỗi đặt sân:', err);
@@ -330,6 +332,14 @@ const FieldDetail = () => {
             <button className="btn btn-link btn-sm ms-2" onClick={() => navigate('/')}>
               Về trang chủ
             </button>
+            {isAdminFlow && (
+              <button
+                className="btn btn-link btn-sm ms-2"
+                onClick={() => navigate(getBrowseFieldsPathByRole(user))}
+              >
+                Về danh sách sân admin
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -573,17 +583,7 @@ const FieldDetail = () => {
                   </span>
                   <span className="h2 fw-bold text-success mb-0">
                     {selectedSlot
-                      ? (() => {
-                        // 1. Tính tổng tiền sau khi đã trừ giảm giá (không để âm)
-                        const totalPriceAfterDiscount = Math.max(0, Number(field.price_per_hour) - couponDiscount);
-
-                        // 2. Tính số tiền cần trả tùy theo lựa chọn 'full' hoặc 'deposit'
-                        const finalAmount = payOption === 'full'
-                          ? totalPriceAfterDiscount
-                          : totalPriceAfterDiscount * 0.5;
-
-                        return `${finalAmount.toLocaleString()}đ`;
-                      })()
+                      ? `${(payOption === 'full' ? field.price_per_hour : field.price_per_hour * 0.5).toLocaleString()}đ`
                       : '---'}
                   </span>
                 </div>

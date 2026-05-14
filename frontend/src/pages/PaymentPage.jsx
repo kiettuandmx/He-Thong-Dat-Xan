@@ -2,6 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Swal from 'sweetalert2';
+import {
+  getBrowseFieldsPathByRole,
+  getHistoryPathByRole,
+  getStoredAuthData,
+} from '../utils/authHelpers';
 
 const PaymentPage = () => {
     const { bookingId } = useParams();
@@ -53,7 +58,7 @@ const PaymentPage = () => {
         
         if (timeLeft <= 0) {
             alert("Thời gian giữ chỗ đã hết! Hệ thống đã hủy đơn của bạn.");
-            navigate('/history');
+            navigate(getHistoryPathByRole(getStoredAuthData()));
             return;
         }
 
@@ -99,7 +104,7 @@ const PaymentPage = () => {
             );
 
             Swal.fire("Thành công", "Xác nhận thanh toán thành công! Vui lòng chờ chủ sân duyệt.", "success")
-            .then(() => navigate('/history'));
+            .then(() => navigate(getHistoryPathByRole(getStoredAuthData())));
         } catch (error) {
             console.error("Lỗi xác nhận:", error);
             Swal.fire("Lỗi", "Có lỗi xảy ra khi xác nhận thanh toán.", "error");
@@ -127,14 +132,18 @@ const PaymentPage = () => {
                     });
                     
                     if (bookingData?.field_id) {
-                        navigate(`/field/${bookingData.field_id}`);
+                        navigate(
+                          location.pathname.startsWith('/admin/')
+                            ? `/admin/field/${bookingData.field_id}`
+                            : `/field/${bookingData.field_id}`
+                        );
                     } else {
-                        navigate(-1);
+                        navigate(getBrowseFieldsPathByRole(getStoredAuthData()));
                     }
                 } catch (error) {
                     console.error("Lỗi khi hủy đơn hàng:", error);
                     // Vẫn chuyển hướng dù có lỗi hủy để người dùng không bị kẹt
-                    navigate(-1);
+                    navigate(getBrowseFieldsPathByRole(getStoredAuthData()));
                 }
             }
         });

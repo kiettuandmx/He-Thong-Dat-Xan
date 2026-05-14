@@ -1,4 +1,5 @@
 const { Review, Booking, Stadium, Field, User } = require('../models');
+const isAdminUser = (req) => Number(req.user?.role) === 3;
 
 const createReview = async (req, res) => {
   try {
@@ -45,6 +46,14 @@ const getUserReviews = async (req, res) => {
       where: { user_id },
       include: [
         {
+          model: Booking,
+          as: 'booking',
+          include: [
+            { model: Field, as: 'field', attributes: ['id', 'name', 'type'] },
+            { model: Stadium, as: 'stadium', attributes: ['id', 'name'] },
+          ],
+        },
+        {
           model: Field,
           as: 'field',
           include: [{ model: Stadium, as: 'stadium' }] 
@@ -75,7 +84,7 @@ const getOwnerReviews = async (req, res) => {
             {
               model: Stadium,
               as: 'stadium',
-              where: { owner_id: owner_id },
+              ...(isAdminUser(req) ? {} : { where: { owner_id: owner_id } }),
               required: true
             }
           ]
@@ -115,7 +124,7 @@ const replyToReview = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy đánh giá!" });
     }
 
-    if (review.field.stadium.owner_id !== owner_id) {
+    if (!isAdminUser(req) && review.field.stadium.owner_id !== owner_id) {
       return res.status(403).json({ message: "Bạn không có quyền phản hồi đánh giá này!" });
     }
 

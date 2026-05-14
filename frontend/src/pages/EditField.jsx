@@ -1,53 +1,62 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+  FIELD_TYPES,
+  FIELD_TYPE_OPTIONS,
+  normalizeFieldType,
+} from '../constants/fieldTypes';
 
 const EditField = () => {
-  const { id } = useParams(); // Lấy ID sân từ URL
+  const { id } = useParams();
   const navigate = useNavigate();
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [fieldData, setFieldData] = useState({
     name: '',
-    type: 'Bóng đá',
+    type: FIELD_TYPES.FOOTBALL,
     price_per_hour: '',
     status: 'available',
   });
 
-  // 1. Lấy dữ liệu sân hiện tại
   useEffect(() => {
     const fetchFieldDetail = async () => {
       try {
         const res = await axios.get(`http://localhost:5000/api/fields/${id}`);
         setFieldData({
           name: res.data.name,
-          type: res.data.type,
+          type: normalizeFieldType(res.data.type),
           price_per_hour: res.data.price_per_hour,
           status: res.data.status,
         });
+
         if (res.data.images && res.data.images.length > 0) {
           setPreview(
             `http://localhost:5000/uploads/${res.data.images[0].image_url}`
           );
         }
+
         setLoading(false);
       } catch (err) {
-        alert('Không thể tải thông tin sân', err);
-        navigate('/owner/manage-fields');
+        alert('Không thể tải thông tin sân');
+        console.error(err);
+        navigate('/owner/fields');
       }
     };
+
     fetchFieldDetail();
   }, [id, navigate]);
 
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
+  const handleFileChange = (event) => {
+    const selectedFile = event.target.files[0];
     setFile(selectedFile);
     setPreview(URL.createObjectURL(selectedFile));
   };
 
-  const handleUpdate = async (e) => {
-    e.preventDefault();
+  const handleUpdate = async (event) => {
+    event.preventDefault();
+    const authData = JSON.parse(localStorage.getItem('user') || '{}');
     const formData = new FormData();
     formData.append('name', fieldData.name);
     formData.append('type', fieldData.type);
@@ -57,17 +66,22 @@ const EditField = () => {
 
     try {
       await axios.put(`http://localhost:5000/api/fields/${id}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          Authorization: `Bearer ${authData?.token}`,
+          'Content-Type': 'multipart/form-data',
+        },
       });
       alert('Cập nhật thành công!');
-      navigate(-1); // Quay lại trang trước đó
+      navigate(-1);
     } catch (err) {
-      alert('Lỗi khi cập nhật', err);
+      alert('Lỗi khi cập nhật');
+      console.error(err);
     }
   };
 
-  if (loading)
+  if (loading) {
     return <div className="text-center mt-5">Đang tải dữ liệu...</div>;
+  }
 
   return (
     <div className="container mt-5">
@@ -86,8 +100,8 @@ const EditField = () => {
                   className="form-control"
                   value={fieldData.name}
                   required
-                  onChange={(e) =>
-                    setFieldData({ ...fieldData, name: e.target.value })
+                  onChange={(event) =>
+                    setFieldData({ ...fieldData, name: event.target.value })
                   }
                 />
               </div>
@@ -96,13 +110,15 @@ const EditField = () => {
                 <select
                   className="form-select"
                   value={fieldData.type}
-                  onChange={(e) =>
-                    setFieldData({ ...fieldData, type: e.target.value })
+                  onChange={(event) =>
+                    setFieldData({ ...fieldData, type: event.target.value })
                   }
                 >
-                  <option value="Bóng đá">Bóng đá</option>
-                  <option value="Pickleball">Pickleball</option>
-                  <option value="Tennis">Tennis</option>
+                  {FIELD_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="mb-3">
@@ -112,10 +128,10 @@ const EditField = () => {
                   className="form-control"
                   value={fieldData.price_per_hour}
                   required
-                  onChange={(e) =>
+                  onChange={(event) =>
                     setFieldData({
                       ...fieldData,
-                      price_per_hour: e.target.value,
+                      price_per_hour: event.target.value,
                     })
                   }
                 />
@@ -125,8 +141,8 @@ const EditField = () => {
                 <select
                   className="form-select"
                   value={fieldData.status}
-                  onChange={(e) =>
-                    setFieldData({ ...fieldData, status: e.target.value })
+                  onChange={(event) =>
+                    setFieldData({ ...fieldData, status: event.target.value })
                   }
                 >
                   <option value="available">Sẵn sàng</option>

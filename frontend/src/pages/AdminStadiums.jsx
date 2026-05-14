@@ -4,10 +4,15 @@ import axios from 'axios';
 
 import Add from '../components/Add';
 import Delete from '../components/Delete';
+import StadiumHashtagModal from '../components/StadiumHashtagModal';
 
 const AdminStadiums = () => {
   const [fields, setFields] = useState([]);
   const navigate = useNavigate();
+
+  // Modal Hashtag state
+  const [isHashtagModalOpen, setIsHashtagModalOpen] = useState(false);
+  const [selectedStadium, setSelectedStadium] = useState(null);
 
   const fetchFields = async () => {
     try {
@@ -199,7 +204,16 @@ const AdminStadiums = () => {
                       Chỉnh sửa
                     </button>
 
-                    
+                    <button
+                      className="btn btn-light border flex-grow-1 text-dark py-2"
+                      onClick={() => {
+                        setSelectedStadium(f.stadium);
+                        setIsHashtagModalOpen(true);
+                      }}
+                    >
+                      <i className="bi bi-tag me-1 text-success"></i>
+                      Hashtag
+                    </button>
 
                     <Delete id={f.id} onSuccess={fetchFields} />
                   </div>
@@ -209,6 +223,13 @@ const AdminStadiums = () => {
           ))}
         </div>
       </div>
+
+      <StadiumHashtagModal 
+        stadium={selectedStadium}
+        isOpen={isHashtagModalOpen}
+        onClose={() => setIsHashtagModalOpen(false)}
+        onSave={fetchFields}
+      />
 
       <style>{`
         .admin-card{

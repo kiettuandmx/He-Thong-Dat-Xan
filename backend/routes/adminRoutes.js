@@ -1,14 +1,28 @@
 const express = require("express");
-const router = express.Router();
-const { User, Role, Stadium, Location, Field } = require("../models");
+const { Op } = require("sequelize");
+const { verifyToken, checkRole } = require("../middleware/authMiddleware");
+const { User, Role, Stadium, Location, Field, Notification, AdminActivityLog, Booking } = require("../models");
 const socketManager = require("../socket");
+const { logAdminActivity } = require("../utils/adminActivityLogger");
+const complaintController = require("../controllers/complaintController");
 
-// 1. QUẢN LÝ USER: Lấy danh sách tất cả người dùng
+const router = express.Router();
+
+router.use(verifyToken, checkRole([3, "admin", "ADMIN"]));
+
+const getRequestMeta = (req) => ({
+  ipAddress: req.ip || req.headers["x-forwarded-for"] || null,
+  userAgent: req.headers["user-agent"] || null,
+});
+
+const toPlain = (instance) => (instance ? instance.get({ plain: true }) : null);
+
+// 1. QUAN LY USER: Lay danh sach tat ca nguoi dung
 router.get("/users", async (req, res) => {
   try {
     const users = await User.findAll({
       include: [{ model: Role, as: "role" }],
-      attributes: { exclude: ["password"] }, // Bảo mật: không gửi password
+      attributes: { exclude: ["password"] },
     });
     res.json(users);
   } catch (err) {
@@ -16,21 +30,33 @@ router.get("/users", async (req, res) => {
   }
 });
 
-// 2. QUẢN LÝ USER: Cập nhật quyền (Role) cho User
+// 2. QUAN LY USER: Cap nhat quyen (Role) cho User
 router.patch("/users/:id/role", async (req, res) => {
   try {
     const { role_id } = req.body;
     const user = await User.findByPk(req.params.id);
-    if (!user) return res.status(404).json({ error: "Không tìm thấy user" });
+    if (!user) return res.status(404).json({ error: "Khong tim thay user" });
 
+    const before = toPlain(user);
     await user.update({ role_id });
-    res.json({ message: "Đã cập nhật quyền hạn" });
+
+    await logAdminActivity({
+      adminId: req.user?.id,
+      action: "USER_ROLE_UPDATE",
+      targetType: "user",
+      targetId: user.id,
+      beforeData: { role_id: before.role_id },
+      afterData: { role_id: user.role_id },
+      ...getRequestMeta(req),
+    });
+
+    res.json({ message: "Da cap nhat quyen han" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 3. QUẢN LÝ STADIUM: Lấy tất cả Stadium để duyệt
+// 3. QUAN LY STADIUM: Lay tat ca Stadium de duyet
 router.get("/stadiums", async (req, res) => {
   try {
     const stadiums = await Stadium.findAll({
@@ -45,28 +71,39 @@ router.get("/stadiums", async (req, res) => {
   }
 });
 
-// 4. QUẢN LÝ STADIUM: Duyệt hoặc Khóa Stadium
+// 4. QUAN LY STADIUM: Duyet hoac Khoa Stadium
 router.patch("/stadiums/:id/status", async (req, res) => {
   try {
-    const { status } = req.body; // 'active', 'rejected', 'hidden'
+    const { status } = req.body;
     const stadium = await Stadium.findByPk(req.params.id);
     if (!stadium)
-      return res.status(404).json({ error: "Không tìm thấy Stadium" });
+      return res.status(404).json({ error: "Khong tim thay Stadium" });
 
+    const before = toPlain(stadium);
     await stadium.update({ status });
-    res.json({ message: `Trạng thái đã chuyển sang: ${status}` });
+
+    await logAdminActivity({
+      adminId: req.user?.id,
+      action: "STADIUM_STATUS_UPDATE",
+      targetType: "stadium",
+      targetId: stadium.id,
+      beforeData: { status: before.status },
+      afterData: { status: stadium.status },
+      ...getRequestMeta(req),
+    });
+
+    res.json({ message: `Trang thai da chuyen sang: ${status}` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 5. THỐNG KÊ NHANH (Dashboard)
+// 5. THONG KE NHANH (Dashboard)
 router.get("/stats", async (req, res) => {
   try {
     const totalUsers = await User.count();
     const totalStadiums = await Stadium.count();
     const totalFields = await Field.count();
-    // Đếm số sân con đang ở trạng thái pending (vì đã chuyển sang duyệt theo Field)
     const pendingFields = await Field.count({ where: { status: "pending" } });
 
     res.json({
@@ -80,14 +117,49 @@ router.get("/stats", async (req, res) => {
   }
 });
 
-// 6. API GỬI THÔNG BÁO TOÀN BỘ NGƯỜI DÙNG
+// 5.1 QUAN LY DON DAT SAN TOAN HE THONG
+router.get("/bookings", async (req, res) => {
+  try {
+    const bookings = await Booking.findAll({
+      include: [
+        {
+          model: Field,
+          as: "field",
+          attributes: ["id", "name", "type", "price_per_hour"],
+          include: [
+            {
+              model: Stadium,
+              as: "stadium",
+              attributes: ["id", "name", "owner_id"],
+              include: [{ model: User, as: "owner", attributes: ["id", "name", "email", "phone"] }],
+            },
+          ],
+        },
+        {
+          model: Stadium,
+          as: "stadium",
+          attributes: ["id", "name", "owner_id"],
+          include: [{ model: User, as: "owner", attributes: ["id", "name", "email", "phone"] }],
+        },
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "name", "email", "phone"],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    res.json(bookings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 6. API GUI THONG BAO TOAN BO NGUOI DUNG
 router.post("/send-global-notification", async (req, res) => {
   try {
     const { title, content, type } = req.body;
-
-    // A. LƯU VÀO DATABASE (Để User mở chuông ra là thấy)
-    // Lưu ý: Đảm bảo bạn đã import Model Notification ở đầu file
-    const { Notification } = require("../models");
 
     const newNoti = await Notification.create({
       title,
@@ -98,14 +170,92 @@ router.post("/send-global-notification", async (req, res) => {
       createdAt: new Date(),
     });
 
-    // B. PHÁT SOCKET (Để những người đang online nhận được popup ngay)
     const io = socketManager.getIO();
-    io.emit("new_notification", newNoti); // Gửi nguyên object vừa tạo trong DB
+    io.emit("new_notification", newNoti);
+
+    await logAdminActivity({
+      adminId: req.user?.id,
+      action: "GLOBAL_NOTIFICATION_CREATE",
+      targetType: "notification",
+      targetId: newNoti.id,
+      afterData: {
+        title: newNoti.title,
+        content: newNoti.content,
+        type: newNoti.type,
+      },
+      ...getRequestMeta(req),
+    });
 
     res.json({ success: true, data: newNoti });
   } catch (err) {
-    console.error("Lỗi khi gửi thông báo:", err);
-    res.status(500).json({ error: "Lỗi server không thể lưu thông báo" });
+    console.error("Loi khi gui thong bao:", err);
+    res.status(500).json({ error: "Loi server khong the luu thong bao" });
+  }
+});
+
+// 7. QUAN LY KHIEU NAI
+router.get("/complaints", complaintController.getAdminComplaints);
+router.get("/complaints/:id", complaintController.getAdminComplaintById);
+router.get("/complaints/:id/activity-context", complaintController.getComplaintActivityContext);
+router.patch("/complaints/:id/status", complaintController.updateComplaintStatus);
+router.post("/complaints/:id/resolve", complaintController.resolveComplaint);
+
+// 7. NHAT KY HOAT DONG ADMIN
+router.get("/activity-logs", async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      admin_id,
+      action,
+      target_type,
+      target_id,
+      start_date,
+      end_date,
+    } = req.query;
+
+    const parsedPage = Math.max(parseInt(page, 10) || 1, 1);
+    const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+    const offset = (parsedPage - 1) * parsedLimit;
+
+    const where = {};
+
+    if (admin_id) where.admin_id = admin_id;
+    if (action) where.action = action;
+    if (target_type) where.target_type = target_type;
+    if (target_id) where.target_id = String(target_id);
+
+    if (start_date || end_date) {
+      where.createdAt = {};
+      if (start_date) where.createdAt[Op.gte] = new Date(start_date);
+      if (end_date) where.createdAt[Op.lte] = new Date(end_date);
+    }
+
+    const { count, rows } = await AdminActivityLog.findAndCountAll({
+      where,
+      include: [
+        {
+          model: User,
+          as: "admin",
+          attributes: ["id", "name", "email"],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+      limit: parsedLimit,
+      offset,
+    });
+
+    res.json({
+      data: rows,
+      pagination: {
+        page: parsedPage,
+        limit: parsedLimit,
+        total: count,
+        totalPages: Math.ceil(count / parsedLimit),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

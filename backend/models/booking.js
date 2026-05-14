@@ -23,8 +23,6 @@ module.exports = (sequelize, DataTypes) => {
     start_time: DataTypes.TIME,
     end_time: DataTypes.TIME,
     total_price: DataTypes.DECIMAL(10, 0),
-
-    // Các trường thanh toán mới
     amount_paid: {
       type: DataTypes.DECIMAL(10, 0),
       defaultValue: 0
@@ -41,7 +39,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING(50),
       defaultValue: 'cash'
     },
-
+    payment_recorded_at: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
     status: {
       type: DataTypes.STRING(255),
       defaultValue: 'pending'
@@ -70,12 +71,11 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DECIMAL(10, 2),
       defaultValue: 0
     },
-    // createdAt và updatedAt ĐÃ ĐƯỢC LƯỢC BỎ VÌ SEQUELIZE TỰ QUẢN LÝ
   }, {
     sequelize,
     modelName: 'Booking',
     tableName: 'bookings',
-    timestamps: true, // Đảm bảo cái này là true để tự động có createdAt/updatedAt
+    timestamps: true,
   });
 
   return Booking;

@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
+import {
+  FIELD_TYPE_OPTIONS,
+  normalizeFieldType,
+} from '../constants/fieldTypes';
 
 const EditFieldPage = () => {
   const { id } = useParams();
@@ -27,24 +31,24 @@ const EditFieldPage = () => {
       setForm({
         name: field.name,
         price_per_hour: field.price_per_hour,
-        category: field.type,
+        category: normalizeFieldType(field.type),
         image: null,
       });
 
       const img = field.images?.[0]?.image_url;
-
       if (img) {
         setPreview(
           img.startsWith('http') ? img : `http://localhost:5000/uploads/${img}`
         );
       }
     } catch (err) {
-      alert('Lỗi tải dữ liệu', err);
+      alert('Lỗi tải dữ liệu');
+      console.error(err);
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
+  const handleChange = (event) => {
+    const { name, value, files } = event.target;
 
     if (name === 'image') {
       const file = files[0];
@@ -53,13 +57,14 @@ const EditFieldPage = () => {
       if (file) {
         setPreview(URL.createObjectURL(file));
       }
-    } else {
-      setForm({ ...form, [name]: value });
+      return;
     }
+
+    setForm({ ...form, [name]: value });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
     try {
       const authData = JSON.parse(localStorage.getItem('user'));
@@ -83,7 +88,8 @@ const EditFieldPage = () => {
       alert('Cập nhật sân thành công');
       navigate('/admin/stadiums');
     } catch (err) {
-      alert('Lỗi cập nhật sân', err);
+      alert('Lỗi cập nhật sân');
+      console.error(err);
     }
   };
 
@@ -93,10 +99,9 @@ const EditFieldPage = () => {
         <div className="row justify-content-center">
           <div className="col-lg-8 col-xl-7">
             <div className="form-card shadow-lg border-0 rounded-5 bg-white overflow-hidden">
-              {/* Header với hiệu ứng màu Gradient */}
               <div className="form-header p-4 bg-primary text-white d-flex align-items-center justify-content-between shadow-sm">
                 <div>
-                  <h4 className="fw-bold mb-1"> Chỉnh sửa thông tin</h4>
+                  <h4 className="fw-bold mb-1">Chỉnh sửa thông tin</h4>
                   <p className="text-white-50 small mb-0">
                     Cập nhật thông tin chi tiết cho sân của bạn
                   </p>
@@ -109,7 +114,6 @@ const EditFieldPage = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="p-4 p-md-5">
-                {/* PHẦN PREVIEW ẢNH HIỆN TẠI */}
                 <div className="image-preview-section mb-5 text-center position-relative">
                   <label className="d-block text-muted small fw-bold text-uppercase ls-1 mb-3">
                     Hình ảnh hiện tại
@@ -118,7 +122,7 @@ const EditFieldPage = () => {
                     <div className="preview-container d-inline-block p-2 rounded-5 bg-light shadow-sm border">
                       <img
                         src={preview}
-                        alt="Current stadium"
+                        alt="Current field"
                         className="rounded-5 object-fit-cover shadow-sm"
                         style={{ width: '280px', height: '180px' }}
                       />
@@ -134,7 +138,6 @@ const EditFieldPage = () => {
                 </div>
 
                 <div className="row g-4">
-                  {/* Tên Sân */}
                   <div className="col-12">
                     <label className="form-label fw-bold text-secondary small text-uppercase">
                       Tên sân
@@ -154,7 +157,6 @@ const EditFieldPage = () => {
                     </div>
                   </div>
 
-                  {/* Giá / Giờ */}
                   <div className="col-md-6">
                     <label className="form-label fw-bold text-secondary small text-uppercase">
                       Giá mỗi giờ
@@ -181,7 +183,6 @@ const EditFieldPage = () => {
                     </div>
                   </div>
 
-                  {/* Danh Mục */}
                   <div className="col-md-6">
                     <label className="form-label fw-bold text-secondary small text-uppercase">
                       Danh mục
@@ -193,16 +194,17 @@ const EditFieldPage = () => {
                       onChange={handleChange}
                     >
                       <option value="">-- Chọn loại sân --</option>
-                      <option value="football">Bóng đá</option>
-                      <option value="badminton">Cầu lông</option>
-                      <option value="pickleball">Pickleball</option>
+                      {FIELD_TYPE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
-                  {/* Thay đổi hình ảnh */}
                   <div className="col-12">
                     <label className="form-label fw-bold text-secondary small text-uppercase">
-                      Cập nhật ảnh mới (Nếu có)
+                      Cập nhật ảnh mới (nếu có)
                     </label>
 
                     <input
@@ -217,23 +219,19 @@ const EditFieldPage = () => {
                     <button
                       type="button"
                       className="btn btn-light-soft py-3 rounded-4 w-100 fw-bold border"
-                      onClick={() =>
-                        document.getElementById('uploadImage').click()
-                      }
+                      onClick={() => document.getElementById('uploadImage').click()}
                     >
                       <i className="bi bi-camera-fill me-2 text-primary"></i>
                       Chọn hình ảnh mới
                     </button>
                   </div>
 
-                  {/* Nhóm Button */}
                   <div className="col-12 mt-5 d-flex gap-3">
                     <button
                       type="submit"
                       className="btn btn-primary-gradient py-3 rounded-4 flex-grow-1 fw-bold shadow-soft"
                     >
-                      <i className="bi bi-cloud-check-fill me-2"></i>Cập nhật
-                      ngay
+                      <i className="bi bi-cloud-check-fill me-2"></i>Cập nhật ngay
                     </button>
                     <button
                       type="button"
@@ -250,7 +248,6 @@ const EditFieldPage = () => {
         </div>
       </div>
 
-      {/* CSS NÂNG CAO */}
       <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap');
 
@@ -282,24 +279,9 @@ const EditFieldPage = () => {
         position: relative;
         transition: all 0.3s ease;
       }
+
       .preview-container:hover {
         transform: scale(1.02);
-      }
-
-      .edit-badge {
-        position: absolute;
-        bottom: -10px;
-        right: -10px;
-        width: 40px;
-        height: 40px;
-        background: #3b82f6;
-        color: white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 4px solid #fff;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
       }
 
       .btn-primary-gradient {
@@ -308,6 +290,7 @@ const EditFieldPage = () => {
         border: none;
         transition: all 0.3s ease;
       }
+
       .btn-primary-gradient:hover {
         filter: brightness(1.1);
         transform: translateY(-2px);
@@ -318,6 +301,7 @@ const EditFieldPage = () => {
         color: #475569;
         border: none;
       }
+
       .btn-light-soft:hover {
         background-color: #e2e8f0;
       }

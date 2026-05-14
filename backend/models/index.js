@@ -68,13 +68,15 @@ db.Review.belongsTo(db.Booking, { foreignKey: 'booking_id', as: 'booking' });
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 
-// Thêm đoạn này để tự động cập nhật các cột mới vào Laragon
-db.sequelize.sync({ alter: true })
-  .then(() => {
-    console.log('✅ Laragon: Database đã được đồng bộ và cập nhật cột mới!');
-  })
-  .catch(err => {
-    console.error('❌ Laragon: Lỗi đồng bộ Database:', err);
-  });
+// Chỉ tự đồng bộ schema khi không chạy test để tránh race condition lúc đóng kết nối.
+if (env !== 'test' && process.env.SKIP_AUTO_SYNC !== 'true') {
+  db.sequelize.sync({ alter: true })
+    .then(() => {
+      console.log('✅ Laragon: Database đã được đồng bộ và cập nhật cột mới!');
+    })
+    .catch(err => {
+      console.error('❌ Laragon: Lỗi đồng bộ Database:', err);
+    });
+}
   
 module.exports = db;

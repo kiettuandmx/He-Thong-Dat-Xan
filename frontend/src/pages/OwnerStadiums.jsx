@@ -1,190 +1,637 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import {
+  FIELD_TYPES,
+  FIELD_TYPE_OPTIONS,
+  normalizeFieldType,
+} from '../constants/fieldTypes';
+
+const getAuthToken = () => {
+  const authData = JSON.parse(localStorage.getItem('user') || '{}');
+  return authData?.token || null;
+};
+
+const getCurrentUserId = () =>
+  JSON.parse(localStorage.getItem('user') || '{}')?.user?.id;
+
+const fieldStatusLabel = {
+  active: 'Da duyet',
+  pending: 'Cho duyet',
+  rejected: 'Tu choi',
+};
 
 const OwnerStadiums = () => {
-    const [fields, setFields] = useState([]);
-    const [stadiums, setStadiums] = useState([]);
-    const [isEditing, setIsEditing] = useState(false);
-    const [currentFieldId, setCurrentFieldId] = useState(null);
-    const [formData, setFormData] = useState({ name: '', stadium_id: '', type: 'Football', price_per_hour: '', image: null });
+  const navigate = useNavigate();
+  const [fields, setFields] = useState([]);
+  const [stadiums, setStadiums] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentFieldId, setCurrentFieldId] = useState(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    stadium_id: '',
+    type: FIELD_TYPES.FOOTBALL,
+    price_per_hour: '',
+    image: null,
+  });
 
-    useEffect(() => {
-        fetchFields();
-        fetchStadiums();
-    }, []);
+  useEffect(() => {
+    fetchFields();
+    fetchStadiums();
+  }, []);
 
-    const fetchFields = async () => {
-        try {
-            const authData = JSON.parse(localStorage.getItem('user'));
-            const token = authData?.token;
-            if (!token) {
-                console.error("Không tìm thấy token!");
-                return;
-            }
-            const res = await axios.get('http://localhost:5000/api/owner/fields', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setFields(res.data);
-        } catch (err) {
-            console.error("Lỗi lấy danh sách sân:", err);
-            setFields([]);
-        }
-    };
+  const fetchFields = async () => {
+    try {
+      const token = getAuthToken();
+      const res = await axios.get('http://localhost:5000/api/owner/fields', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setFields(res.data || []);
+    } catch (err) {
+      console.error('Loi lay danh sach san:', err);
+      setFields([]);
+    }
+  };
 
-    const fetchStadiums = async () => {
-        try {
-            const ownerId = JSON.parse(localStorage.getItem('user'))?.user?.id || 2;
-            const res = await axios.get(`http://localhost:5000/api/stadiums/owner/${ownerId}`);
-            const data = Array.isArray(res.data) ? res.data : res.data.data || [];
-            setStadiums(data);
-        } catch (err) {
-            console.error("Lỗi lấy danh sách khu sân:", err);
-            setStadiums([]);
-        }
-    };
+  const fetchStadiums = async () => {
+    try {
+      const token = getAuthToken();
+      const ownerId = getCurrentUserId();
+      const res = await axios.get(`http://localhost:5000/api/stadiums/owner/${ownerId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setStadiums(Array.isArray(res.data) ? res.data : res.data.data || []);
+    } catch (err) {
+      console.error('Loi lay danh sach khu san:', err);
+      setStadiums([]);
+    }
+  };
 
-    // Gom nhóm các sân vào khu tương ứng
-    const groupedFields = stadiums.map(stadium => ({
+  const groupedFields = useMemo(
+    () =>
+      stadiums.map((stadium) => ({
         ...stadium,
-        childFields: fields.filter(f => f.stadium_id === stadium.id)
-    }));
+        childFields: fields.filter((field) => Number(field.stadium_id) === Number(stadium.id)),
+      })),
+    [fields, stadiums]
+  );
 
-    const handleEdit = (field) => {
-        setIsEditing(true);
-        setCurrentFieldId(field.id);
-        setFormData({
-            name: field.name,
-            stadium_id: field.stadium_id,
-            type: field.type,
-            price_per_hour: field.price_per_hour,
-            image: null
+  const totalFields = fields.length;
+  const pendingFields = fields.filter((field) => field.status === 'pending').length;
+
+  const handleEdit = (field) => {
+    setIsEditing(true);
+    setCurrentFieldId(field.id);
+    setFormData({
+      name: field.name,
+      stadium_id: field.stadium_id,
+      type: normalizeFieldType(field.type),
+      price_per_hour: field.price_per_hour,
+      image: null,
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const resetForm = () => {
+    setIsEditing(false);
+    setCurrentFieldId(null);
+    setFormData({
+      name: '',
+      stadium_id: '',
+      type: FIELD_TYPES.FOOTBALL,
+      price_per_hour: '',
+      image: null,
+    });
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    const token = getAuthToken();
+    const data = new FormData();
+    data.append('name', formData.name);
+    data.append('stadium_id', formData.stadium_id);
+    data.append('type', formData.type);
+    data.append('price_per_hour', formData.price_per_hour);
+    if (formData.image) data.append('image', formData.image);
+
+    try {
+      if (isEditing && currentFieldId) {
+        await axios.put(`http://localhost:5000/api/fields/${currentFieldId}`, data, {
+          headers: { Authorization: `Bearer ${token}` },
         });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
+        alert('Cap nhat san thanh cong!');
+      } else {
+        await axios.post('http://localhost:5000/api/fields', data, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        alert('Them san moi thanh cong!');
+      }
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const data = new FormData();
-        data.append('name', formData.name);
-        data.append('stadium_id', formData.stadium_id);
-        data.append('type', formData.type);
-        data.append('price_per_hour', formData.price_per_hour);
-        if (formData.image) data.append('image', formData.image);
+      resetForm();
+      fetchFields();
+    } catch (error) {
+      alert(error.response?.data?.error || 'Loi khi luu du lieu!');
+    }
+  };
 
-        try {
-            if (isEditing && currentFieldId) {
-                await axios.put(`http://localhost:5000/api/fields/${currentFieldId}`, data);
-                alert("Cập nhật sân thành công!");
-            } else {
-                await axios.post('http://localhost:5000/api/fields', data);
-                alert("Thêm sân mới thành công!");
-            }
-            setIsEditing(false);
-            setCurrentFieldId(null);
-            setFormData({ name: '', stadium_id: '', type: 'Football', price_per_hour: '', image: null });
-            fetchFields();
-        } catch (error) {
-            alert("Lỗi khi lưu dữ liệu!",error);
-        }
-    };
+  const handleDelete = async (id) => {
+    if (!window.confirm('Ban muon xoa san nay?')) return;
 
-    const handleDelete = async (id) => {
-        if (window.confirm("Bạn muốn xóa sân này?")) {
-            await axios.delete(`http://localhost:5000/api/fields/${id}`);
-            fetchFields();
-        }
-    };
+    try {
+      const token = getAuthToken();
+      await axios.delete(`http://localhost:5000/api/fields/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      fetchFields();
+    } catch (error) {
+      alert(error.response?.data?.error || 'Khong the xoa san!');
+    }
+  };
 
-    return (
-        <div className="container mt-4">
-            <h2 className="mb-4 fw-bold text-uppercase">{isEditing ? '📝 Sửa Sân' : '⚽ Quản lý Sân theo Khu'}</h2>
-            <div className="row">
-                <div className="col-md-4">
-                    <div className={`card p-3 shadow-sm border-0 ${isEditing ? 'bg-light border-warning' : ''}`} style={{ borderLeft: '5px solid red' }}>
-                        <h5 className="fw-bold">{isEditing ? 'Cập nhật' : 'Đăng ký sân mới'}</h5>
-                        <form onSubmit={handleSubmit}>
-                            <label className="small fw-bold mt-2">Thuộc Khu Sân:</label>
-                            <select className="form-select mb-2" value={formData.stadium_id} onChange={e => setFormData({ ...formData, stadium_id: e.target.value })} required>
-                                <option value="">-- Chọn Khu --</option>
-                                {stadiums.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                            </select>
-
-                            <label className="small fw-bold">Tên sân:</label>
-                            <input className="form-control mb-2" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
-
-                            <label className="small fw-bold">Loại:</label>
-                            <select className="form-select mb-2" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })}>
-                                <option value="Football">Bóng đá</option>
-                                <option value="Badminton">Cầu lông</option>
-                                <option value="Pickleball">Pickleball</option>
-                            </select>
-
-                            <label className="small fw-bold">Giá (VNĐ/h):</label>
-                            <input type="number" className="form-control mb-2" value={formData.price_per_hour} onChange={e => setFormData({ ...formData, price_per_hour: e.target.value })} required />
-
-                            <label className="small fw-bold">Ảnh:</label>
-                            <input type="file" className="form-control mb-3" onChange={e => setFormData({ ...formData, image: e.target.files[0] })} />
-
-                            <button type="submit" className={`btn w-100 fw-bold ${isEditing ? 'btn-warning' : 'btn-danger'}`}>
-                                {isEditing ? 'LƯU THAY ĐỔI' : 'THÊM SÂN VÀO KHU'}
-                            </button>
-                            {isEditing && <button className="btn btn-link w-100 text-secondary mt-1" onClick={() => setIsEditing(false)}>Hủy</button>}
-                        </form>
-                    </div>
-                </div>
-
-                <div className="col-md-8">
-                    {groupedFields.map(stadium => (
-                        <div key={stadium.id} className="mb-5 bg-white shadow-sm rounded-3 overflow-hidden border">
-                            <div className="bg-dark text-white p-3 d-flex justify-content-between align-items-center">
-                                <div className="d-flex align-items-center gap-3">
-                                    <h5 className="mb-0 fw-bold">🏢 KHU: {stadium.name.toUpperCase()}</h5>
-                                </div>
-                                <span className="badge bg-primary">{stadium.childFields.length} sân</span>
-                            </div>
-                            <div className="p-3">
-                                <div className="row">
-                                    {stadium.childFields.length > 0 ? (
-                                        stadium.childFields.map(f => (
-                                            <div key={f.id} className="col-md-6 mb-3">
-                                                <div className="d-flex border rounded p-2 align-items-center position-relative">
-                                                    <img
-                                                        src={f.images?.[0]?.image_url ?
-                                                            (f.images[0].image_url.startsWith('http') ? f.images[0].image_url : `http://localhost:5000/uploads/${f.images[0].image_url}`)
-                                                            : 'https://via.placeholder.com/80'}
-                                                        style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '5px' }}
-                                                        alt={f.name}
-                                                    />
-                                                    <div className="ms-3 flex-grow-1">
-                                                        <div className="d-flex justify-content-between align-items-start">
-                                                            <div className="fw-bold">{f.name}</div>
-                                                            <span className={`badge ${f.status === 'active' ? 'bg-success' :
-                                                                f.status === 'pending' ? 'bg-warning text-dark' : 'bg-danger'
-                                                                }`} style={{ fontSize: '0.65rem' }}>
-                                                                {f.status === 'active' ? 'Đã duyệt' :
-                                                                    f.status === 'pending' ? 'Chờ duyệt' : 'Từ chối'}
-                                                            </span>
-                                                        </div>
-                                                        <div className="small text-muted">{f.type} - {f.price_per_hour?.toLocaleString()}đ</div>
-                                                        <div className="mt-1">
-                                                            <button className="btn btn-sm text-primary p-0 me-3" onClick={() => handleEdit(f)}>Sửa</button>
-                                                            <button className="btn btn-sm text-danger p-0" onClick={() => handleDelete(f.id)}>Xóa</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="text-center text-muted p-3">Khu này chưa có sân lẻ nào</div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
+  return (
+    <div className="fields-studio">
+      <section className="fields-hero">
+        <div>
+          <span className="fields-tag">Field Studio</span>
+          <h1>Quan ly san le theo tung khu theo mot bo cuc ro rang va hien dai.</h1>
+          <p>
+            Chu san co the tao san moi, cap nhat gia, thay anh va theo doi trang thai
+            duyet ngay tai mot man hinh.
+          </p>
         </div>
-    );
+
+        <div className="fields-hero-summary">
+          <div>
+            <small>Khu san</small>
+            <strong>{stadiums.length}</strong>
+          </div>
+          <div>
+            <small>Tong san le</small>
+            <strong>{totalFields}</strong>
+          </div>
+          <div>
+            <small>Cho duyet</small>
+            <strong>{pendingFields}</strong>
+          </div>
+        </div>
+      </section>
+
+      <section className="fields-layout">
+        <article className="fields-card field-form-card">
+          <div className="fields-card-head">
+            <div>
+              <span className="fields-kicker">{isEditing ? 'Edit field' : 'New field'}</span>
+              <h2>{isEditing ? 'Cap nhat san le' : 'Dang ky san le moi'}</h2>
+            </div>
+            {isEditing && (
+              <button type="button" className="field-ghost-button" onClick={resetForm}>
+                Huy
+              </button>
+            )}
+          </div>
+
+          <form onSubmit={handleSubmit} className="field-form">
+            <label>Thuoc khu san</label>
+            <select
+              value={formData.stadium_id}
+              onChange={(event) =>
+                setFormData({ ...formData, stadium_id: event.target.value })
+              }
+              required
+            >
+              <option value="">-- Chon khu san --</option>
+              {stadiums.map((stadium) => (
+                <option key={stadium.id} value={stadium.id}>
+                  {stadium.name}
+                </option>
+              ))}
+            </select>
+
+            <label>Ten san</label>
+            <input
+              value={formData.name}
+              onChange={(event) => setFormData({ ...formData, name: event.target.value })}
+              required
+            />
+
+            <label>Loai san</label>
+            <select
+              value={formData.type}
+              onChange={(event) => setFormData({ ...formData, type: event.target.value })}
+            >
+              {FIELD_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            <label>Gia theo gio (VND)</label>
+            <input
+              type="number"
+              value={formData.price_per_hour}
+              onChange={(event) =>
+                setFormData({ ...formData, price_per_hour: event.target.value })
+              }
+              required
+            />
+
+            <label>Anh dai dien</label>
+            <input
+              type="file"
+              onChange={(event) =>
+                setFormData({ ...formData, image: event.target.files?.[0] || null })
+              }
+            />
+
+            <button type="submit" className="field-primary-button">
+              {isEditing ? 'Luu thay doi' : 'Them san vao khu'}
+            </button>
+          </form>
+        </article>
+
+        <div className="field-groups">
+          {groupedFields.length > 0 ? (
+            groupedFields.map((stadium) => (
+              <article key={stadium.id} className="fields-card group-card">
+                <div className="group-head">
+                  <div>
+                    <span className="fields-kicker">Stadium</span>
+                    <h2>{stadium.name}</h2>
+                  </div>
+                  <span className="group-count">{stadium.childFields.length} san</span>
+                </div>
+
+                <div className="field-grid">
+                  {stadium.childFields.length > 0 ? (
+                    stadium.childFields.map((field) => (
+                      <div key={field.id} className="field-item-card">
+                        <img
+                          src={
+                            field.images?.[0]?.image_url
+                              ? field.images[0].image_url.startsWith('http')
+                                ? field.images[0].image_url
+                                : `http://localhost:5000/uploads/${field.images[0].image_url}`
+                              : 'https://via.placeholder.com/120x120?text=Field'
+                          }
+                          alt={field.name}
+                        />
+
+                        <div className="field-item-copy">
+                          <div className="field-title-row">
+                            <h3>{field.name}</h3>
+                            <span className={`field-status ${field.status || 'pending'}`}>
+                              {fieldStatusLabel[field.status] || field.status || 'Cho duyet'}
+                            </span>
+                          </div>
+
+                          <p>
+                            {field.type} · {Number(field.price_per_hour || 0).toLocaleString()} VND/h
+                          </p>
+
+                          <div className="field-item-actions">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                navigate(`/owner/edit-field/${field.id}`)
+                              }
+                            >
+                              Sua
+                            </button>
+                            <button
+                              type="button"
+                              className="danger"
+                              onClick={() => handleDelete(field.id)}
+                            >
+                              Xoa
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="field-empty-state">Khu nay chua co san le nao.</div>
+                  )}
+                </div>
+              </article>
+            ))
+          ) : (
+            <article className="fields-card field-empty-state">
+              Chua co khu san nao de hien thi danh sach san le.
+            </article>
+          )}
+        </div>
+      </section>
+
+      <style>{`
+        .fields-studio {
+          --ink: #172f4a;
+          --muted: #66778d;
+          --paper: rgba(255, 255, 255, 0.9);
+          --line: rgba(23, 47, 74, 0.1);
+          --teal: #10796a;
+          --amber: #c87f28;
+          padding: 28px;
+          min-height: 100vh;
+          background:
+            radial-gradient(circle at top right, rgba(44, 128, 120, 0.16), transparent 28%),
+            radial-gradient(circle at top left, rgba(235, 179, 94, 0.2), transparent 24%),
+            linear-gradient(180deg, #f4efe5 0%, #f8fbff 48%, #eef6f9 100%);
+          color: var(--ink);
+          font-family: 'Poppins', 'Segoe UI', sans-serif;
+        }
+
+        .fields-hero,
+        .fields-card {
+          border: 1px solid var(--line);
+          box-shadow: 0 20px 48px rgba(22, 48, 73, 0.09);
+        }
+
+        .fields-hero {
+          display: grid;
+          grid-template-columns: 1.5fr 1fr;
+          gap: 18px;
+          padding: 28px;
+          border-radius: 28px;
+          background: rgba(255, 255, 255, 0.82);
+          backdrop-filter: blur(16px);
+          margin-bottom: 24px;
+        }
+
+        .fields-tag,
+        .fields-kicker {
+          display: inline-flex;
+          padding: 7px 12px;
+          border-radius: 999px;
+          background: rgba(16, 121, 106, 0.12);
+          color: var(--teal);
+          font-size: 0.78rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+
+        .fields-hero h1 {
+          margin: 16px 0 10px;
+          font-size: clamp(1.9rem, 3vw, 3rem);
+          line-height: 1.08;
+          font-weight: 800;
+        }
+
+        .fields-hero p {
+          margin: 0;
+          max-width: 680px;
+          color: var(--muted);
+          line-height: 1.75;
+        }
+
+        .fields-hero-summary {
+          display: grid;
+          gap: 12px;
+        }
+
+        .fields-hero-summary div {
+          padding: 18px;
+          border-radius: 22px;
+          background: linear-gradient(135deg, #17324d, #24556f);
+          color: #fff;
+        }
+
+        .fields-hero-summary small {
+          color: rgba(240, 245, 252, 0.72);
+        }
+
+        .fields-hero-summary strong {
+          display: block;
+          margin-top: 6px;
+          font-size: 2rem;
+        }
+
+        .fields-layout {
+          display: grid;
+          grid-template-columns: 400px minmax(0, 1fr);
+          gap: 20px;
+          align-items: start;
+        }
+
+        .fields-card {
+          padding: 24px;
+          border-radius: 28px;
+          background: var(--paper);
+        }
+
+        .fields-card-head,
+        .group-head {
+          display: flex;
+          justify-content: space-between;
+          gap: 16px;
+          align-items: flex-start;
+          margin-bottom: 22px;
+        }
+
+        .fields-card-head h2,
+        .group-head h2 {
+          margin: 10px 0 0;
+          font-size: 1.45rem;
+          font-weight: 800;
+        }
+
+        .field-ghost-button,
+        .field-primary-button,
+        .field-item-actions button {
+          border: none;
+          border-radius: 16px;
+          font-weight: 700;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .field-ghost-button {
+          padding: 11px 14px;
+          background: rgba(23, 47, 74, 0.08);
+          color: var(--ink);
+        }
+
+        .field-primary-button {
+          padding: 14px 18px;
+          background: linear-gradient(135deg, #17324d, #2f7c73);
+          color: #fff;
+          box-shadow: 0 16px 30px rgba(23, 50, 77, 0.18);
+        }
+
+        .field-form {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .field-form label {
+          font-size: 0.9rem;
+          font-weight: 700;
+        }
+
+        .field-form input,
+        .field-form select {
+          width: 100%;
+          border: 1px solid rgba(23, 47, 74, 0.12);
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.95);
+          padding: 14px 16px;
+          outline: none;
+        }
+
+        .field-groups {
+          display: grid;
+          gap: 18px;
+        }
+
+        .group-count {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 10px 14px;
+          border-radius: 16px;
+          background: rgba(23, 47, 74, 0.08);
+          color: var(--ink);
+          font-weight: 700;
+        }
+
+        .field-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
+        }
+
+        .field-item-card {
+          display: flex;
+          gap: 14px;
+          padding: 14px;
+          border-radius: 22px;
+          background: rgba(249, 251, 255, 0.96);
+          border: 1px solid rgba(23, 47, 74, 0.08);
+        }
+
+        .field-item-card img {
+          width: 110px;
+          height: 110px;
+          object-fit: cover;
+          border-radius: 18px;
+          flex-shrink: 0;
+        }
+
+        .field-item-copy {
+          min-width: 0;
+          flex: 1;
+        }
+
+        .field-title-row {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          justify-content: space-between;
+          margin-bottom: 8px;
+        }
+
+        .field-item-copy h3 {
+          margin: 0;
+          font-size: 1.05rem;
+          font-weight: 800;
+        }
+
+        .field-item-copy p {
+          margin: 0 0 14px;
+          color: var(--muted);
+          line-height: 1.65;
+        }
+
+        .field-item-actions {
+          display: flex;
+          gap: 10px;
+        }
+
+        .field-item-actions button {
+          padding: 10px 14px;
+          background: rgba(23, 47, 74, 0.08);
+          color: var(--ink);
+        }
+
+        .field-item-actions .danger {
+          background: rgba(181, 53, 53, 0.1);
+          color: #9f2424;
+        }
+
+        .field-status {
+          display: inline-flex;
+          align-items: center;
+          padding: 6px 12px;
+          border-radius: 999px;
+          font-size: 0.76rem;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+
+        .field-status.active {
+          background: rgba(16, 121, 106, 0.12);
+          color: var(--teal);
+        }
+
+        .field-status.pending {
+          background: rgba(200, 127, 40, 0.14);
+          color: var(--amber);
+        }
+
+        .field-status.rejected {
+          background: rgba(181, 53, 53, 0.12);
+          color: #9f2424;
+        }
+
+        .field-empty-state {
+          padding: 26px;
+          text-align: center;
+          color: var(--muted);
+          border: 1px dashed rgba(23, 47, 74, 0.16);
+          background: rgba(255, 255, 255, 0.75);
+        }
+
+        @media (max-width: 1180px) {
+          .fields-hero,
+          .fields-layout,
+          .field-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 700px) {
+          .fields-studio {
+            padding: 16px;
+          }
+
+          .fields-hero,
+          .fields-card,
+          .field-item-card {
+            padding: 20px;
+            border-radius: 22px;
+          }
+
+          .field-item-card,
+          .field-item-actions {
+            flex-direction: column;
+          }
+
+          .field-item-card img,
+          .field-item-actions button,
+          .field-ghost-button,
+          .field-primary-button {
+            width: 100%;
+          }
+
+          .field-item-card img {
+            height: 180px;
+          }
+        }
+      `}</style>
+    </div>
+  );
 };
 
 export default OwnerStadiums;

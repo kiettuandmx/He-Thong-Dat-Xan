@@ -14,9 +14,21 @@ module.exports = {
     });
 
     io.on("connection", (socket) => {
+      // Đăng ký user khi login
       socket.on("login", (userId) => {
         userSockets[userId] = socket.id;
         console.log(`✅ User ${userId} kết nối với socket ${socket.id}`);
+      });
+
+      // Dọn dẹp khi user disconnect (đóng tab, refresh trang)
+      socket.on("disconnect", () => {
+        for (const [userId, socketId] of Object.entries(userSockets)) {
+          if (socketId === socket.id) {
+            delete userSockets[userId];
+            console.log(`❌ User ${userId} ngắt kết nối, xóa socket ${socket.id}`);
+            break;
+          }
+        }
       });
     });
     return io;

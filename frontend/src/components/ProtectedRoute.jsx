@@ -1,18 +1,19 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const ProtectedRoute = ({ allowedRoles }) => {
+const ProtectedRoute = ({ allowedRoles = [] }) => {
   const { user } = useAuth();
+  const role = Number(user?.user?.role_id || user?.user?.role || user?.role);
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  if (!allowedRoles.includes(user.user.role)) {
+  if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
     return <Navigate to="/403" replace />;
   }
 
-  return <Outlet />; // Phải có dòng này để hiện trang con bên trong route bảo vệ
+  return <Outlet />;
 };
 
 export default ProtectedRoute;

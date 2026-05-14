@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import ReviewModal from '../components/ReviewModal';
+import ComplaintModal from '../components/ComplaintModal';
 import Swal from 'sweetalert2';
 
 // --- COMPONENT CON: XỬ LÝ TỪNG DÒNG ĐÁNH GIÁ ---
@@ -105,6 +106,8 @@ const BookingHistory = () => {
     const [showModal, setShowModal] = useState(false);
     const [selectedBookingId, setSelectedBookingId] = useState(null);
     const [reviews, setReviews] = useState([]);
+    const [complaints, setComplaints] = useState([]);
+    const [complaintBooking, setComplaintBooking] = useState(null);
     
     const roleId = Number(user?.user?.role_id || user?.user?.role);
     const isOwner = roleId === 2;
@@ -139,6 +142,17 @@ const BookingHistory = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setBookings(resBooking.data);
+
+            if (!isOwner) {
+                try {
+                    const resComplaints = await axios.get('http://localhost:5000/api/complaints/my', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    setComplaints(resComplaints.data?.data || []);
+                } catch (complaintErr) {
+                    console.error("Loi lay danh sach khieu nai:", complaintErr);
+                }
+            }
 
             if (isOwner) {
                 try {
@@ -344,6 +358,27 @@ const BookingHistory = () => {
                                             </button>
                                         )}
 
+                                        {!isOwner && ['confirmed', 'rejected', 'refunded'].includes(b.status) && (
+                                            (() => {
+                                                const existingComplaint = complaints.find((c) => Number(c.booking_id) === Number(b.id));
+                                                return existingComplaint ? (
+                                                    <div className="mt-2">
+                                                        <span className="badge bg-danger-subtle text-danger border">
+                                                            Khieu nai: {existingComplaint.status}
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        className="btn btn-sm btn-outline-danger rounded-pill px-3 mt-2"
+                                                        onClick={() => setComplaintBooking(b)}
+                                                    >
+                                                        <i className="bi bi-exclamation-triangle me-1"></i>
+                                                        Khieu nai
+                                                    </button>
+                                                );
+                                            })()
+                                        )}
+
                                         {isOwner && b.status === 'pending' && (
                                             <div className="d-flex gap-2 justify-content-end mt-2">
                                                 <button className="btn btn-sm btn-primary rounded-pill px-3" onClick={() => handleApprove(b.id)}>Duyệt</button>
@@ -394,6 +429,14 @@ const BookingHistory = () => {
                     bookingId={selectedBookingId}
                     onClose={() => setShowModal(false)}
                     onRefresh={fetchHistory}
+                />
+            )}
+
+            {complaintBooking && (
+                <ComplaintModal
+                    booking={complaintBooking}
+                    onClose={() => setComplaintBooking(null)}
+                    onSuccess={fetchHistory}
                 />
             )}
         </div>

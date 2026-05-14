@@ -1,206 +1,234 @@
-const { sequelize } = require('../models');
+const db = require('../models');
+const { logAdminActivity } = require('../utils/adminActivityLogger');
 
-// 1. Lấy toàn bộ danh sách
+const getRequestMeta = (req) => ({
+  ipAddress: req.ip || req.headers['x-forwarded-for'] || null,
+  userAgent: req.headers['user-agent'] || null,
+});
+
+const toPlain = (instance) => (instance ? instance.get({ plain: true }) : null);
+const isAdminUser = (req) => Number(req.user?.role) === 3;
+
 const getAllStadiums = async (req, res) => {
-    try {
-        // 1. Lấy Khu (Stadiums) + Địa chỉ
-        const [stadiums] = await sequelize.query(`
-            SELECT s.*, l.address, l.district 
-            FROM stadiums s 
-            LEFT JOIN locations l ON s.location_id = l.id
-        `);
+  try {
+    const stadiums = await db.Stadium.findAll({
+      include: [
+        { model: db.Location, as: 'location' },
+        { model: db.Hashtag, as: 'hashtags', through: { attributes: [] } },
+        {
+          model: db.Field,
+          as: 'fields',
+          include: [{ model: db.FieldImage, as: 'images' }],
+        },
+      ],
+      order: [['createdAt', 'DESC']],
+    });
 
-        // 2. Lấy Sân nhỏ (Fields)
-        const [allFields] = await sequelize.query(`
-            SELECT * FROM fields
-        `);
-
-        // 3. Lấy hình ảnh của sân
-        const [allImages] = await sequelize.query(`
-            SELECT * FROM fieldimages
-        `);
-
-        // 4. Gộp Sân nhỏ và Hình ảnh vào đúng Khu
-        const result = stadiums.map(stadium => {
-            return {
-                ...stadium,
-                fields: allFields
-                    .filter(f => f.stadium_id === stadium.id)
-                    .map(f => ({
-                        ...f,
-                        images: allImages.filter(img => img.field_id === f.id)
-                    }))
-            };
-        });
-
-        // Trả về kết quả
-        res.status(200).json(result);
-    } catch (error) {
-        console.error("Lỗi: ", error);
-        res.status(500).json({ message: "Lỗi Server", error: error.message });
-    }
+    res.status(200).json(stadiums);
+  } catch (error) {
+    console.error('Loi:', error);
+    res.status(500).json({ message: 'Loi server', error: error.message });
+  }
 };
 
-// 2. Lấy chi tiết 1 sân
 const getStadiumById = async (req, res) => {
-    try {
-        const [rows] = await sequelize.query('SELECT * FROM stadiums WHERE id = ?', {
-            replacements: [req.params.id],
-            type: sequelize.QueryTypes.SELECT
-        });
-        
-        if (!rows || rows.length === 0) return res.status(404).json({ message: "Không tìm thấy" });
-        res.json(rows[0] || rows); // Sequelize query SELECT trả về mảng trực tiếp
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+  try {
+    const stadium = await db.Stadium.findByPk(req.params.id, {
+      include: [
+        { model: db.Location, as: 'location' },
+        { model: db.Hashtag, as: 'hashtags', through: { attributes: [] } },
+        {
+          model: db.Field,
+          as: 'fields',
+          include: [{ model: db.FieldImage, as: 'images' }],
+        },
+      ],
+    });
+
+    if (!stadium) return res.status(404).json({ message: 'Khong tim thay' });
+    res.json(stadium);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
-// 3. Thêm Stadium mới
 const createStadium = async (req, res) => {
-    const { name, description, address, owner_id } = req.body;
-    const t = await sequelize.transaction(); // Dùng transaction để an toàn dữ liệu
+  const { name, description, address, owner_id } = req.body;
+  const transaction = await db.sequelize.transaction();
 
-    try {
-        // BƯỚC 1: Tạo một dòng địa chỉ mới hoàn toàn trong bảng locations
-        const [locationResult] = await sequelize.query(
-            'INSERT INTO locations (address, createdAt, updatedAt) VALUES (?, NOW(), NOW())',
-            { replacements: [address || 'Chưa có địa chỉ'], transaction: t }
-        );
-        
-        // Lấy ID của địa chỉ vừa tạo (Tùy thuộc vào DB, thường là locationResult)
-        const newLocationId = locationResult; 
+  try {
+    const resolvedOwnerId = isAdminUser(req) && owner_id ? owner_id : req.user?.id;
 
-        // BƯỚC 2: Tạo Stadium mới trỏ vào cái ID địa chỉ vừa tạo ở trên, status mặc định 'active'
-        await sequelize.query(
-            'INSERT INTO stadiums (name, description, location_id, owner_id, status, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, NOW(), NOW())',
-            {
-                replacements: [name, description, newLocationId, owner_id || 2, 'active'],
-                transaction: t
-            }
-        );
-
-        await t.commit();
-        res.status(201).json({ message: "Thêm khu và địa chỉ riêng biệt thành công!" });
-    } catch (err) {
-        await t.rollback();
-        console.error(err);
-        res.status(500).json({ error: err.message });
+    if (!resolvedOwnerId) {
+      await transaction.rollback();
+      return res.status(401).json({ error: 'Khong xac dinh duoc chu san' });
     }
+
+    const location = await db.Location.create(
+      { address: address || 'Chua co dia chi' },
+      { transaction }
+    );
+
+    const newStadium = await db.Stadium.create(
+      {
+        name,
+        description,
+        location_id: location.id,
+        owner_id: resolvedOwnerId,
+        status: 'active',
+      },
+      { transaction }
+    );
+
+    await transaction.commit();
+
+    await logAdminActivity({
+      adminId: req.user?.id || newStadium.owner_id,
+      action: 'OWNER_CREATE_STADIUM',
+      targetType: 'stadium',
+      targetId: newStadium.id,
+      afterData: {
+        name: newStadium.name,
+        description: newStadium.description,
+        status: newStadium.status,
+        owner_id: newStadium.owner_id,
+        location_id: newStadium.location_id,
+        address: location.address,
+      },
+      ...getRequestMeta(req),
+    });
+
+    res.status(201).json({ message: 'Them khu va dia chi thanh cong!', data: newStadium });
+  } catch (err) {
+    if (!transaction.finished) await transaction.rollback();
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 };
-// 4. Cập nhật (Bản đã sửa lỗi)
+
 const updateStadium = async (req, res) => {
-    const { name, description, status, address, location_id } = req.body;
-    const { id } = req.params;
+  const { name, description, status, address, location_id } = req.body;
+  const { id } = req.params;
 
-    try {
-        // 1. Cập nhật Stadium
-        await sequelize.query(
-            'UPDATE stadiums SET name = ?, description = ?, status = ?, updatedAt = NOW() WHERE id = ?',
-            { replacements: [name, description, status || 'active', id] }
-        );
+  try {
+    const stadium = await db.Stadium.findByPk(id, {
+      include: [{ model: db.Location, as: 'location' }],
+    });
 
-        // 2. Cập nhật Địa chỉ (Sửa điều kiện check address)
-        if (location_id && address !== undefined) {
-            await sequelize.query(
-                'UPDATE locations SET address = ? WHERE id = ?',
-                { replacements: [address, location_id] }
-            );
-            console.log("Đã cập nhật địa chỉ mới:", address);
-        }
-
-        res.json({ message: "Cập nhật thành công!" });
-    } catch (err) {
-        console.error("Lỗi:", err.message);
-        res.status(500).json({ error: err.message });
+    if (!stadium) return res.status(404).json({ message: 'Khong tim thay' });
+    if (!isAdminUser(req) && Number(stadium.owner_id) !== Number(req.user?.id)) {
+      return res.status(403).json({ error: 'Ban khong co quyen cap nhat khu san nay' });
     }
+
+    const before = toPlain(stadium);
+
+    await stadium.update({
+      name,
+      description,
+      status: status || 'active',
+    });
+
+    if ((location_id || stadium.location_id) && address !== undefined) {
+      await db.Location.update({ address }, { where: { id: location_id || stadium.location_id } });
+    }
+
+    const updatedStadium = await db.Stadium.findByPk(id, {
+      include: [{ model: db.Location, as: 'location' }],
+    });
+
+    await logAdminActivity({
+      adminId: req.user?.id || updatedStadium.owner_id,
+      action: 'OWNER_UPDATE_STADIUM',
+      targetType: 'stadium',
+      targetId: updatedStadium.id,
+      beforeData: {
+        name: before.name,
+        description: before.description,
+        status: before.status,
+        address: before.location?.address || null,
+      },
+      afterData: {
+        name: updatedStadium.name,
+        description: updatedStadium.description,
+        status: updatedStadium.status,
+        address: updatedStadium.location?.address || null,
+      },
+      ...getRequestMeta(req),
+    });
+
+    res.json({ message: 'Cap nhat thanh cong!' });
+  } catch (err) {
+    console.error('Loi:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 };
-// 5. Xóa
+
 const deleteStadium = async (req, res) => {
-    try {
-        const { id } = req.params;
-        
-        // 1. Tìm thông tin Stadium để lấy location_id
-        const [stadium] = await sequelize.query('SELECT location_id FROM stadiums WHERE id = ?', {
-            replacements: [id],
-            type: sequelize.QueryTypes.SELECT
-        });
+  try {
+    const { id } = req.params;
+    const stadium = await db.Stadium.findByPk(id);
 
-        if (stadium) {
-            // 2. Xóa Stadium (Sẽ tự động xóa Fields, Bookings... nhờ CASCADE)
-            await sequelize.query('DELETE FROM stadiums WHERE id = ?', { replacements: [id] });
-
-            // 3. Xóa luôn Location để sạch Database
-            if (stadium.location_id) {
-                await sequelize.query('DELETE FROM locations WHERE id = ?', { replacements: [stadium.location_id] });
-            }
-        }
-
-        res.json({ message: "Xóa thành công khu và các dữ liệu liên quan" });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: err.message });
+    if (!stadium) {
+      return res.status(404).json({ error: 'Khong tim thay khu san' });
     }
-};
-// Lấy
-// Lấy danh sách Khu kèm theo các sân bên trong
-const getStadiumsWithFields = async (req, res) => {
-    try {
-        // Lấy tất cả khu
-        const [stadiums] = await sequelize.query(`
-            SELECT s.*, l.address 
-            FROM stadiums s 
-            LEFT JOIN locations l ON s.location_id = l.id
-        `);
 
-        // Lấy tất cả sân
-        const [fields] = await sequelize.query(`SELECT * FROM fields`);
-
-        // Lấy hình ảnh của sân
-        const [images] = await sequelize.query(`SELECT * FROM fieldimages`);
-
-        // Nhóm sân vào khu
-        const result = stadiums.map(stadium => {
-            return {
-                ...stadium,
-                fields: fields
-                    .filter(f => f.stadium_id === stadium.id)
-                    .map(f => ({
-                        ...f,
-                        images: images.filter(img => img.field_id === f.id)
-                    }))
-            };
-        });
-
-        res.json(result);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+    if (!isAdminUser(req) && Number(stadium.owner_id) !== Number(req.user?.id)) {
+      return res.status(403).json({ error: 'Ban khong co quyen xoa khu san nay' });
     }
+
+    const before = toPlain(stadium);
+    const locId = stadium.location_id;
+    await stadium.destroy();
+
+    if (locId) {
+      await db.Location.destroy({ where: { id: locId } });
+    }
+
+    await logAdminActivity({
+      adminId: req.user?.id || before.owner_id,
+      action: 'OWNER_DELETE_STADIUM',
+      targetType: 'stadium',
+      targetId: before.id,
+      beforeData: before,
+      ...getRequestMeta(req),
+    });
+
+    res.json({ message: 'Xoa thanh cong khu va cac du lieu lien quan' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 };
 
-// Lấy tất cả Stadium của một Owner (Kể cả pending hay rejected)
 const getOwnerStadiums = async (req, res) => {
-    try {
-        const { ownerId } = req.params;
-        const [stadiums] = await sequelize.query(`
-            SELECT s.*, l.address, l.district 
-            FROM stadiums s 
-            LEFT JOIN locations l ON s.location_id = l.id
-            WHERE s.owner_id = ?
-        `, { replacements: [ownerId] });
+  try {
+    const { ownerId } = req.params;
 
-        res.json(stadiums);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+    if (!isAdminUser(req) && Number(ownerId) !== Number(req.user?.id)) {
+      return res.status(403).json({ error: 'Ban khong co quyen xem danh sach khu san nay' });
     }
+
+    const stadiums = await db.Stadium.findAll({
+      where: { owner_id: ownerId },
+      include: [
+        { model: db.Location, as: 'location' },
+        { model: db.Hashtag, as: 'hashtags', through: { attributes: [] } },
+      ],
+      order: [['createdAt', 'DESC']],
+    });
+
+    res.json(stadiums);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 module.exports = {
-    getAllStadiums,
-    getStadiumById,
-    createStadium,
-    updateStadium,
-    deleteStadium,
-    getStadiumsWithFields,
-    getOwnerStadiums
+  getAllStadiums,
+  getStadiumById,
+  createStadium,
+  updateStadium,
+  deleteStadium,
+  getStadiumsWithFields: getAllStadiums,
+  getOwnerStadiums,
 };

@@ -5,11 +5,56 @@ const Stadium = db.Stadium;
 const User = db.User;
 const { Op, fn, col, literal } = require('sequelize');
 const { getIO, userSockets } = require('../socket');
+const { logAdminActivity } = require('../utils/adminActivityLogger');
+const {
+    canAccessBookingDetail,
+    isAdminUser,
+    resolveBookingCreatorId,
+} = require('../utils/bookingAccess');
+const {
+    buildPaymentHistoryTransactions,
+    filterTransactionsByDateRange,
+    paginateTransactions,
+    resolveHistoryFilters,
+    toNumber,
+} = require('../utils/paymentHistory');
 const {
     normalizeCouponCode,
-    findValidCoupon,
-    calculateDiscountAmount
-} = require('../utils/couponUtils');
+    assertCouponUsageAllowed,
+} = require('../utils/couponUsage');
+
+const getRequestMeta = (req) => ({
+    ipAddress: req.ip || req.headers['x-forwarded-for'] || null,
+    userAgent: req.headers['user-agent'] || null,
+});
+
+const toPlain = (instance) => (instance ? instance.get({ plain: true }) : null);
+
+const calculatePaymentHistorySummary = (transactions) => {
+    const totalPayment = transactions
+        .filter((transaction) => transaction.type === 'payment')
+        .reduce((sum, transaction) => sum + toNumber(transaction.amount), 0);
+    const totalRefund = transactions
+        .filter((transaction) => transaction.type === 'refund')
+        .reduce((sum, transaction) => sum + toNumber(transaction.refundAmount), 0);
+
+    return {
+        totalPayment,
+        totalRefund,
+        netRevenue: totalPayment - totalRefund,
+    };
+};
+
+const normalizePositiveInteger = (value, fallback) => {
+    const numericValue = Number(value);
+    return Number.isInteger(numericValue) && numericValue > 0 ? numericValue : fallback;
+};
+
+const isPaymentHistoryFilterError = (error) =>
+    error instanceof Error && error.message.startsWith('Invalid ');
+
+const shouldPreserveProcessedBookingStatus = (status) =>
+    ['confirmed', 'refunded', 'rejected', 'cancelled'].includes(status);
 
 const createNotification = async (user_id, content) => {
     const noti = await db.Notification.create({
@@ -33,28 +78,8 @@ const createNotification = async (user_id, content) => {
 exports.createBooking = async (req, res) => {
     const transaction = await db.sequelize.transaction();
     try {
-        const {
-            field_id,
-            stadium_id,
-            booking_date,
-            start_time,
-            end_time,
-            payment_type,
-            payment_method,
-            coupon_code
-        } = req.body;
-        const user_id = req.user?.id;
-
-        if (!user_id) {
-            await transaction.rollback();
-            return res.status(401).json({ success: false, message: "Vui long dang nhap de dat san" });
-        }
-
-        const fieldRecord = await Field.findByPk(field_id, { transaction });
-        if (!fieldRecord) {
-            await transaction.rollback();
-            return res.status(404).json({ success: false, message: "Khong tim thay san" });
-        }
+        const { field_id, stadium_id, booking_date, start_time, end_time, total_price, amount_paid, payment_type } = req.body;
+        const user_id = resolveBookingCreatorId(req, req.body);
 
         // Chuẩn hóa giờ (thêm :00 nếu chỉ có HH:mm)
         const normalizedStartTime = start_time.length === 5 ? `${start_time}:00` : start_time;
@@ -83,48 +108,8 @@ exports.createBooking = async (req, res) => {
         }
 
         const holdUntilTime = new Date();
-        const normalizedCouponCode = normalizeCouponCode(coupon_code);
-        const basePrice = Number(fieldRecord.price_per_hour) || 0;
-        let finalTotalPrice = Math.max(0, Math.round(basePrice));
-        let appliedDiscount = 0;
-        let amount_paid = payment_type === 'deposit'
-            ? Math.round(finalTotalPrice * 0.5)
-            : finalTotalPrice;
-
-        if (normalizedCouponCode) {
-            const validationResult = await findValidCoupon({
-                Coupon: db.Coupon,
-                Booking,
-                code: normalizedCouponCode,
-                userId: user_id,
-                transaction
-            });
-
-            if (validationResult.error) {
-                await transaction.rollback();
-                return res.status(400).json({ success: false, message: validationResult.error });
-            }
-
-            appliedDiscount = calculateDiscountAmount(validationResult.coupon, basePrice);
-            finalTotalPrice = Math.max(0, Math.round(basePrice - appliedDiscount));
-            amount_paid = payment_type === 'deposit'
-                ? Math.round(finalTotalPrice * 0.5)
-                : finalTotalPrice;
-            await validationResult.coupon.increment('used_count', { by: 1, transaction });
-        }
         holdUntilTime.setMinutes(holdUntilTime.getMinutes() + 5); // Lock 5 phút
-        // --- PHẦN XỬ LÝ KHUYẾN MÃI ---
-        if (false && coupon_code) {
-            const coupon = await db.Coupon.findOne({
-                where: { code: coupon_code, is_active: true },
-                transaction
-            });
 
-            if (coupon) {
-                // Tăng số lần sử dụng của mã giảm giá thêm 1
-                await coupon.increment('used_count', { by: 1, transaction });
-            }
-        }
         const newBooking = await Booking.create({
             field_id,
             stadium_id,
@@ -132,24 +117,40 @@ exports.createBooking = async (req, res) => {
             booking_date,
             start_time,
             end_time,
-            total_price: finalTotalPrice,
+            total_price,
             status: 'pending',
             amount_paid: amount_paid,
             payment_type: payment_type,
-            payment_method: payment_method || 'Online',
+            payment_method: 'Online',
             payment_status: 'unpaid',
-            hold_until: holdUntilTime,
-            coupon_code: normalizedCouponCode || null,
-            discount_amount: appliedDiscount
+            hold_until: holdUntilTime
         }, { transaction });
 
         await transaction.commit();
 
+        await logAdminActivity({
+            adminId: user_id,
+            action: 'USER_CREATE_BOOKING',
+            targetType: 'booking',
+            targetId: newBooking.id,
+            afterData: {
+                field_id: newBooking.field_id,
+                stadium_id: newBooking.stadium_id,
+                booking_date: newBooking.booking_date,
+                start_time: newBooking.start_time,
+                end_time: newBooking.end_time,
+                total_price: newBooking.total_price,
+                payment_status: newBooking.payment_status,
+                status: newBooking.status,
+            },
+            ...getRequestMeta(req),
+        });
+
         // Broadcast sự kiện giữ chỗ cho tất cả client
         const io = getIO();
-        io.emit('slotLocked', {
-            field_id,
-            date: booking_date,
+        io.emit('slotLocked', { 
+            field_id, 
+            date: booking_date, 
             start_time: normalizedStartTime,
             locked_by_user: user_id
         });
@@ -215,6 +216,10 @@ exports.getBookingById = async (req, res) => {
             return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
         }
 
+        if (!canAccessBookingDetail(req, booking)) {
+            return res.status(403).json({ success: false, message: "Ban khong co quyen xem don dat san nay!" });
+        }
+
         res.json({ success: true, data: booking });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -225,7 +230,7 @@ exports.getBookingById = async (req, res) => {
 
 exports.getUserHistory = async (req, res) => {
     try {
-        const userId = req.user?.id;
+        const userId = isAdminUser(req) && req.query.user_id ? req.query.user_id : req.user?.id;
 
         if (!userId) {
             return res.status(401).json({
@@ -254,10 +259,178 @@ exports.getUserHistory = async (req, res) => {
 };
 
 // 3. Lấy danh sách đơn hàng cho Chủ sân (Owner)
+exports.getUserPaymentHistory = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Khong xac dinh duoc nguoi dung.',
+            });
+        }
+
+        const filters = resolveHistoryFilters(req.query);
+        const bookings = await Booking.findAll({
+            where: { user_id: userId },
+            include: [
+                {
+                    model: Field,
+                    as: 'field',
+                    attributes: ['name'],
+                    include: [
+                        {
+                            model: Stadium,
+                            as: 'stadium',
+                            attributes: ['name'],
+                        },
+                    ],
+                },
+            ],
+            order: [['createdAt', 'DESC']],
+        });
+
+        const filteredTransactions = filterTransactionsByDateRange(
+            buildPaymentHistoryTransactions(bookings),
+            filters.startDate,
+            filters.endDate,
+        );
+        const safeLimit = normalizePositiveInteger(req.query.limit, 10);
+        const currentPage = normalizePositiveInteger(req.query.page, 1);
+        const transactions = paginateTransactions(
+            filteredTransactions,
+            currentPage,
+            safeLimit,
+        );
+        const summary = calculatePaymentHistorySummary(filteredTransactions);
+
+        return res.status(200).json({
+            success: true,
+            transactions,
+            total: filteredTransactions.length,
+            hasMore: currentPage * safeLimit < filteredTransactions.length,
+            currentPage,
+            limit: safeLimit,
+            summary: {
+                totalPayment: summary.totalPayment,
+                totalRefund: summary.totalRefund,
+            },
+        });
+    } catch (error) {
+        if (isPaymentHistoryFilterError(error)) {
+            return res.status(400).json({
+                success: false,
+                message: error.message,
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+exports.getOwnerPaymentHistory = async (req, res) => {
+    try {
+        const ownerId = req.user?.id;
+
+        if (!ownerId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Khong xac dinh duoc chu san.',
+            });
+        }
+
+        const filters = resolveHistoryFilters(req.query);
+        const stadiums = await Stadium.findAll({
+            where: { owner_id: ownerId },
+            attributes: ['id'],
+        });
+        const stadiumIds = stadiums.map((stadium) => stadium.id);
+        const safeLimit = normalizePositiveInteger(req.query.limit, 10);
+        const currentPage = normalizePositiveInteger(req.query.page, 1);
+
+        if (stadiumIds.length === 0) {
+            return res.status(200).json({
+                success: true,
+                transactions: [],
+                total: 0,
+                hasMore: false,
+                currentPage,
+                limit: safeLimit,
+                summary: {
+                    totalPayment: 0,
+                    totalRefund: 0,
+                    netRevenue: 0,
+                },
+            });
+        }
+
+        const bookings = await Booking.findAll({
+            where: { stadium_id: stadiumIds },
+            include: [
+                {
+                    model: Field,
+                    as: 'field',
+                    attributes: ['name'],
+                    include: [
+                        {
+                            model: Stadium,
+                            as: 'stadium',
+                            attributes: ['name'],
+                        },
+                    ],
+                },
+                {
+                    model: User,
+                    as: 'user',
+                    attributes: ['name', 'phone'],
+                },
+            ],
+            order: [['createdAt', 'DESC']],
+        });
+
+        const filteredTransactions = filterTransactionsByDateRange(
+            buildPaymentHistoryTransactions(bookings),
+            filters.startDate,
+            filters.endDate,
+        );
+        const transactions = paginateTransactions(
+            filteredTransactions,
+            currentPage,
+            safeLimit,
+        );
+        const summary = calculatePaymentHistorySummary(filteredTransactions);
+
+        return res.status(200).json({
+            success: true,
+            transactions,
+            total: filteredTransactions.length,
+            hasMore: currentPage * safeLimit < filteredTransactions.length,
+            currentPage,
+            limit: safeLimit,
+            summary,
+        });
+    } catch (error) {
+        if (isPaymentHistoryFilterError(error)) {
+            return res.status(400).json({
+                success: false,
+                message: error.message,
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
 exports.getOwnerBookings = async (req, res) => {
     try {
         // Lấy ID từ token thay vì params để đảm bảo chính xác người đang đăng nhập
-        const ownerId = req.user?.id;
+        const ownerId = isAdminUser(req) && req.params.ownerId ? req.params.ownerId : req.user?.id;
 
         if (!ownerId) {
             return res.status(401).json({ message: "Không xác định được chủ sân!" });
@@ -326,8 +499,24 @@ exports.approveBooking = async (req, res) => {
         }
 
         // 2. Cập nhật trạng thái
+        const bookingStadium = await db.Stadium.findByPk(booking.stadium_id);
+        if (!isAdminUser(req) && Number(bookingStadium?.owner_id) !== Number(req.user?.id)) {
+            return res.status(403).json({ success: false, message: "Ban khong co quyen duyet don nay!" });
+        }
+
+        const before = toPlain(booking);
         booking.status = 'confirmed';
         await booking.save();
+
+        await logAdminActivity({
+            adminId: req.user?.id,
+            action: 'OWNER_APPROVE_BOOKING',
+            targetType: 'booking',
+            targetId: booking.id,
+            beforeData: { status: before.status, payment_status: before.payment_status },
+            afterData: { status: booking.status, payment_status: booking.payment_status },
+            ...getRequestMeta(req),
+        });
 
         // 3. Tạo thông báo trong Database
         const notiContent = `Đơn đặt sân ${booking.field.name} của bạn vào ngày ${booking.booking_date} đã được duyệt!`;
@@ -338,7 +527,6 @@ exports.approveBooking = async (req, res) => {
         });
 
         // 4. Đẩy thông báo Real-time
-        // Dùng getIO() để lấy instance đã khởi tạo từ server.js
         const io = getIO();
         const socketId = userSockets[booking.user_id];
 
@@ -378,9 +566,28 @@ exports.rejectBooking = async (req, res) => {
         }
 
         // Cập nhật trạng thái và cột reject_reason trong DB
+        const bookingField = await db.Field.findByPk(booking.field_id, {
+            include: [{ model: db.Stadium, as: 'stadium' }]
+        });
+
+        if (!isAdminUser(req) && Number(bookingField?.stadium?.owner_id) !== Number(req.user?.id)) {
+            return res.status(403).json({ success: false, message: "Ban khong co quyen tu choi don nay!" });
+        }
+
+        const before = toPlain(booking);
         await booking.update({
             status: 'rejected',
             reject_reason: ly_do
+        });
+
+        await logAdminActivity({
+            adminId: req.user?.id,
+            action: 'OWNER_REJECT_BOOKING',
+            targetType: 'booking',
+            targetId: booking.id,
+            beforeData: { status: before.status, reject_reason: before.reject_reason },
+            afterData: { status: booking.status, reject_reason: booking.reject_reason },
+            ...getRequestMeta(req),
         });
 
         return res.status(200).json({
@@ -430,7 +637,7 @@ exports.refundBooking = async (req, res) => {
             return res.status(404).json({ success: false, message: "Không tìm thấy đơn đặt sân!" });
         }
 
-        if (booking.field.stadium.owner_id !== ownerId) {
+        if (!isAdminUser(req) && booking.field.stadium.owner_id !== ownerId) {
             await transaction.rollback();
             return res.status(403).json({ success: false, message: "Bạn không có quyền thao tác trên đơn này!" });
         }
@@ -464,6 +671,20 @@ exports.refundBooking = async (req, res) => {
         if (socketId) {
             io.to(socketId).emit('newNotification', newNoti);
         }
+
+        await logAdminActivity({
+            adminId: ownerId,
+            action: 'OWNER_REFUND_BOOKING',
+            targetType: 'booking',
+            targetId: booking.id,
+            beforeData: { status: 'confirmed' },
+            afterData: {
+                status: booking.status,
+                refund_reason: booking.refund_reason,
+                refunded_at: booking.refunded_at,
+            },
+            ...getRequestMeta(req),
+        });
 
         return res.status(200).json({
             success: true,
@@ -501,7 +722,7 @@ exports.cancelBooking = async (req, res) => {
 
         // 3. Kiểm tra quyền sở hữu (Chủ đơn mới được hủy)
         // Lưu ý: Dùng dấu != thay vì !== nếu một bên là string, một bên là number
-        if (booking.user_id != userId) {
+        if (!isAdminUser(req) && booking.user_id != userId) {
             return res.status(403).json({ message: "Bạn không có quyền hủy đơn của người khác!" });
         }
 
@@ -511,18 +732,35 @@ exports.cancelBooking = async (req, res) => {
         }
 
         // 5. Thực hiện hủy
+        const before = toPlain(booking);
         booking.status = 'cancelled';
         booking.hold_until = null; // Xóa thời gian giữ chỗ
         await booking.save();
+
+        await logAdminActivity({
+            adminId: userId,
+            action: 'USER_CANCEL_BOOKING',
+            targetType: 'booking',
+            targetId: booking.id,
+            beforeData: {
+                status: before.status,
+                hold_until: before.hold_until,
+            },
+            afterData: {
+                status: booking.status,
+                hold_until: booking.hold_until,
+            },
+            ...getRequestMeta(req),
+        });
 
         // Broadcast sự kiện giải phóng sân
         const { getIO } = require('../socket');
         try {
             const io = getIO();
-            io.emit('slotReleased', {
-                field_id: booking.field_id,
-                date: booking.booking_date,
-                start_time: booking.start_time
+            io.emit('slotReleased', { 
+                field_id: booking.field_id, 
+                date: booking.booking_date, 
+                start_time: booking.start_time 
             });
         } catch (e) {
             console.log("Socket emit error on cancel:", e.message);
@@ -545,13 +783,28 @@ exports.updatePaymentStatus = async (req, res) => {
         const { bookingId } = req.params;
         const { payment_status, payment_method } = req.body;
 
-        const booking = await db.Booking.findByPk(bookingId);
+        const booking = await db.Booking.findByPk(bookingId, {
+            include: {
+                model: db.Field,
+                as: 'field',
+                include: {
+                    model: db.Stadium,
+                    as: 'stadium'
+                }
+            }
+        });
 
         if (!booking) {
             return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng!" });
         }
 
+        const before = toPlain(booking);
+
         // Cập nhật các thông tin thanh toán
+        if (!isAdminUser(req) && Number(booking.user_id) !== Number(req.user?.id)) {
+            return res.status(403).json({ success: false, message: "Ban khong co quyen cap nhat thanh toan don nay!" });
+        }
+
         booking.payment_status = payment_status || 'paid';
         booking.payment_method = payment_method || 'Online';
         booking.hold_until = null; // Xóa giữ chỗ vì đã thanh toán
@@ -561,12 +814,41 @@ exports.updatePaymentStatus = async (req, res) => {
 
         await booking.save();
 
+        await logAdminActivity({
+            adminId: req.user?.id || booking.user_id,
+            action: 'USER_UPDATE_BOOKING_PAYMENT',
+            targetType: 'booking',
+            targetId: booking.id,
+            beforeData: {
+                payment_status: before.payment_status,
+                payment_method: before.payment_method,
+                status: before.status,
+                hold_until: before.hold_until,
+            },
+            afterData: {
+                payment_status: booking.payment_status,
+                payment_method: booking.payment_method,
+                status: booking.status,
+                hold_until: booking.hold_until,
+            },
+            ...getRequestMeta(req),
+        });
+
+        // 🔔 Gửi thông báo cho owner khi thanh toán thành công
+        if (booking.field && booking.field.stadium && booking.field.stadium.owner_id) {
+            await createNotification(
+                booking.field.stadium.owner_id,
+                "Khách hàng đã xác nhận thanh toán. Vui lòng duyệt đơn đặt sân."
+            );
+            console.log("✅ Đã gửi thông báo cho owner:", booking.field.stadium.owner_id);
+        }
+
         // Broadcast sự kiện xác nhận đặt sân thành công
         const io = getIO();
-        io.emit('slotConfirmed', {
-            field_id: booking.field_id,
-            date: booking.booking_date,
-            start_time: booking.start_time
+        io.emit('slotConfirmed', { 
+            field_id: booking.field_id, 
+            date: booking.booking_date, 
+            start_time: booking.start_time 
         });
 
         res.json({
@@ -576,6 +858,179 @@ exports.updatePaymentStatus = async (req, res) => {
         });
     } catch (error) {
         console.error("Lỗi updatePaymentStatus:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.createBooking = async (req, res) => {
+    const transaction = await db.sequelize.transaction();
+
+    try {
+        const { field_id, stadium_id, booking_date, start_time, end_time, payment_type, coupon_code } = req.body;
+        const user_id = resolveBookingCreatorId(req, req.body);
+        const normalizedCouponCode = normalizeCouponCode(coupon_code) || null;
+        const normalizedStartTime = start_time.length === 5 ? `${start_time}:00` : start_time;
+
+        const field = await Field.findByPk(field_id, {
+            include: {
+                model: db.Stadium,
+                as: 'stadium',
+            },
+            transaction,
+        });
+
+        if (!field) {
+            await transaction.rollback();
+            return res.status(404).json({ success: false, message: 'Khong tim thay san' });
+        }
+
+        const existingBooking = await Booking.findOne({
+            where: {
+                field_id,
+                booking_date,
+                start_time: normalizedStartTime,
+                status: { [db.Sequelize.Op.notIn]: ['cancelled', 'expired', 'refunded'] },
+            },
+            transaction,
+            lock: transaction.LOCK.UPDATE,
+        });
+
+        if (existingBooking) {
+            const canExpirePendingBooking =
+                existingBooking.status === 'pending' &&
+                existingBooking.payment_status === 'unpaid' &&
+                existingBooking.hold_until &&
+                new Date() > new Date(existingBooking.hold_until);
+
+            if (canExpirePendingBooking) {
+                await existingBooking.update({ status: 'expired' }, { transaction });
+            } else {
+                await transaction.rollback();
+                return res.status(400).json({
+                    success: false,
+                    message: 'San hien dang duoc dat, vui long thu lai sau!',
+                });
+            }
+        }
+
+        const basePrice = Number(field.price_per_hour || 0);
+        let discountAmount = 0;
+
+        if (normalizedCouponCode) {
+            const coupon = await db.Coupon.findOne({
+                where: {
+                    code: normalizedCouponCode,
+                    is_active: true,
+                    [Op.or]: [{ user_id: null }, { user_id }],
+                },
+                transaction,
+            });
+
+            if (!coupon) {
+                await transaction.rollback();
+                return res.status(400).json({ success: false, message: 'Ma giam gia khong hop le' });
+            }
+
+            try {
+                await assertCouponUsageAllowed({
+                    Booking,
+                    userId: user_id,
+                    code: normalizedCouponCode,
+                    transaction,
+                });
+            } catch (usageError) {
+                await transaction.rollback();
+                return res.status(400).json({ success: false, message: usageError.message });
+            }
+
+            if (coupon.expires_at && new Date() > new Date(coupon.expires_at)) {
+                await transaction.rollback();
+                return res.status(400).json({ success: false, message: 'Coupon has expired' });
+            }
+
+            if (coupon.usage_limit && coupon.used_count >= coupon.usage_limit) {
+                await transaction.rollback();
+                return res.status(400).json({ success: false, message: 'Coupon usage limit exceeded' });
+            }
+
+            if (coupon.discount_type === 'percentage') {
+                discountAmount = (basePrice * Number(coupon.discount_value)) / 100;
+            } else {
+                discountAmount = Number(coupon.discount_value);
+            }
+
+            discountAmount = Math.min(discountAmount, basePrice);
+        }
+
+        const totalPrice = Math.max(basePrice - discountAmount, 0);
+        const isDeposit = payment_type === 'deposit';
+        const amountPaid = isDeposit ? totalPrice * 0.5 : totalPrice;
+        const holdUntilTime = new Date();
+
+        holdUntilTime.setMinutes(holdUntilTime.getMinutes() + 5);
+
+        const newBooking = await Booking.create({
+            field_id,
+            stadium_id,
+            user_id,
+            booking_date,
+            start_time,
+            end_time,
+            total_price: totalPrice,
+            amount_paid: amountPaid,
+            payment_type,
+            payment_method: 'Online',
+            payment_status: 'unpaid',
+            status: 'pending',
+            hold_until: holdUntilTime,
+            coupon_code: normalizedCouponCode,
+            discount_amount: discountAmount,
+        }, { transaction });
+
+        await transaction.commit();
+
+        await logAdminActivity({
+            adminId: user_id,
+            action: 'USER_CREATE_BOOKING',
+            targetType: 'booking',
+            targetId: newBooking.id,
+            afterData: {
+                field_id: newBooking.field_id,
+                stadium_id: newBooking.stadium_id,
+                booking_date: newBooking.booking_date,
+                start_time: newBooking.start_time,
+                end_time: newBooking.end_time,
+                total_price: newBooking.total_price,
+                discount_amount: newBooking.discount_amount,
+                coupon_code: newBooking.coupon_code,
+                payment_status: newBooking.payment_status,
+                status: newBooking.status,
+            },
+            ...getRequestMeta(req),
+        });
+
+        const io = getIO();
+        io.emit('slotLocked', {
+            field_id,
+            date: booking_date,
+            start_time: normalizedStartTime,
+            locked_by_user: user_id,
+        });
+
+        if (field?.stadium?.owner_id) {
+            await createNotification(field.stadium.owner_id, 'Ban co don dat san moi');
+        }
+
+        res.status(201).json({
+            success: true,
+            message: 'Gui yeu cau dat san thanh cong!',
+            data: newBooking,
+        });
+    } catch (error) {
+        if (!transaction.finished) {
+            await transaction.rollback();
+        }
+
         res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -703,5 +1158,190 @@ exports.markAsRead = async (req, res) => {
 
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+exports.markSingleNotificationAsRead = async (req, res) => {
+    try {
+        const { notificationId } = req.params;
+
+        await db.Notification.update(
+            { is_read: true },
+            { where: { id: notificationId, user_id: req.user.id } }
+        );
+
+        res.json({ success: true, message: "Đã đánh dấu thông báo là đã đọc" });
+
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.getRefundHistory = async (req, res) => {
+    try {
+        const ownerId = req.user?.id;
+
+        if (!ownerId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Khong xac dinh duoc nguoi dung!',
+            });
+        }
+
+        const myStadiums = await db.Stadium.findAll({
+            where: { owner_id: ownerId },
+            attributes: ['id'],
+        });
+
+        const stadiumIds = myStadiums.map((stadium) => stadium.id);
+
+        const refundHistory = await db.Booking.findAll({
+            where: {
+                status: 'refunded',
+                stadium_id: stadiumIds,
+            },
+            include: [
+                {
+                    model: db.Field,
+                    as: 'field',
+                    attributes: ['name'],
+                },
+                {
+                    model: db.User,
+                    as: 'user',
+                    attributes: ['name', 'phone'],
+                },
+            ],
+            order: [['refunded_at', 'DESC']],
+        });
+
+        return res.json({ success: true, data: refundHistory });
+    } catch (error) {
+        console.error('Loi lay lich su hoan tien owner:', error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.getAdminRefundHistory = async (req, res) => {
+    try {
+        const refundHistory = await db.Booking.findAll({
+            where: { status: 'refunded' },
+            include: [
+                {
+                    model: db.Field,
+                    as: 'field',
+                    attributes: ['name'],
+                    include: [
+                        {
+                            model: db.Stadium,
+                            as: 'stadium',
+                            attributes: ['name'],
+                        },
+                    ],
+                },
+                {
+                    model: db.User,
+                    as: 'user',
+                    attributes: ['name', 'phone'],
+                },
+            ],
+            order: [['refunded_at', 'DESC']],
+        });
+
+        return res.json({ success: true, data: refundHistory });
+    } catch (error) {
+        console.error('Loi lay lich su hoan tien admin:', error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.updatePaymentStatus = async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+        const { payment_status, payment_method } = req.body;
+
+        const booking = await db.Booking.findByPk(bookingId, {
+            include: {
+                model: db.Field,
+                as: 'field',
+                include: {
+                    model: db.Stadium,
+                    as: 'stadium'
+                }
+            }
+        });
+
+        if (!booking) {
+            return res.status(404).json({ success: false, message: "KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n hÃ ng!" });
+        }
+
+        const before = toPlain(booking);
+
+        if (!isAdminUser(req) && Number(booking.user_id) !== Number(req.user?.id)) {
+            return res.status(403).json({ success: false, message: "Ban khong co quyen cap nhat thanh toan don nay!" });
+        }
+
+        const nextPaymentStatus = payment_status || booking.payment_status || 'unpaid';
+
+        booking.payment_status = nextPaymentStatus;
+        booking.payment_method = payment_method || booking.payment_method || 'Online';
+        if (nextPaymentStatus !== 'unpaid' && booking.payment_recorded_at == null) {
+            booking.payment_recorded_at = booking.payment_completed_at || new Date();
+        }
+        if (nextPaymentStatus !== 'unpaid') {
+            booking.hold_until = null;
+        }
+
+        if (!shouldPreserveProcessedBookingStatus(booking.status)) {
+            booking.status = 'pending';
+        }
+
+        await booking.save();
+
+        await logAdminActivity({
+            adminId: req.user?.id || booking.user_id,
+            action: 'USER_UPDATE_BOOKING_PAYMENT',
+            targetType: 'booking',
+            targetId: booking.id,
+            beforeData: {
+                payment_status: before.payment_status,
+                payment_method: before.payment_method,
+                status: before.status,
+                hold_until: before.hold_until,
+            },
+            afterData: {
+                payment_status: booking.payment_status,
+                payment_method: booking.payment_method,
+                status: booking.status,
+                hold_until: booking.hold_until,
+            },
+            ...getRequestMeta(req),
+        });
+
+        if (booking.field && booking.field.stadium && booking.field.stadium.owner_id) {
+            await createNotification(
+                booking.field.stadium.owner_id,
+                "KhÃ¡ch hÃ ng Ä‘Ã£ xÃ¡c nháº­n thanh toÃ¡n. Vui lÃ²ng duyá»‡t Ä‘Æ¡n Ä‘áº·t sÃ¢n."
+            );
+            console.log("âœ… ÄÃ£ gá»­i thÃ´ng bÃ¡o cho owner:", booking.field.stadium.owner_id);
+        }
+
+        if (nextPaymentStatus !== 'unpaid') {
+            const io = getIO();
+            io.emit('slotConfirmed', {
+                field_id: booking.field_id,
+                date: booking.booking_date,
+                start_time: booking.start_time
+            });
+        }
+
+        res.json({
+            success: true,
+            message: "Cáº­p nháº­t tráº¡ng thÃ¡i thanh toÃ¡n thÃ nh cÃ´ng! Vui lÃ²ng chá» chá»§ sÃ¢n duyá»‡t.",
+            data: booking
+        });
+    } catch (error) {
+        console.error("Lá»—i updatePaymentStatus:", error);
+        res.status(500).json({ success: false, message: error.message });
     }
 };

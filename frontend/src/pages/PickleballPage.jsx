@@ -1,24 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import FieldCard from '../components/FieldCard';
+import { FIELD_TYPES, isFieldType } from '../constants/fieldTypes';
 
 const PickleballPage = () => {
   const [fields, setFields] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // URL Backend
   const backendUrl = 'http://localhost:5000';
 
   useEffect(() => {
     const fetchPickleballFields = async () => {
       try {
         const res = await axios.get(`${backendUrl}/api/fields`);
-
-        // Lọc dữ liệu: Pickleball thường chỉ có một tên gọi duy nhất
-        const pickleballOnly = res.data.filter((f) => {
-          const type = f.type?.toLowerCase() || '';
-          return type.includes('pickleball');
-        });
+        const pickleballOnly = res.data.filter((field) =>
+          isFieldType(field.type, FIELD_TYPES.PICKLEBALL)
+        );
 
         setFields(pickleballOnly);
       } catch (err) {
@@ -27,12 +24,12 @@ const PickleballPage = () => {
         setLoading(false);
       }
     };
+
     fetchPickleballFields();
   }, []);
 
   return (
     <div className="container py-5">
-      {/* Banner Header - Sử dụng tông màu Warning (Vàng/Cam) cho Pickleball */}
       <div className="mb-5 p-5 bg-dark text-white rounded-5 shadow-lg position-relative overflow-hidden">
         <div className="position-relative" style={{ zIndex: 1 }}>
           <h1 className="display-4 fw-bold">Sân Pickleball</h1>
@@ -60,33 +57,29 @@ const PickleballPage = () => {
       ) : (
         <div className="row g-4">
           {fields.length > 0 ? (
-            fields.map((f) => {
-              // XỬ LÝ ẢNH THÔNG MINH
-              const fileName = f.images?.[0]?.image_url;
-              // Link ảnh dự phòng chuyên về Pickleball
+            fields.map((field) => {
+              const fileName = field.images?.[0]?.image_url;
               let fullImageUrl =
                 'https://thethaovanhoa.mediacdn.vn/372676912336973824/2025/7/29/pickleball-la-gi-vi-sao-dan-kien-truc-lai-me-pickleball-1-1753772807239492681845.png';
 
               if (fileName) {
-                // Kiểm tra nếu là link URL tuyệt đối (http) thì không nối chuỗi backendUrl
                 fullImageUrl = fileName.startsWith('http')
                   ? fileName
                   : `${backendUrl}/uploads/${fileName}`;
               }
 
               return (
-                <div className="col-md-6 col-lg-4" key={f.id}>
+                <div className="col-md-6 col-lg-4" key={field.id}>
                   <FieldCard
                     field={{
-                      id: f.id,
-                      name: f.name,
-                      // Ưu tiên địa chỉ từ stadium, sau đó đến address của field, cuối cùng là mặc định
+                      id: field.id,
+                      name: field.name,
                       address:
-                        f.stadium?.location?.address ||
-                        f.address ||
+                        field.stadium?.location?.address ||
+                        field.address ||
                         'TP. Hồ Chí Minh',
-                      type: f.type,
-                      price: f.price_per_hour,
+                      type: field.type,
+                      price: field.price_per_hour,
                       image: fullImageUrl,
                     }}
                   />

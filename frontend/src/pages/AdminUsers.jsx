@@ -1,11 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
+const getAuthToken = () => {
+  const authData = localStorage.getItem('user');
+  if (!authData) return null;
+  try {
+    return JSON.parse(authData).token;
+  } catch (error) {
+    return authData;
+  }
+};
+
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
 
   const fetchUsers = async () => {
-    const res = await axios.get('http://localhost:5000/api/admin/users');
+    const res = await axios.get('http://localhost:5000/api/admin/users', {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
     setUsers(res.data);
   };
 
@@ -17,7 +29,10 @@ const AdminUsers = () => {
     try {
       await axios.patch(
         `http://localhost:5000/api/admin/users/${userId}/role`,
-        { role_id: newRoleId }
+        { role_id: newRoleId },
+        {
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
+        }
       );
       alert('Đã đổi quyền hạn!');
       fetchUsers();

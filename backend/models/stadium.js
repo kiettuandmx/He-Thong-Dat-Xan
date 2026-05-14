@@ -16,10 +16,17 @@ module.exports = (sequelize, DataTypes) => {
         as: 'fields' // Lam nên để là 'fields' (số nhiều) để dễ dùng ở Frontend
       });
       
-      // Nếu Lam có bảng User để quản lý Owner
       Stadium.belongsTo(models.User, {
         foreignKey: 'owner_id',
         as: 'owner'
+      });
+
+      // Quan hệ nhiều-nhiều với Hashtag qua bảng join StadiumHashtags
+      Stadium.belongsToMany(models.Hashtag, {
+        through: 'StadiumHashtags',
+        as: 'hashtags',
+        foreignKey: 'stadium_id',
+        otherKey: 'hashtag_id'
       });
     }
   }

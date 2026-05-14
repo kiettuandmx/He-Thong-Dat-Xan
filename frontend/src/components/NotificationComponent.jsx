@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
 
-const socket = io('http://localhost:5000', { transports: ['websocket'] });
-
 const NotificationComponent = () => {
   const [notifications, setNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -56,9 +54,22 @@ const NotificationComponent = () => {
     const userData = JSON.parse(localStorage.getItem('user'));
     const currentUser = userData?.user;
 
-    if (currentUser?.id) {
-      socket.emit('login', currentUser.id);
-    }
+    // Tạo socket connection
+    const socket = io('http://localhost:5000', { transports: ['websocket'] });
+
+    // Hàm đăng ký userId với server
+    const registerUser = () => {
+      if (currentUser?.id) {
+        socket.emit('login', currentUser.id);
+        console.log('📡 Đã emit login cho userId:', currentUser.id);
+      }
+    };
+
+    // Đăng ký ngay khi kết nối lần đầu
+    socket.on('connect', registerUser);
+
+    // Đăng ký lại sau khi reconnect (backend restart, mạng bị đứt...)
+    socket.on('reconnect', registerUser);
 
     fetchNotifications();
 
@@ -67,8 +78,12 @@ const NotificationComponent = () => {
       setNotifications((prev) => [data, ...prev]);
     });
 
+    // Dọn dẹp khi component unmount
     return () => {
+      socket.off('connect', registerUser);
+      socket.off('reconnect', registerUser);
       socket.off('newNotification');
+      socket.disconnect();
     };
   }, []);
 
@@ -87,17 +102,36 @@ const NotificationComponent = () => {
 
       // CẬP NHẬT TẠI CHỖ (Không gọi lại API để tránh bị mất danh sách)
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setShowDropdown(false);
     } catch (err) {
       console.error('Lỗi cập nhật trạng thái:', err);
+      setShowDropdown(false);
     }
   };
 
-  const handleNotificationClick = async () => {
-    // Có thể mark as read ở đây hoặc giữ nguyên logic hiện tại
-    // Đóng dropdown
+  const handleNotificationClick = async (notificationId) => {
+    const userData = JSON.parse(localStorage.getItem('user'));
+    const token = userData?.token;
+
+    try {
+      // Mark chỉ thông báo cụ thể này là đã đọc
+      await fetch(`http://localhost:5000/api/bookings/notifications/${notificationId}/read`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // CẬP NHẬT TẠI CHỖ - chỉ update thông báo này
+      setNotifications((prev) => 
+        prev.map((n) => n.id === notificationId ? { ...n, is_read: true } : n)
+      );
+    } catch (err) {
+      console.error('Lỗi cập nhật trạng thái:', err);
+    }
+
     setShowDropdown(false);
-    // Chuyển hướng sang trang lịch sử/duyệt đơn
-    navigate('/history');
+    const currentUser = userData?.user;
+    const isAdmin = Number(currentUser?.role_id || currentUser?.role) === 3;
+    navigate(isAdmin ? '/admin/history' : '/history');
   };
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
@@ -162,7 +196,7 @@ const NotificationComponent = () => {
               notifications.map((n, index) => (
                 <div
                   key={n.id || index}
-                  onClick={handleNotificationClick}
+                  onClick={() => handleNotificationClick(n.id)}
                   style={{
                     padding: '12px 16px',
                     borderBottom: '1px solid #f5f5f5',
@@ -194,9 +228,9 @@ const NotificationComponent = () => {
                     <span style={{ marginRight: '4px' }}>🕒</span>
                     {n.createdAt
                       ? new Date(n.createdAt).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
                       : 'Vừa xong'}
                   </div>
                 </div>
@@ -216,32 +250,34 @@ const NotificationComponent = () => {
           </div>
 
           {/* Nút bấm tinh tế */}
-          <div
-            style={{
-              padding: '8px',
-              borderTop: '1px solid #f0f0f0',
-              background: '#fff',
-            }}
-          >
-            <button
-              onClick={markAsRead}
+          {unreadCount > 0 && (
+            <div
               style={{
-                width: '100%',
-                border: 'none',
-                background: 'transparent',
                 padding: '8px',
-                color: '#010101',
-                fontSize: '13px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                borderRadius: '6px',
+                borderTop: '1px solid #f0f0f0',
+                background: '#fff',
               }}
-              onMouseEnter={(e) => (e.target.style.background = '#f0f9ff')}
-              onMouseLeave={(e) => (e.target.style.background = 'transparent')}
             >
-              ✓ Đánh dấu đã đọc
-            </button>
-          </div>
+              <button
+                onClick={markAsRead}
+                style={{
+                  width: '100%',
+                  border: 'none',
+                  background: 'transparent',
+                  padding: '8px',
+                  color: '#010101',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  borderRadius: '6px',
+                }}
+                onMouseEnter={(e) => (e.target.style.background = '#f0f9ff')}
+                onMouseLeave={(e) => (e.target.style.background = 'transparent')}
+              >
+                ✓ Đánh dấu đã đọc
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

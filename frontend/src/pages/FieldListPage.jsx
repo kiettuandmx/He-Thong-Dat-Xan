@@ -3,7 +3,7 @@ import axios from 'axios';
 import FieldCard from '../components/FieldCard';
 import FilterSidebar from '../components/FilterSidebar';
 
-const FieldListPage = () => {
+const FieldListPage = ({ detailBasePath = '/field' }) => {
   const [fields, setFields] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -104,6 +104,7 @@ const FieldListPage = () => {
                           : '0',
                         image: imageUrl
                       }}
+                      detailPath={`${detailBasePath}/${f.id}`}
                     />
                   </div>
                 );

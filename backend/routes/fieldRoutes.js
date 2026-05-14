@@ -1,7 +1,14 @@
 const express = require("express");
-const router = express.Router();
+const { Op, Sequelize } = require("sequelize");
 const upload = require("../middleware/upload");
-const { verifyToken } = require("../middleware/authMiddleware");
+const { verifyToken, checkRole } = require("../middleware/authMiddleware");
+const { logAdminActivity } = require("../utils/adminActivityLogger");
+const {
+  getFieldTypeVariants,
+  isValidFieldType,
+  normalizeFieldType,
+} = require("../utils/fieldTypes");
+const { getFieldDeletionGuard } = require("../utils/fieldDeletion");
 const {
   Field,
   Stadium,
@@ -11,17 +18,41 @@ const {
   Review,
   Booking,
   User,
+  Favorite,
 } = require("../models");
 
-// GET ALL FIELDS
+const router = express.Router();
+
+const getRequestMeta = (req) => ({
+  ipAddress: req.ip || req.headers["x-forwarded-for"] || null,
+  userAgent: req.headers["user-agent"] || null,
+});
+
+const toPlain = (instance) => (instance ? instance.get({ plain: true }) : null);
+const isAdminUser = (req) => Number(req.user?.role) === 3;
+
+const ensureStadiumAccess = async (req, stadiumId) => {
+  if (isAdminUser(req)) return true;
+  const stadium = await Stadium.findByPk(stadiumId);
+  return Number(stadium?.owner_id) === Number(req.user?.id);
+};
+
+const ensureFieldAccess = async (req, field) => {
+  if (isAdminUser(req)) return true;
+  const stadium = await Stadium.findByPk(field.stadium_id);
+  return Number(stadium?.owner_id) === Number(req.user?.id);
+};
+
 router.get("/fields", async (req, res) => {
   try {
     const { type } = req.query;
+    const condition = { status: "active" };
 
-    let condition = { status: "active" };
     if (type && type !== "Tất cả" && type !== "Trang chủ") {
-      const { Op } = require("sequelize");
-      condition.type = { [Op.like]: `%${type}%` };
+      const typeVariants = getFieldTypeVariants(type);
+      if (typeVariants.length > 0) {
+        condition.type = { [Op.in]: typeVariants };
+      }
     }
 
     const fields = await Field.findAll({
@@ -42,16 +73,17 @@ router.get("/fields", async (req, res) => {
   }
 });
 
-// BỘ LỌC TÌM KIẾM
 router.get("/fields/search", async (req, res) => {
   try {
     const { keyword, type, minPrice, maxPrice, minRating, sortBy, userLat, userLng } = req.query;
-    const { Op, Sequelize } = require("sequelize");
 
-    let fieldConditions = { status: "active" };
+    const fieldConditions = { status: "active" };
 
     if (type) {
-      fieldConditions.type = { [Op.like]: `%${type}%` };
+      const typeVariants = getFieldTypeVariants(type);
+      if (typeVariants.length > 0) {
+        fieldConditions.type = { [Op.in]: typeVariants };
+      }
     }
 
     if (minPrice || maxPrice) {
@@ -77,11 +109,11 @@ router.get("/fields/search", async (req, res) => {
           WHERE reviews.field_id = Field.id
         )`),
         ">=",
-        parseFloat(minRating),
+        parseFloat(minRating)
       );
     }
 
-    let attributesInclude = [
+    const attributesInclude = [
       [
         Sequelize.literal(`(
           SELECT COALESCE(AVG(rating), 0)
@@ -92,33 +124,37 @@ router.get("/fields/search", async (req, res) => {
       ],
     ];
 
-    if (sortBy === 'gan_nhat' && userLat && userLng) {
+    if (sortBy === "gan_nhat" && userLat && userLng) {
       const lat = parseFloat(userLat);
       const lng = parseFloat(userLng);
-      if (!isNaN(lat) && !isNaN(lng)) {
+      if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
         attributesInclude.push([
           Sequelize.literal(`6371 * acos(LEAST(1.0, cos(radians(${lat})) * cos(radians(\`stadium->location\`.\`latitude\`)) * cos(radians(\`stadium->location\`.\`longitude\`) - radians(${lng})) + sin(radians(${lat})) * sin(radians(\`stadium->location\`.\`latitude\`))))`),
-          "distance"
+          "distance",
         ]);
       }
     }
 
     let order = [["createdAt", "DESC"]];
-    if (sortBy === 'gia_tang') {
-      order = [['price_per_hour', 'ASC']];
-    } else if (sortBy === 'gia_giam') {
-      order = [['price_per_hour', 'DESC']];
-    } else if (sortBy === 'danh_gia') {
-      order = [[Sequelize.literal('averageRating'), 'DESC']];
-    } else if (sortBy === 'gan_nhat' && userLat && userLng && !isNaN(parseFloat(userLat)) && !isNaN(parseFloat(userLng))) {
-      order = [[Sequelize.literal('distance'), 'ASC']];
+    if (sortBy === "gia_tang") {
+      order = [["price_per_hour", "ASC"]];
+    } else if (sortBy === "gia_giam") {
+      order = [["price_per_hour", "DESC"]];
+    } else if (sortBy === "danh_gia") {
+      order = [[Sequelize.literal("averageRating"), "DESC"]];
+    } else if (
+      sortBy === "gan_nhat" &&
+      userLat &&
+      userLng &&
+      !Number.isNaN(parseFloat(userLat)) &&
+      !Number.isNaN(parseFloat(userLng))
+    ) {
+      order = [[Sequelize.literal("distance"), "ASC"]];
     }
 
     const fields = await Field.findAll({
       where: fieldConditions,
-      attributes: {
-        include: attributesInclude,
-      },
+      attributes: { include: attributesInclude },
       include: [
         { model: FieldImage, as: "images" },
         {
@@ -128,16 +164,8 @@ router.get("/fields/search", async (req, res) => {
         },
         ...(Review ? [{ model: Review, as: "reviews" }] : []),
       ],
-      order: order,
+      order,
     });
-
-    if (sortBy === 'gan_nhat') {
-      console.log('--- DEBUG: KẾT QUẢ TÍNH KHOẢNG CÁCH (HAVERSINE) ---');
-      fields.slice(0, 5).forEach((f, index) => {
-        console.log(`[Top ${index + 1}] Sân: ${f.name} | Quận: ${f.stadium?.location?.district} | Tọa độ sân: ${f.stadium?.location?.latitude}, ${f.stadium?.location?.longitude} | Distance: ${f.dataValues.distance} km`);
-      });
-      console.log('---------------------------------------------------');
-    }
 
     res.json(fields);
   } catch (err) {
@@ -145,7 +173,6 @@ router.get("/fields/search", async (req, res) => {
   }
 });
 
-// GET FIELD BY ID
 router.get("/fields/:id", async (req, res) => {
   try {
     const field = await Field.findByPk(req.params.id, {
@@ -157,37 +184,51 @@ router.get("/fields/:id", async (req, res) => {
         },
         { model: FieldImage, as: "images" },
         ...(Schedule ? [{ model: Schedule, as: "schedules" }] : []),
-        ...(Review ? [{ 
-          model: Review, 
-          as: "reviews",
-          include: [{ model: User, as: "user", attributes: ['name'] }]
-        }] : []),
+        ...(Review
+          ? [
+              {
+                model: Review,
+                as: "reviews",
+                include: [{ model: User, as: "user", attributes: ["name"] }],
+              },
+            ]
+          : []),
         {
           model: Booking,
           as: "bookings",
-          where: { status: { [require("sequelize").Op.ne]: "cancelled" } },
+          where: { status: { [Op.ne]: "cancelled" } },
           required: false,
         },
       ],
     });
 
-    if (!field) return res.status(404).json({ error: "Không tìm thấy sân" });
+    if (!field) return res.status(404).json({ error: "Khong tim thay san" });
     res.json(field);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// TẠO SÂN MỚI
-router.post("/fields", upload.single("image"), async (req, res) => {
+router.post("/fields", verifyToken, upload.single("image"), async (req, res) => {
   try {
     const { name, type, price_per_hour, stadium_id, status } = req.body;
+    const normalizedType = normalizeFieldType(type);
+    const finalStadiumId = stadium_id || 1;
+    const allowed = await ensureStadiumAccess(req, finalStadiumId);
+
+    if (!allowed) {
+      return res.status(403).json({ error: "Ban khong co quyen them san vao khu nay" });
+    }
+
+    if (!isValidFieldType(normalizedType)) {
+      return res.status(400).json({ error: "Loai san khong hop le" });
+    }
 
     const field = await Field.create({
       name,
-      type,
+      type: normalizedType,
       price_per_hour,
-      stadium_id: stadium_id || 1,
+      stadium_id: finalStadiumId,
       status: status || "pending",
     });
 
@@ -202,8 +243,17 @@ router.post("/fields", upload.single("image"), async (req, res) => {
       include: [{ model: FieldImage, as: "images" }],
     });
 
+    await logAdminActivity({
+      adminId: req.user?.id,
+      action: "OWNER_CREATE_FIELD",
+      targetType: "field",
+      targetId: field.id,
+      afterData: toPlain(fullField),
+      ...getRequestMeta(req),
+    });
+
     res.status(201).json({
-      message: "Tạo sân thành công",
+      message: "Tao san thanh cong",
       field: fullField,
     });
   } catch (err) {
@@ -211,35 +261,39 @@ router.post("/fields", upload.single("image"), async (req, res) => {
   }
 });
 
-// CẬP NHẬT SÂN
-router.put("/fields/:id", upload.single("image"), async (req, res) => {
+router.put("/fields/:id", verifyToken, upload.single("image"), async (req, res) => {
   try {
     const { name, type, price_per_hour, stadium_id, status } = req.body;
-
+    const normalizedType = normalizeFieldType(type);
     const field = await Field.findByPk(req.params.id);
 
     if (!field) {
-      return res.status(404).json({ error: "Không tìm thấy sân" });
+      return res.status(404).json({ error: "Khong tim thay san" });
     }
+
+    const allowed = await ensureFieldAccess(req, field);
+    if (!allowed) {
+      return res.status(403).json({ error: "Ban khong co quyen sua san nay" });
+    }
+
+    if (!isValidFieldType(normalizedType)) {
+      return res.status(400).json({ error: "Loai san khong hop le" });
+    }
+
+    const before = toPlain(field);
 
     await field.update({
       name,
-      type,
+      type: normalizedType,
       price_per_hour,
       stadium_id,
       status,
     });
 
-    // Nếu có ảnh mới => cập nhật ảnh cũ
     if (req.file) {
-      const oldImage = await FieldImage.findOne({
-        where: { field_id: field.id },
-      });
-
+      const oldImage = await FieldImage.findOne({ where: { field_id: field.id } });
       if (oldImage) {
-        await oldImage.update({
-          image_url: req.file.filename,
-        });
+        await oldImage.update({ image_url: req.file.filename });
       } else {
         await FieldImage.create({
           field_id: field.id,
@@ -252,8 +306,18 @@ router.put("/fields/:id", upload.single("image"), async (req, res) => {
       include: [{ model: FieldImage, as: "images" }],
     });
 
+    await logAdminActivity({
+      adminId: req.user?.id,
+      action: "OWNER_UPDATE_FIELD",
+      targetType: "field",
+      targetId: field.id,
+      beforeData: before,
+      afterData: toPlain(updatedField),
+      ...getRequestMeta(req),
+    });
+
     res.json({
-      message: "Cập nhật thành công",
+      message: "Cap nhat thanh cong",
       field: updatedField,
     });
   } catch (err) {
@@ -261,37 +325,73 @@ router.put("/fields/:id", upload.single("image"), async (req, res) => {
   }
 });
 
-// XÓA SÂN
-router.delete("/fields/:id", async (req, res) => {
+router.delete("/fields/:id", verifyToken, async (req, res) => {
   try {
     const field = await Field.findByPk(req.params.id);
-    if (!field) return res.status(404).json({ error: "Không tìm thấy sân" });
+    if (!field) return res.status(404).json({ error: "Khong tim thay san" });
 
+    const allowed = await ensureFieldAccess(req, field);
+    if (!allowed) {
+      return res.status(403).json({ error: "Ban khong co quyen xoa san nay" });
+    }
+
+    const bookingCount = await Booking.count({
+      where: { field_id: field.id },
+    });
+    const deletionGuard = getFieldDeletionGuard({ bookingCount });
+
+    if (!deletionGuard.canDelete) {
+      return res.status(deletionGuard.statusCode).json({ error: deletionGuard.error });
+    }
+
+    const before = toPlain(field);
+
+    await FieldImage.destroy({ where: { field_id: field.id } });
+    await Schedule.destroy({ where: { field_id: field.id } });
+    await Favorite.destroy({ where: { field_id: field.id } });
+    await Review.destroy({ where: { field_id: field.id } });
     await field.destroy();
-    res.json({ message: "Xoá sân thành công" });
+
+    await logAdminActivity({
+      adminId: req.user?.id,
+      action: "OWNER_DELETE_FIELD",
+      targetType: "field",
+      targetId: before.id,
+      beforeData: before,
+      ...getRequestMeta(req),
+    });
+
+    res.json({ message: "Xoa san thanh cong" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// UPLOAD ẢNH RIÊNG LẺ
-router.post("/upload-only", upload.single("image"), async (req, res) => {
+router.post("/upload-only", verifyToken, upload.single("image"), async (req, res) => {
   try {
     const { field_id } = req.body;
+    const field = await Field.findByPk(field_id);
+
+    if (!field) return res.status(404).json({ error: "Khong tim thay san" });
+
+    const allowed = await ensureFieldAccess(req, field);
+    if (!allowed) {
+      return res.status(403).json({ error: "Ban khong co quyen upload anh cho san nay" });
+    }
+
     const image = await FieldImage.create({
-      field_id: field_id,
+      field_id,
       image_url: req.file.filename,
     });
-    res.json({ message: "Upload thành công", image });
+
+    res.json({ message: "Upload thanh cong", image });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// LẤY DANH SÁCH SÂN CHO OWNER
 router.get("/owner/fields", verifyToken, async (req, res) => {
   try {
-    const { Op } = require("sequelize");
     const fields = await Field.findAll({
       where: {
         status: { [Op.in]: ["pending", "active", "rejected"] },
@@ -313,8 +413,7 @@ router.get("/owner/fields", verifyToken, async (req, res) => {
   }
 });
 
-// ADMIN: QUẢN LÝ TẤT CẢ SÂN
-router.get("/admin/fields", async (req, res) => {
+router.get("/admin/fields", verifyToken, checkRole([3, "admin", "ADMIN"]), async (req, res) => {
   try {
     const fields = await Field.findAll({
       include: [
@@ -333,16 +432,27 @@ router.get("/admin/fields", async (req, res) => {
   }
 });
 
-// ADMIN: CẬP NHẬT TRẠNG THÁI SÂN LẺ
-router.patch("/fields/:id/status", async (req, res) => {
+router.patch("/fields/:id/status", verifyToken, checkRole([3, "admin", "ADMIN"]), async (req, res) => {
   try {
     const { status } = req.body;
     const field = await Field.findByPk(req.params.id);
 
-    if (!field) return res.status(404).json({ error: "Không tìm thấy sân" });
+    if (!field) return res.status(404).json({ error: "Khong tim thay san" });
 
+    const before = toPlain(field);
     await field.update({ status });
-    res.json({ message: "Đã cập nhật trạng thái sân thành công", field });
+
+    await logAdminActivity({
+      adminId: req.user?.id,
+      action: "ADMIN_UPDATE_FIELD_STATUS",
+      targetType: "field",
+      targetId: field.id,
+      beforeData: { status: before.status },
+      afterData: { status: field.status },
+      ...getRequestMeta(req),
+    });
+
+    res.json({ message: "Da cap nhat trang thai san thanh cong", field });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

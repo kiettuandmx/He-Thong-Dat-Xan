@@ -4,11 +4,12 @@ import axios from 'axios';
 
 const Delete = ({ id, onSuccess }) => {
   const handleDelete = async () => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa sân này?')) {
+    if (window.confirm('Ban co chac chan muon xoa san nay?')) {
       const authData = JSON.parse(localStorage.getItem('user'));
       const token = authData?.token;
+
       if (!token) {
-        alert('Vui lòng đăng nhập để xóa sân.');
+        alert('Vui long dang nhap de xoa san.');
         return;
       }
 
@@ -16,11 +17,15 @@ const Delete = ({ id, onSuccess }) => {
         await axios.delete(`http://localhost:5000/api/fields/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        alert('Xóa thành công!');
-        if (onSuccess) onSuccess(id); // Gọi hàm này để trang cha xóa item khỏi state
+        alert('Xoa thanh cong!');
+
+        if (onSuccess) {
+          onSuccess(id);
+        }
       } catch (err) {
         alert(
-          'Lỗi khi xóa sân! ' + (err.response?.data?.message || err.message)
+          'Loi khi xoa san! ' +
+            (err.response?.data?.error || err.response?.data?.message || err.message)
         );
       }
     }
@@ -31,7 +36,7 @@ const Delete = ({ id, onSuccess }) => {
       onClick={handleDelete}
       className="btn btn-outline-danger btn-sm rounded-pill"
     >
-      <i className="bi bi-trash"></i> Xóa
+      <i className="bi bi-trash"></i> Xoa
     </button>
   );
 };

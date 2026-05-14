@@ -1,5 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
+import StadiumHashtagModal from '../components/StadiumHashtagModal';
+
+const getAuthToken = () => {
+  const authData = JSON.parse(localStorage.getItem('user') || '{}');
+  return authData?.token || null;
+};
+
+const getCurrentUserId = () =>
+  JSON.parse(localStorage.getItem('user') || '{}')?.user?.id;
 
 const ManageStadiums = () => {
   const [stadiums, setStadiums] = useState([]);
@@ -10,7 +19,10 @@ const ManageStadiums = () => {
     description: '',
     address: '',
     location_id: '',
+    status: 'active',
   });
+  const [isHashtagModalOpen, setIsHashtagModalOpen] = useState(false);
+  const [selectedStadium, setSelectedStadium] = useState(null);
 
   useEffect(() => {
     fetchStadiums();
@@ -18,12 +30,28 @@ const ManageStadiums = () => {
 
   const fetchStadiums = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/stadiums');
+      const ownerId = getCurrentUserId();
+      const token = getAuthToken();
+      const res = await axios.get(`http://localhost:5000/api/stadiums/owner/${ownerId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setStadiums(Array.isArray(res.data) ? res.data : res.data.data || []);
     } catch (err) {
       console.error(err);
+      setStadiums([]);
     }
   };
+
+  const summary = useMemo(() => {
+    const activeCount = stadiums.filter((stadium) => stadium.status === 'active').length;
+    const otherCount = stadiums.length - activeCount;
+
+    return {
+      total: stadiums.length,
+      activeCount,
+      otherCount,
+    };
+  }, [stadiums]);
 
   const handleEdit = (stadium) => {
     setIsEditing(true);
@@ -38,8 +66,20 @@ const ManageStadiums = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const resetForm = () => {
+    setIsEditing(false);
+    setCurrentId(null);
+    setFormData({
+      name: '',
+      description: '',
+      address: '',
+      location_id: '',
+      status: 'active',
+    });
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
     const payload = {
       name: formData.name,
@@ -47,160 +87,455 @@ const ManageStadiums = () => {
       status: formData.status || 'active',
       address: formData.address,
       location_id: isEditing ? formData.location_id : null,
-      owner_id: JSON.parse(localStorage.getItem('user'))?.user?.id || 2,
+      owner_id: getCurrentUserId(),
     };
 
     try {
+      const token = getAuthToken();
       if (isEditing && currentId) {
-        await axios.put(
-          `http://localhost:5000/api/stadiums/${currentId}`,
-          payload
-        );
-        alert('Cập nhật thành công!');
+        await axios.put(`http://localhost:5000/api/stadiums/${currentId}`, payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        alert('Cap nhat thanh cong!');
       } else {
-        await axios.post('http://localhost:5000/api/stadiums', payload);
-        alert('Thêm khu mới thành công!');
+        await axios.post('http://localhost:5000/api/stadiums', payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        alert('Them khu moi thanh cong!');
       }
 
-      setFormData({
-        name: '',
-        description: '',
-        address: '',
-        location_id: '',
-        status: 'active',
-      });
-      setIsEditing(false);
-      setCurrentId(null);
+      resetForm();
       fetchStadiums();
     } catch (err) {
-      console.error('Chi tiết lỗi:', err.response?.data);
-      alert('Lỗi: ' + (err.response?.data?.error || 'Thao tác thất bại'));
+      alert(err.response?.data?.error || 'Thao tac that bai');
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Xóa khu này sẽ mất hết dữ liệu sân bên trong!')) {
-      try {
-        await axios.delete(`http://localhost:5000/api/stadiums/${id}`);
-        fetchStadiums();
-      } catch (err) {
-        alert('Không thể xóa!', err);
-      }
+    if (!window.confirm('Xoa khu nay se mat het du lieu san ben trong!')) return;
+
+    try {
+      const token = getAuthToken();
+      await axios.delete(`http://localhost:5000/api/stadiums/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      fetchStadiums();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Khong the xoa!');
     }
   };
 
   return (
-    <div className="container mt-4">
-      <h2 className="mb-4">
-        🏢 {isEditing ? 'Sửa Khu Sân' : 'Quản lý Khu Sân (Stadiums)'}
-      </h2>
-      <div className="row">
-        <div className="col-md-4">
-          <div
-            className={`card p-3 shadow-sm ${isEditing ? 'border-warning' : ''}`}
-          >
-            <h5>{isEditing ? 'Cập nhật thông tin' : 'Thêm khu mới'}</h5>
-            <form onSubmit={handleSubmit}>
-              <label className="small fw-bold">Tên khu sân</label>
-              <input
-                className="form-control mb-2"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                required
-              />
+    <div className="stadium-workspace">
+      <section className="workspace-hero">
+        <div>
+          <span className="workspace-tag">Owner Studio</span>
+          <h1>Quan ly khu san bang mot khong gian gon, dep va de van hanh.</h1>
+          <p>
+            Them khu moi, sua thong tin, gan hashtag va theo doi trang thai ngay tren
+            cung mot man hinh.
+          </p>
+        </div>
 
-              <label className="small fw-bold">Mô tả</label>
-              <textarea
-                className="form-control mb-2"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-              />
-
-              <label className="small fw-bold">Địa chỉ</label>
-              <input
-                className="form-control mb-2"
-                value={formData.address}
-                onChange={(e) =>
-                  setFormData({ ...formData, address: e.target.value })
-                }
-                required
-              />
-
-              <button
-                className={`btn w-100 mt-2 ${isEditing ? 'btn-warning' : 'btn-success'}`}
-              >
-                {isEditing ? 'Cập nhật' : 'Lưu Khu'}
-              </button>
-              {isEditing && (
-                <button
-                  type="button"
-                  className="btn btn-link w-100 text-secondary"
-                  onClick={() => {
-                    setIsEditing(false);
-                    setCurrentId(null);
-                    setFormData({
-                      name: '',
-                      description: '',
-                      address: '',
-                      location_id: '',
-                    });
-                  }}
-                >
-                  Hủy
-                </button>
-              )}
-            </form>
+        <div className="workspace-summary">
+          <div>
+            <small>Tong khu san</small>
+            <strong>{summary.total}</strong>
+          </div>
+          <div>
+            <small>Dang hoat dong</small>
+            <strong>{summary.activeCount}</strong>
+          </div>
+          <div>
+            <small>Can xem lai</small>
+            <strong>{summary.otherCount}</strong>
           </div>
         </div>
+      </section>
 
-        <div className="col-md-8">
-          <table className="table table-hover border bg-white shadow-sm">
-            <thead className="table-dark">
-              <tr>
-                <th>Tên Khu</th>
-                <th>Địa chỉ</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stadiums.length > 0 ? (
-                stadiums.map((s) => (
-                  <tr key={s.id}>
-                    <td className="fw-bold">{s.name}</td>
-                    <td>
-                      {s.location?.address || s.address || 'Chưa có địa chỉ'}
-                    </td>
-                    <td>
-                      <button
-                        className="btn btn-sm btn-outline-primary me-2"
-                        onClick={() => handleEdit(s)}
-                      >
-                        Sửa
-                      </button>
-                      <button
-                        className="btn btn-sm btn-outline-danger"
-                        onClick={() => handleDelete(s.id)}
-                      >
-                        Xóa
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="3" className="text-center">
-                    Chưa có dữ liệu khu sân
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <section className="workspace-grid">
+        <article className="workspace-card workspace-form-card">
+          <div className="card-head">
+            <div>
+              <span className="mini-kicker">{isEditing ? 'Edit mode' : 'Create mode'}</span>
+              <h2>{isEditing ? 'Cap nhat khu san' : 'Them khu san moi'}</h2>
+            </div>
+            {isEditing && (
+              <button type="button" className="ghost-button" onClick={resetForm}>
+                Huy chinh sua
+              </button>
+            )}
+          </div>
+
+          <form onSubmit={handleSubmit} className="workspace-form">
+            <label>Ten khu san</label>
+            <input
+              value={formData.name}
+              onChange={(event) => setFormData({ ...formData, name: event.target.value })}
+              required
+            />
+
+            <label>Mo ta ngan</label>
+            <textarea
+              rows="4"
+              value={formData.description}
+              onChange={(event) =>
+                setFormData({ ...formData, description: event.target.value })
+              }
+              placeholder="Mo ta diem noi bat, dich vu, gio mo cua..."
+            />
+
+            <label>Dia chi</label>
+            <input
+              value={formData.address}
+              onChange={(event) => setFormData({ ...formData, address: event.target.value })}
+              required
+            />
+
+            <button type="submit" className="primary-button">
+              {isEditing ? 'Luu thay doi' : 'Tao khu san'}
+            </button>
+          </form>
+        </article>
+
+        <article className="workspace-card">
+          <div className="card-head">
+            <div>
+              <span className="mini-kicker">Portfolio</span>
+              <h2>Danh sach khu san</h2>
+            </div>
+          </div>
+
+          <div className="stadium-list">
+            {stadiums.length > 0 ? (
+              stadiums.map((stadium) => (
+                <div key={stadium.id} className="stadium-item">
+                  <div className="stadium-copy">
+                    <div className="stadium-title-row">
+                      <h3>{stadium.name}</h3>
+                      <span className={`status-badge ${stadium.status || 'active'}`}>
+                        {stadium.status || 'active'}
+                      </span>
+                    </div>
+                    <p>{stadium.description || 'Chua co mo ta cho khu san nay.'}</p>
+                    <span>{stadium.location?.address || stadium.address || 'Chua co dia chi'}</span>
+                  </div>
+
+                  <div className="stadium-actions">
+                    <button type="button" onClick={() => handleEdit(stadium)}>
+                      Sua
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedStadium(stadium);
+                        setIsHashtagModalOpen(true);
+                      }}
+                    >
+                      Hashtag
+                    </button>
+                    <button type="button" className="danger" onClick={() => handleDelete(stadium.id)}>
+                      Xoa
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="empty-state">Chua co du lieu khu san de hien thi.</div>
+            )}
+          </div>
+        </article>
+      </section>
+
+      <StadiumHashtagModal
+        stadium={selectedStadium}
+        isOpen={isHashtagModalOpen}
+        onClose={() => setIsHashtagModalOpen(false)}
+        onSave={fetchStadiums}
+      />
+
+      <style>{`
+        .stadium-workspace {
+          --ink: #17324d;
+          --muted: #617286;
+          --gold: #d28a32;
+          --mint: #1e8b77;
+          --paper: rgba(255, 255, 255, 0.9);
+          --line: rgba(23, 50, 77, 0.1);
+          padding: 28px;
+          min-height: 100vh;
+          background:
+            radial-gradient(circle at top left, rgba(243, 190, 106, 0.24), transparent 28%),
+            linear-gradient(180deg, #f7f1e8 0%, #f7fafc 45%, #eef6fb 100%);
+          color: var(--ink);
+          font-family: 'Poppins', 'Segoe UI', sans-serif;
+        }
+
+        .workspace-hero,
+        .workspace-card {
+          border: 1px solid var(--line);
+          box-shadow: 0 20px 48px rgba(20, 43, 70, 0.09);
+        }
+
+        .workspace-hero {
+          display: grid;
+          grid-template-columns: 1.5fr 1fr;
+          gap: 18px;
+          padding: 28px;
+          border-radius: 28px;
+          background: rgba(255, 255, 255, 0.82);
+          backdrop-filter: blur(16px);
+          margin-bottom: 24px;
+        }
+
+        .workspace-tag,
+        .mini-kicker {
+          display: inline-flex;
+          padding: 7px 12px;
+          border-radius: 999px;
+          background: rgba(210, 138, 50, 0.14);
+          color: #ad6515;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          font-size: 0.78rem;
+          font-weight: 700;
+        }
+
+        .workspace-hero h1 {
+          margin: 16px 0 10px;
+          font-size: clamp(1.9rem, 3vw, 3rem);
+          line-height: 1.1;
+          font-weight: 800;
+        }
+
+        .workspace-hero p {
+          margin: 0;
+          color: var(--muted);
+          line-height: 1.75;
+          max-width: 680px;
+        }
+
+        .workspace-summary {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 12px;
+        }
+
+        .workspace-summary div {
+          padding: 18px;
+          border-radius: 22px;
+          background: linear-gradient(135deg, #17324d, #244f74);
+          color: #fff;
+        }
+
+        .workspace-summary small {
+          color: rgba(240, 245, 252, 0.72);
+        }
+
+        .workspace-summary strong {
+          display: block;
+          margin-top: 6px;
+          font-size: 2rem;
+        }
+
+        .workspace-grid {
+          display: grid;
+          grid-template-columns: 420px minmax(0, 1fr);
+          gap: 20px;
+        }
+
+        .workspace-card {
+          padding: 24px;
+          border-radius: 28px;
+          background: var(--paper);
+        }
+
+        .card-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 16px;
+          margin-bottom: 22px;
+        }
+
+        .card-head h2 {
+          margin: 10px 0 0;
+          font-size: 1.45rem;
+          font-weight: 800;
+        }
+
+        .ghost-button,
+        .primary-button,
+        .stadium-actions button {
+          border: none;
+          border-radius: 16px;
+          font-weight: 700;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .ghost-button {
+          padding: 11px 14px;
+          background: rgba(23, 50, 77, 0.08);
+          color: var(--ink);
+        }
+
+        .primary-button {
+          padding: 14px 18px;
+          background: linear-gradient(135deg, #17324d, #2f6895);
+          color: #fff;
+          box-shadow: 0 16px 30px rgba(23, 50, 77, 0.18);
+        }
+
+        .workspace-form {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .workspace-form label {
+          font-size: 0.9rem;
+          font-weight: 700;
+        }
+
+        .workspace-form input,
+        .workspace-form textarea {
+          width: 100%;
+          border: 1px solid rgba(23, 50, 77, 0.12);
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.95);
+          padding: 14px 16px;
+          outline: none;
+        }
+
+        .workspace-form textarea {
+          resize: vertical;
+          min-height: 120px;
+        }
+
+        .stadium-list {
+          display: grid;
+          gap: 16px;
+        }
+
+        .stadium-item {
+          display: flex;
+          justify-content: space-between;
+          gap: 18px;
+          padding: 18px;
+          border-radius: 24px;
+          background: rgba(249, 251, 255, 0.95);
+          border: 1px solid rgba(23, 50, 77, 0.08);
+        }
+
+        .stadium-copy h3 {
+          margin: 0;
+          font-size: 1.15rem;
+          font-weight: 800;
+        }
+
+        .stadium-title-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+          margin-bottom: 8px;
+        }
+
+        .stadium-copy p,
+        .stadium-copy span {
+          margin: 0;
+          color: var(--muted);
+          line-height: 1.65;
+        }
+
+        .stadium-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          min-width: 120px;
+        }
+
+        .stadium-actions button {
+          padding: 10px 14px;
+          background: rgba(23, 50, 77, 0.08);
+          color: var(--ink);
+        }
+
+        .stadium-actions .danger {
+          background: rgba(183, 52, 52, 0.1);
+          color: #a12626;
+        }
+
+        .status-badge {
+          display: inline-flex;
+          align-items: center;
+          padding: 6px 12px;
+          border-radius: 999px;
+          font-size: 0.78rem;
+          font-weight: 700;
+          text-transform: capitalize;
+        }
+
+        .status-badge.active {
+          background: rgba(30, 139, 119, 0.12);
+          color: var(--mint);
+        }
+
+        .status-badge.pending {
+          background: rgba(210, 138, 50, 0.14);
+          color: #ad6515;
+        }
+
+        .status-badge.rejected {
+          background: rgba(183, 52, 52, 0.12);
+          color: #a12626;
+        }
+
+        .empty-state {
+          padding: 28px;
+          border-radius: 22px;
+          text-align: center;
+          color: var(--muted);
+          background: rgba(255, 255, 255, 0.75);
+          border: 1px dashed rgba(23, 50, 77, 0.15);
+        }
+
+        @media (max-width: 1100px) {
+          .workspace-hero,
+          .workspace-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 700px) {
+          .stadium-workspace {
+            padding: 16px;
+          }
+
+          .workspace-hero,
+          .workspace-card,
+          .stadium-item {
+            padding: 20px;
+            border-radius: 22px;
+          }
+
+          .stadium-item {
+            flex-direction: column;
+          }
+
+          .stadium-actions {
+            flex-direction: row;
+            min-width: 0;
+            flex-wrap: wrap;
+          }
+
+          .stadium-actions button,
+          .ghost-button,
+          .primary-button {
+            width: 100%;
+          }
+        }
+      `}</style>
     </div>
   );
 };

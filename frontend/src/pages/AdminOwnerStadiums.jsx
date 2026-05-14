@@ -1,0 +1,273 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
+
+const getAuthHeader = () => {
+  const authData = JSON.parse(localStorage.getItem('user') || '{}');
+  return {
+    Authorization: `Bearer ${authData?.token || ''}`,
+  };
+};
+
+const emptyForm = {
+  name: '',
+  description: '',
+  address: '',
+  owner_id: '',
+  status: 'active',
+  location_id: '',
+};
+
+const AdminOwnerStadiums = () => {
+  const [stadiums, setStadiums] = useState([]);
+  const [owners, setOwners] = useState([]);
+  const [formData, setFormData] = useState(emptyForm);
+  const [editingId, setEditingId] = useState(null);
+
+  const loadData = async () => {
+    try {
+      const headers = getAuthHeader();
+      const [stadiumRes, userRes] = await Promise.all([
+        axios.get('http://localhost:5000/api/admin/stadiums', { headers }),
+        axios.get('http://localhost:5000/api/admin/users', { headers }),
+      ]);
+
+      setStadiums(stadiumRes.data || []);
+      setOwners((userRes.data || []).filter((user) => Number(user.role_id) === 2));
+    } catch (error) {
+      console.error('Loi tai danh sach khu san admin:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const summary = useMemo(() => {
+    const activeCount = stadiums.filter((stadium) => stadium.status === 'active').length;
+    return {
+      total: stadiums.length,
+      activeCount,
+      reviewingCount: stadiums.length - activeCount,
+    };
+  }, [stadiums]);
+
+  const handleEdit = (stadium) => {
+    setEditingId(stadium.id);
+    setFormData({
+      name: stadium.name || '',
+      description: stadium.description || '',
+      address: stadium.location?.address || '',
+      owner_id: stadium.owner_id || '',
+      status: stadium.status || 'active',
+      location_id: stadium.location_id || '',
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setFormData(emptyForm);
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    try {
+      const headers = getAuthHeader();
+      const payload = {
+        name: formData.name,
+        description: formData.description,
+        address: formData.address,
+        owner_id: Number(formData.owner_id),
+        status: formData.status,
+        location_id: formData.location_id || undefined,
+      };
+
+      if (editingId) {
+        await axios.put(`http://localhost:5000/api/stadiums/${editingId}`, payload, { headers });
+      } else {
+        await axios.post('http://localhost:5000/api/stadiums', payload, { headers });
+      }
+
+      resetForm();
+      loadData();
+    } catch (error) {
+      alert(error.response?.data?.error || 'Khong the luu khu san.');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Ban chac chan muon xoa khu san nay?')) return;
+
+    try {
+      await axios.delete(`http://localhost:5000/api/stadiums/${id}`, { headers: getAuthHeader() });
+      loadData();
+    } catch (error) {
+      alert(error.response?.data?.error || 'Khong the xoa khu san.');
+    }
+  };
+
+  return (
+    <div className="container-fluid px-0">
+      <div className="row g-4">
+        <div className="col-xl-4">
+          <div className="bg-white border rounded-4 shadow-sm p-4">
+            <div className="d-flex justify-content-between align-items-start mb-4">
+              <div>
+                <span className="badge text-bg-success rounded-pill px-3 py-2 mb-2">Admin Stadium Desk</span>
+                <h3 className="fw-bold mb-1">{editingId ? 'Cap nhat khu san' : 'Tao khu san moi'}</h3>
+                <p className="text-muted mb-0">Admin co the tao va phan cong khu san cho owner.</p>
+              </div>
+              {editingId && (
+                <button className="btn btn-outline-secondary btn-sm rounded-pill" onClick={resetForm}>
+                  Huy
+                </button>
+              )}
+            </div>
+
+            <form className="d-grid gap-3" onSubmit={handleSubmit}>
+              <div>
+                <label className="form-label fw-semibold">Ten khu san</label>
+                <input
+                  className="form-control"
+                  value={formData.name}
+                  onChange={(event) => setFormData({ ...formData, name: event.target.value })}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="form-label fw-semibold">Owner phu trach</label>
+                <select
+                  className="form-select"
+                  value={formData.owner_id}
+                  onChange={(event) => setFormData({ ...formData, owner_id: event.target.value })}
+                  required
+                >
+                  <option value="">-- Chon owner --</option>
+                  {owners.map((owner) => (
+                    <option key={owner.id} value={owner.id}>
+                      {owner.name} - {owner.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label fw-semibold">Dia chi</label>
+                <input
+                  className="form-control"
+                  value={formData.address}
+                  onChange={(event) => setFormData({ ...formData, address: event.target.value })}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="form-label fw-semibold">Mo ta</label>
+                <textarea
+                  className="form-control"
+                  rows="4"
+                  value={formData.description}
+                  onChange={(event) => setFormData({ ...formData, description: event.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="form-label fw-semibold">Trang thai</label>
+                <select
+                  className="form-select"
+                  value={formData.status}
+                  onChange={(event) => setFormData({ ...formData, status: event.target.value })}
+                >
+                  <option value="active">active</option>
+                  <option value="inactive">inactive</option>
+                </select>
+              </div>
+
+              <button className="btn btn-success rounded-pill" type="submit">
+                {editingId ? 'Luu thay doi' : 'Tao khu san'}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div className="col-xl-8">
+          <div className="row g-3 mb-3">
+            <div className="col-md-4">
+              <div className="bg-white border rounded-4 shadow-sm p-3">
+                <small className="text-muted d-block mb-1">Tong khu san</small>
+                <div className="fs-2 fw-bold">{summary.total}</div>
+              </div>
+            </div>
+            <div className="col-md-4">
+              <div className="bg-white border rounded-4 shadow-sm p-3">
+                <small className="text-muted d-block mb-1">Dang hoat dong</small>
+                <div className="fs-2 fw-bold text-success">{summary.activeCount}</div>
+              </div>
+            </div>
+            <div className="col-md-4">
+              <div className="bg-white border rounded-4 shadow-sm p-3">
+                <small className="text-muted d-block mb-1">Can xem lai</small>
+                <div className="fs-2 fw-bold text-warning">{summary.reviewingCount}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white border rounded-4 shadow-sm p-4">
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <h3 className="fw-bold mb-1">Danh sach khu san toan he thong</h3>
+                <p className="text-muted mb-0">Quan ly khu san theo owner ngay trong dashboard admin.</p>
+              </div>
+            </div>
+
+            <div className="row g-3">
+              {stadiums.map((stadium) => (
+                <div className="col-12" key={stadium.id}>
+                  <div className="border rounded-4 p-3">
+                    <div className="d-flex flex-wrap justify-content-between gap-3">
+                      <div>
+                        <div className="d-flex align-items-center gap-2 mb-2">
+                          <h5 className="fw-bold mb-0">{stadium.name}</h5>
+                          <span className={`badge ${stadium.status === 'active' ? 'text-bg-success' : 'text-bg-secondary'}`}>
+                            {stadium.status || 'inactive'}
+                          </span>
+                        </div>
+                        <div className="text-muted small mb-1">
+                          Owner: <strong>{stadium.owner?.name || 'Chua gan'}</strong>
+                        </div>
+                        <div className="text-muted small mb-1">
+                          Email: {stadium.owner?.email || 'N/A'}
+                        </div>
+                        <div className="text-muted small mb-1">
+                          Dia chi: {stadium.location?.address || 'Chua co dia chi'}
+                        </div>
+                        <div className="small">{stadium.description || 'Chua co mo ta'}</div>
+                      </div>
+
+                      <div className="d-flex gap-2 align-items-start">
+                        <button className="btn btn-outline-primary btn-sm rounded-pill" onClick={() => handleEdit(stadium)}>
+                          Sua
+                        </button>
+                        <button className="btn btn-outline-danger btn-sm rounded-pill" onClick={() => handleDelete(stadium.id)}>
+                          Xoa
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {stadiums.length === 0 && (
+                <div className="col-12 text-center text-muted py-5">Chua co khu san nao trong he thong.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AdminOwnerStadiums;

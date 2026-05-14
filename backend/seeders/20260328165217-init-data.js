@@ -200,7 +200,39 @@ module.exports = {
 
 
 
-    // 11. NOTIFICATIONS
+    // 11. COUPONS
+    await queryInterface.bulkInsert("Coupons", [
+      {
+        id: 1,
+        code: "KHACHMOI",
+        discount_type: "percentage",
+        discount_value: 20,
+        usage_limit: null,
+        used_count: 0,
+        expires_at: null,
+        is_active: true,
+        description: "Giam 20% cho tai khoan dung lan dau",
+        user_id: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: 2,
+        code: "THANGMOI",
+        discount_type: "percentage",
+        discount_value: 20,
+        usage_limit: null,
+        used_count: 0,
+        expires_at: null,
+        is_active: true,
+        description: "Giam 20% moi thang, moi tai khoan dung 1 lan",
+        user_id: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ]);
+
+    // 12. NOTIFICATIONS
 
     await queryInterface.bulkInsert("Notifications", [
       {
@@ -217,6 +249,7 @@ module.exports = {
     // Xóa theo thứ tự ngược lại để tránh lỗi ràng buộc (Foreign Key Constraint)
     const tables = [
       "Notifications",
+      "Coupons",
       "Reviews",
       "Payments",
       "Bookings",
