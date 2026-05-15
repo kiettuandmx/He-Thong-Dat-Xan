@@ -2,9 +2,9 @@ const express = require("express");
 const { Op } = require("sequelize");
 const { verifyToken, checkRole } = require("../middleware/authMiddleware");
 const { User, Role, Stadium, Location, Field, Notification, AdminActivityLog, Booking } = require("../models");
-const socketManager = require("../socket");
 const { logAdminActivity } = require("../utils/adminActivityLogger");
 const complaintController = require("../controllers/complaintController");
+const { createNotificationsForUsers } = require("../utils/notificationHelper");
 
 const router = express.Router();
 
@@ -160,33 +160,41 @@ router.get("/bookings", async (req, res) => {
 router.post("/send-global-notification", async (req, res) => {
   try {
     const { title, content, type } = req.body;
-
-    const newNoti = await Notification.create({
-      title,
-      content,
-      type,
-      user_id: null,
-      is_read: false,
-      createdAt: new Date(),
+    const users = await User.findAll({
+      attributes: ["id", "role_id"],
     });
 
-    const io = socketManager.getIO();
-    io.emit("new_notification", newNoti);
+    const notifications = await createNotificationsForUsers(
+      users.map((user) => ({
+        userId: user.id,
+        title: title || "Thong bao he thong",
+        content,
+        type: type || "system_announcement",
+        targetType: "announcement",
+        targetRoute:
+          Number(user.role_id) === 3
+            ? "/admin/dashboard"
+            : Number(user.role_id) === 2
+              ? "/owner/dashboard"
+              : "/",
+      }))
+    );
 
     await logAdminActivity({
       adminId: req.user?.id,
       action: "GLOBAL_NOTIFICATION_CREATE",
       targetType: "notification",
-      targetId: newNoti.id,
+      targetId: notifications[0]?.id,
       afterData: {
-        title: newNoti.title,
-        content: newNoti.content,
-        type: newNoti.type,
+        title: title || "Thong bao he thong",
+        content,
+        type: type || "system_announcement",
+        recipients: notifications.length,
       },
       ...getRequestMeta(req),
     });
 
-    res.json({ success: true, data: newNoti });
+    res.json({ success: true, data: notifications });
   } catch (err) {
     console.error("Loi khi gui thong bao:", err);
     res.status(500).json({ error: "Loi server khong the luu thong bao" });

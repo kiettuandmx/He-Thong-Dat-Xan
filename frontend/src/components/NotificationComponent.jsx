@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
+import { resolveNotificationTarget } from '../utils/notificationHelpers';
 
 const NotificationComponent = () => {
   const [notifications, setNotifications] = useState([]);
@@ -12,22 +13,13 @@ const NotificationComponent = () => {
   // =========================
   const fetchNotifications = async () => {
     try {
-      const userData = JSON.parse(localStorage.getItem('user'));
+      const userData = JSON.parse(localStorage.getItem('user') || 'null');
       const token = userData?.token;
       const currentUser = userData?.user;
 
       if (!token || !currentUser) return;
 
-      const roleMap = {
-        1: 'user',
-        2: 'owner',
-        3: 'admin',
-      };
-
-      const roleName = roleMap[currentUser.role];
-      const url = `http://localhost:5000/api/bookings/notifications?role=${roleName}`;
-
-      const res = await fetch(url, {
+      const res = await fetch('http://localhost:5000/api/bookings/notifications', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -51,7 +43,7 @@ const NotificationComponent = () => {
   // SOCKET REALTIME
   // =========================
   useEffect(() => {
-    const userData = JSON.parse(localStorage.getItem('user'));
+    const userData = JSON.parse(localStorage.getItem('user') || 'null');
     const currentUser = userData?.user;
 
     // Tạo socket connection
@@ -75,7 +67,10 @@ const NotificationComponent = () => {
 
     socket.on('newNotification', (data) => {
       console.log('ĐÃ NHẬN THÔNG BÁO MỚI:', data);
-      setNotifications((prev) => [data, ...prev]);
+      setNotifications((prev) => {
+        const next = prev.filter((item) => item.id !== data.id);
+        return [data, ...next];
+      });
     });
 
     // Dọn dẹp khi component unmount
@@ -91,7 +86,7 @@ const NotificationComponent = () => {
   // MARK AS READ
   // =========================
   const markAsRead = async () => {
-    const userData = JSON.parse(localStorage.getItem('user'));
+    const userData = JSON.parse(localStorage.getItem('user') || 'null');
     const token = userData?.token;
 
     try {
@@ -110,8 +105,10 @@ const NotificationComponent = () => {
   };
 
   const handleNotificationClick = async (notificationId) => {
-    const userData = JSON.parse(localStorage.getItem('user'));
+    const userData = JSON.parse(localStorage.getItem('user') || 'null');
     const token = userData?.token;
+    const currentUser = userData?.user;
+    const notification = notifications.find((item) => item.id === notificationId);
 
     try {
       // Mark chỉ thông báo cụ thể này là đã đọc
@@ -129,9 +126,7 @@ const NotificationComponent = () => {
     }
 
     setShowDropdown(false);
-    const currentUser = userData?.user;
-    const isAdmin = Number(currentUser?.role_id || currentUser?.role) === 3;
-    navigate(isAdmin ? '/admin/history' : '/history');
+    navigate(resolveNotificationTarget(notification, currentUser));
   };
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
@@ -213,6 +208,11 @@ const NotificationComponent = () => {
                       fontWeight: n.is_read ? '400' : '500',
                     }}
                   >
+                    {n.title && (
+                      <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '4px' }}>
+                        {n.title}
+                      </div>
+                    )}
                     {n.content || n.message}
                   </div>
 

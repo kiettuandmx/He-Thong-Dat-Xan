@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
 const db = require('../models');
 const { logAdminActivity } = require('../utils/adminActivityLogger');
-const { getIO, userSockets } = require('../socket');
+const { createNotification: createNotificationRecord } = require('../utils/notificationHelper');
 
 const VALID_STATUSES = ['pending', 'investigating', 'resolved', 'rejected'];
 const VALID_RESOLUTIONS = ['refund_user', 'penalize_owner', 'no_action'];
@@ -26,27 +26,18 @@ const normalizeEvidence = (evidenceUrls) => {
   return [];
 };
 
-const createNotification = async (userId, content, transaction = null) => {
-  if (!userId) return null;
+const createNotification = async (userIdOrPayload, content, transaction = null) => {
+  if (typeof userIdOrPayload === 'object' && userIdOrPayload !== null) {
+    return createNotificationRecord(userIdOrPayload, transaction ? { transaction } : undefined);
+  }
 
-  const notification = await db.Notification.create(
+  return createNotificationRecord(
     {
-      user_id: userId,
+      userId: userIdOrPayload,
       content,
-      is_read: false,
     },
     transaction ? { transaction } : undefined
   );
-
-  try {
-    const io = getIO();
-    const socketId = userSockets[userId];
-    if (socketId) io.to(socketId).emit('newNotification', notification);
-  } catch (error) {
-    console.log('Socket notification error:', error.message);
-  }
-
-  return notification;
 };
 
 const getComplaintInclude = () => [
@@ -300,7 +291,14 @@ exports.updateComplaintStatus = async (req, res) => {
       ...getRequestMeta(req),
     });
 
-    await createNotification(complaint.user_id, `Khieu nai #${complaint.id} da duoc cap nhat trang thai: ${status}`);
+    await createNotification({
+      userId: complaint.user_id,
+      content: `Khieu nai #${complaint.id} da duoc cap nhat trang thai: ${status}`,
+      type: 'complaint_status_updated',
+      targetType: 'complaint',
+      targetId: complaint.id,
+      targetRoute: '/complaints',
+    });
 
     res.json({ success: true, message: 'Da cap nhat trang thai khieu nai.', data: complaint });
   } catch (error) {
@@ -407,13 +405,41 @@ exports.resolveComplaint = async (req, res) => {
     });
 
     if (resolution_type === 'refund_user') {
-      await createNotification(complaint.user_id, `Khieu nai #${complaint.id} da duoc chap nhan va hoan tien.`);
+      await createNotification({
+        userId: complaint.user_id,
+        content: `Khieu nai #${complaint.id} da duoc chap nhan va hoan tien.`,
+        type: 'complaint_refund_approved',
+        targetType: 'complaint',
+        targetId: complaint.id,
+        targetRoute: '/complaints',
+      });
     } else if (resolution_type === 'penalize_owner') {
-      await createNotification(complaint.user_id, `Khieu nai #${complaint.id} da duoc xu ly. Chu san se bi xu phat theo ghi chu admin.`);
+      await createNotification({
+        userId: complaint.user_id,
+        content: `Khieu nai #${complaint.id} da duoc xu ly. Chu san se bi xu phat theo ghi chu admin.`,
+        type: 'complaint_owner_penalized',
+        targetType: 'complaint',
+        targetId: complaint.id,
+        targetRoute: '/complaints',
+      });
       const ownerId = complaint.booking?.stadium?.owner_id || complaint.stadium?.owner_id;
-      await createNotification(ownerId, `Admin da xu ly khieu nai #${complaint.id}. Vui long xem ghi chu xu phat.`);
+      await createNotification({
+        userId: ownerId,
+        content: `Admin da xu ly khieu nai #${complaint.id}. Vui long xem ghi chu xu phat.`,
+        type: 'complaint_penalty_notice',
+        targetType: 'complaint',
+        targetId: complaint.id,
+        targetRoute: '/history',
+      });
     } else {
-      await createNotification(complaint.user_id, `Khieu nai #${complaint.id} da duoc xem xet va tu choi.`);
+      await createNotification({
+        userId: complaint.user_id,
+        content: `Khieu nai #${complaint.id} da duoc xem xet va tu choi.`,
+        type: 'complaint_rejected',
+        targetType: 'complaint',
+        targetId: complaint.id,
+        targetRoute: '/complaints',
+      });
     }
 
     res.json({ success: true, message: 'Da xu ly khieu nai.', data: complaint });

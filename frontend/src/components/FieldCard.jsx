@@ -115,7 +115,7 @@ const FieldCard = ({ field, detailPath }) => {
         <div className="field-footer mt-auto pt-2 border-top">
           <div className="price-tag mb-2">
             <span className="price-amount fs-5 fw-bold text-success">
-              {Number(field.price * 1000).toLocaleString('vi-VN')}đ
+              {Number(field.price).toLocaleString('vi-VN')}đ
             </span>
             <span className="price-unit small text-muted"> /giờ</span>
           </div>

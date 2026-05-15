@@ -6,6 +6,7 @@ const User = db.User;
 const { Op, fn, col, literal } = require('sequelize');
 const { getIO, userSockets } = require('../socket');
 const { logAdminActivity } = require('../utils/adminActivityLogger');
+const { createNotification: createNotificationRecord } = require('../utils/notificationHelper');
 const {
     canAccessBookingDetail,
     isAdminUser,
@@ -56,22 +57,15 @@ const isPaymentHistoryFilterError = (error) =>
 const shouldPreserveProcessedBookingStatus = (status) =>
     ['confirmed', 'refunded', 'rejected', 'cancelled'].includes(status);
 
-const createNotification = async (user_id, content) => {
-    const noti = await db.Notification.create({
-        user_id,
-        content,
-        is_read: false
-    });
-
-    // realtime
-    const io = getIO();
-    const socketId = userSockets[user_id];
-
-    if (socketId) {
-        io.to(socketId).emit('newNotification', noti);
+const createNotification = async (userIdOrPayload, content) => {
+    if (typeof userIdOrPayload === 'object' && userIdOrPayload !== null) {
+        return createNotificationRecord(userIdOrPayload);
     }
 
-    return noti;
+    return createNotificationRecord({
+        userId: userIdOrPayload,
+        content,
+    });
 };
 
 // 1. Khách hàng đặt sân
@@ -1018,7 +1012,14 @@ exports.createBooking = async (req, res) => {
         });
 
         if (field?.stadium?.owner_id) {
-            await createNotification(field.stadium.owner_id, 'Ban co don dat san moi');
+            await createNotification({
+                userId: field.stadium.owner_id,
+                content: 'Ban co don dat san moi',
+                type: 'booking_created',
+                targetType: 'booking',
+                targetId: newBooking.id,
+                targetRoute: '/history',
+            });
         }
 
         res.status(201).json({

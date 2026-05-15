@@ -13,7 +13,12 @@ module.exports = (sequelize, DataTypes) => {
 
   Notification.init({
     user_id: DataTypes.INTEGER,
+    title: DataTypes.STRING,
     content: DataTypes.TEXT,
+    type: DataTypes.STRING,
+    target_type: DataTypes.STRING,
+    target_id: DataTypes.STRING,
+    target_route: DataTypes.STRING,
     is_read: DataTypes.BOOLEAN
   }, {
     sequelize,
