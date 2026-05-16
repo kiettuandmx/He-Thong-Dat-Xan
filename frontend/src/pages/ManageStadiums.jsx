@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import StadiumHashtagModal from '../components/StadiumHashtagModal';
+import { formatLocationParts } from '../utils/locationHelpers';
 
 const getAuthToken = () => {
   const authData = JSON.parse(localStorage.getItem('user') || '{}');
@@ -18,6 +19,8 @@ const ManageStadiums = () => {
     name: '',
     description: '',
     address: '',
+    district: '',
+    city: 'TP. Hồ Chí Minh',
     location_id: '',
     status: 'active',
   });
@@ -60,6 +63,8 @@ const ManageStadiums = () => {
       name: stadium.name,
       description: stadium.description,
       address: stadium.location?.address || stadium.address || '',
+      district: stadium.location?.district || '',
+      city: stadium.location?.city || 'TP. Hồ Chí Minh',
       location_id: stadium.location_id || '',
       status: stadium.status || 'active',
     });
@@ -73,6 +78,8 @@ const ManageStadiums = () => {
       name: '',
       description: '',
       address: '',
+      district: '',
+      city: 'TP. Hồ Chí Minh',
       location_id: '',
       status: 'active',
     });
@@ -86,6 +93,8 @@ const ManageStadiums = () => {
       description: formData.description,
       status: formData.status || 'active',
       address: formData.address,
+      district: formData.district,
+      city: formData.city,
       location_id: isEditing ? formData.location_id : null,
       owner_id: getCurrentUserId(),
     };
@@ -192,6 +201,20 @@ const ManageStadiums = () => {
               required
             />
 
+            <label>Quan / Huyen</label>
+            <input
+              value={formData.district}
+              onChange={(event) => setFormData({ ...formData, district: event.target.value })}
+              placeholder="Vi du: Quan 10, Thu Duc"
+            />
+
+            <label>Thanh pho</label>
+            <input
+              value={formData.city}
+              onChange={(event) => setFormData({ ...formData, city: event.target.value })}
+              placeholder="TP. Hồ Chí Minh"
+            />
+
             <button type="submit" className="primary-button">
               {isEditing ? 'Luu thay doi' : 'Tao khu san'}
             </button>
@@ -218,7 +241,13 @@ const ManageStadiums = () => {
                       </span>
                     </div>
                     <p>{stadium.description || 'Chua co mo ta cho khu san nay.'}</p>
-                    <span>{stadium.location?.address || stadium.address || 'Chua co dia chi'}</span>
+                    <span>
+                      {formatLocationParts(
+                        stadium.location?.address || stadium.address,
+                        stadium.location?.district,
+                        stadium.location?.city
+                      ) || 'Chua co dia chi'}
+                    </span>
                   </div>
 
                   <div className="stadium-actions">

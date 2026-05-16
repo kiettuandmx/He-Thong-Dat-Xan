@@ -1,21 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import AccountPageHeader from '../components/AccountPageHeader';
 import {
   buildCurrentMonthDefaultFilter,
   getOwnerPaymentHistory,
   getUserPaymentHistory,
 } from '../services/paymentHistoryService';
+import { formatOwnerCurrency } from '../utils/ownerMetricsHelpers';
 
-function formatCurrency(value) {
-  return Number(value || 0).toLocaleString('vi-VN') + ' VND';
-}
-
-function formatDate(value) {
-  if (!value) {
-    return '--';
-  }
-
+const formatDate = (value) => {
+  if (!value) return '--';
   return new Date(value).toLocaleString('vi-VN');
-}
+};
+
+const transactionLabelMap = {
+  refund: { label: 'Hoàn tiền', className: 'is-refund' },
+  payment: { label: 'Thanh toán', className: 'is-payment' },
+};
 
 const PaymentHistory = () => {
   const savedUser = JSON.parse(localStorage.getItem('user') || 'null');
@@ -33,7 +33,7 @@ const PaymentHistory = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchHistory = async (nextFilters, append = false) => {
+  const fetchHistory = useCallback(async (nextFilters, append = false) => {
     setLoading(true);
     setError('');
 
@@ -42,7 +42,7 @@ const PaymentHistory = () => {
       const data = await service(nextFilters);
 
       setTransactions((current) =>
-        append ? [...current, ...(data.transactions || [])] : data.transactions || [],
+        append ? [...current, ...(data.transactions || [])] : data.transactions || []
       );
       setSummary((current) => ({
         totalPayment: data.summary?.totalPayment ?? current.totalPayment ?? 0,
@@ -53,20 +53,19 @@ const PaymentHistory = () => {
     } catch (requestError) {
       setError(
         requestError?.response?.data?.message ||
-          'Khong the tai lich su thanh toan. Vui long thu lai.',
+          'Không thể tải lịch sử thanh toán. Vui lòng thử lại.'
       );
     } finally {
       setLoading(false);
     }
-  };
+  }, [isOwner]);
 
   useEffect(() => {
     fetchHistory(filters);
-  }, []);
+  }, [fetchHistory]); // initial filters are stable on mount
 
   const handleMonthChange = (event) => {
     const value = event.target.value;
-
     setFilters((current) => ({
       ...current,
       month: value,
@@ -78,7 +77,6 @@ const PaymentHistory = () => {
 
   const handleYearChange = (event) => {
     const value = event.target.value;
-
     setFilters((current) => ({
       ...current,
       year: value,
@@ -90,7 +88,6 @@ const PaymentHistory = () => {
 
   const handleDateChange = (event) => {
     const { name, value } = event.target;
-
     setFilters((current) => ({
       ...current,
       [name]: value,
@@ -124,220 +121,328 @@ const PaymentHistory = () => {
     fetchHistory(nextFilters, true);
   };
 
-  return (
-    <div className="container py-4">
-      <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
-        <div>
-          <h2 className="fw-bold mb-1">
-            {isOwner ? 'Lich su thanh toan chu san' : 'Lich su thanh toan'}
-          </h2>
-          <p className="text-muted mb-0">
-            {isOwner
-              ? 'Theo doi giao dich thanh toan va hoan tien cua san.'
-              : 'Xem lai cac giao dich thanh toan va hoan tien cua ban.'}
-          </p>
-        </div>
+  const ownerInsights = useMemo(
+    () => [
+      {
+        label: 'Tổng thanh toán',
+        value: formatOwnerCurrency(summary.totalPayment),
+        note: 'Bao gồm toàn bộ khoản khách đã thanh toán trong giai đoạn chọn.',
+      },
+      {
+        label: 'Tổng hoàn tiền',
+        value: formatOwnerCurrency(summary.totalRefund),
+        note: 'Các khoản hoàn lại cần theo dõi để đánh giá chất lượng dịch vụ.',
+      },
+      {
+        label: 'Doanh thu thực nhận',
+        value: formatOwnerCurrency(summary.netRevenue),
+        note: 'Chỉ số quan trọng nhất để nhìn hiệu quả vận hành hiện tại.',
+      },
+    ],
+    [summary]
+  );
 
-        <div className="d-flex gap-2">
-          <button
-            type="button"
-            className={`btn ${mode === 'month' ? 'btn-success' : 'btn-outline-success'}`}
-            onClick={() => setMode('month')}
-          >
-            Theo thang
-          </button>
-          <button
-            type="button"
-            className={`btn ${mode === 'custom' ? 'btn-success' : 'btn-outline-success'}`}
-            onClick={() => setMode('custom')}
-          >
-            Theo ngay
-          </button>
-        </div>
+  const renderFilterFields = () => (
+    <div className={isOwner ? 'owner-finance-filter-grid' : 'row g-3 align-items-end'}>
+      {mode === 'month' ? (
+        <>
+          <div className={isOwner ? '' : 'col-md-4'}>
+            <label className="filter-label">Tháng</label>
+            <select className="filter-select" value={filters.month || ''} onChange={handleMonthChange}>
+              {Array.from({ length: 12 }, (_, index) => {
+                const monthValue = String(index + 1).padStart(2, '0');
+                return (
+                  <option key={monthValue} value={monthValue}>
+                    Tháng {index + 1}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+          <div className={isOwner ? '' : 'col-md-4'}>
+            <label className="filter-label">Năm</label>
+            <input
+              className="filter-input"
+              type="number"
+              min="2000"
+              value={filters.year || ''}
+              onChange={handleYearChange}
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          <div className={isOwner ? '' : 'col-md-4'}>
+            <label className="filter-label">Từ ngày</label>
+            <input
+              className="filter-input"
+              type="date"
+              name="startDate"
+              value={filters.startDate || ''}
+              onChange={handleDateChange}
+            />
+          </div>
+          <div className={isOwner ? '' : 'col-md-4'}>
+            <label className="filter-label">Đến ngày</label>
+            <input
+              className="filter-input"
+              type="date"
+              name="endDate"
+              value={filters.endDate || ''}
+              onChange={handleDateChange}
+            />
+          </div>
+        </>
+      )}
+
+      <div className={isOwner ? '' : 'col-md-4'}>
+        <button type="button" className="primary-button w-100 py-3" onClick={handleApplyFilters}>
+          Áp dụng bộ lọc
+        </button>
       </div>
+    </div>
+  );
+
+  const renderUserView = () => (
+    <div className="account-page">
+      <AccountPageHeader
+        title="Lịch sử thanh toán"
+        description="Xem lại toàn bộ giao dịch thanh toán và hoàn tiền liên quan đến những lần đặt sân của bạn."
+      />
 
       <div className="row g-3 mb-4">
         <div className="col-md-4">
-          <div className="card border-0 shadow-sm h-100">
-            <div className="card-body">
-              <div className="text-muted small mb-2">Tong thanh toan</div>
-              <div className="fw-bold fs-5 text-success">
-                {formatCurrency(summary.totalPayment)}
-              </div>
-            </div>
+          <div className="account-card h-100">
+            <div className="text-muted small mb-2">Tổng thanh toán</div>
+            <div className="fw-bold fs-5 text-success">{formatOwnerCurrency(summary.totalPayment)}</div>
           </div>
         </div>
         <div className="col-md-4">
-          <div className="card border-0 shadow-sm h-100">
-            <div className="card-body">
-              <div className="text-muted small mb-2">Tong hoan tien</div>
-              <div className="fw-bold fs-5 text-danger">
-                {formatCurrency(summary.totalRefund)}
-              </div>
-            </div>
+          <div className="account-card h-100">
+            <div className="text-muted small mb-2">Tổng hoàn tiền</div>
+            <div className="fw-bold fs-5 text-danger">{formatOwnerCurrency(summary.totalRefund)}</div>
           </div>
         </div>
         <div className="col-md-4">
-          <div className="card border-0 shadow-sm h-100">
-            <div className="card-body">
-              <div className="text-muted small mb-2">
-                {isOwner ? 'Doanh thu thuc nhan' : 'Chenh lech thanh toan'}
-              </div>
-              <div className="fw-bold fs-5" style={{ color: '#1B4332' }}>
-                {formatCurrency(
-                  isOwner
-                    ? summary.netRevenue
-                    : Number(summary.totalPayment || 0) - Number(summary.totalRefund || 0),
-                )}
-              </div>
+          <div className="account-card h-100">
+            <div className="text-muted small mb-2">Chênh lệch thanh toán</div>
+            <div className="fw-bold fs-5" style={{ color: 'var(--color-text)' }}>
+              {formatOwnerCurrency(
+                Number(summary.totalPayment || 0) - Number(summary.totalRefund || 0)
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-body">
-          <div className="row g-3 align-items-end">
-            {mode === 'month' ? (
-              <>
-                <div className="col-md-4">
-                  <label className="form-label">Thang</label>
-                  <select
-                    className="form-select"
-                    value={filters.month || ''}
-                    onChange={handleMonthChange}
-                  >
-                    {Array.from({ length: 12 }, (_, index) => {
-                      const monthValue = String(index + 1).padStart(2, '0');
-
-                      return (
-                        <option key={monthValue} value={monthValue}>
-                          Thang {index + 1}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label">Nam</label>
-                  <input
-                    className="form-control"
-                    type="number"
-                    min="2000"
-                    value={filters.year || ''}
-                    onChange={handleYearChange}
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="col-md-4">
-                  <label className="form-label">Tu ngay</label>
-                  <input
-                    className="form-control"
-                    type="date"
-                    name="startDate"
-                    value={filters.startDate || ''}
-                    onChange={handleDateChange}
-                  />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label">Den ngay</label>
-                  <input
-                    className="form-control"
-                    type="date"
-                    name="endDate"
-                    value={filters.endDate || ''}
-                    onChange={handleDateChange}
-                  />
-                </div>
-              </>
-            )}
-            <div className="col-md-4">
-              <button type="button" className="btn btn-success w-100" onClick={handleApplyFilters}>
-                Ap dung bo loc
-              </button>
-            </div>
-          </div>
+      <div className="account-card mb-4">
+        <div className="d-flex flex-wrap gap-2 mb-3">
+          <button
+            type="button"
+            className={mode === 'month' ? 'primary-button px-4 py-3' : 'secondary-button px-4 py-3'}
+            onClick={() => setMode('month')}
+          >
+            Theo tháng
+          </button>
+          <button
+            type="button"
+            className={mode === 'custom' ? 'primary-button px-4 py-3' : 'secondary-button px-4 py-3'}
+            onClick={() => setMode('custom')}
+          >
+            Theo khoảng ngày
+          </button>
         </div>
+
+        {renderFilterFields()}
       </div>
 
-      {error ? (
-        <div className="alert alert-danger">{error}</div>
-      ) : (
-        <div className="card border-0 shadow-sm">
-          <div className="card-body">
-            {loading && transactions.length === 0 ? (
-              <p className="mb-0">Dang tai du lieu...</p>
-            ) : transactions.length === 0 ? (
-              <p className="mb-0 text-muted">Chua co giao dich nao trong khoang da chon.</p>
-            ) : (
-              <>
-                <div className="table-responsive">
-                  <table className="table align-middle">
-                    <thead>
-                      <tr>
-                        <th>Ngay giao dich</th>
-                        <th>Loai</th>
-                        <th>San</th>
-                        <th>Khu vuc</th>
-                        {isOwner && <th>Khach hang</th>}
-                        <th>Trang thai</th>
-                        <th className="text-end">So tien</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {transactions.map((transaction, index) => (
-                        <tr key={`${transaction.type}-${transaction.bookingId}-${index}`}>
-                          <td>{formatDate(transaction.transactionDate)}</td>
+      {renderTable(false)}
+    </div>
+  );
+
+  const renderTable = (ownerMode) => {
+    if (error) {
+      return <div className="account-empty-state">{error}</div>;
+    }
+
+    const emptyCopy = ownerMode
+      ? 'Chưa có giao dịch nào trong giai đoạn bạn đã chọn.'
+      : 'Chưa có giao dịch nào trong khoảng thời gian bạn đã chọn.';
+    const loadingCopy = ownerMode
+      ? 'Đang tải dữ liệu giao dịch của chủ sân...'
+      : 'Đang tải dữ liệu giao dịch...';
+
+    return (
+      <div className={ownerMode ? 'owner-table-panel' : 'account-card'}>
+        {loading && transactions.length === 0 ? (
+          <div className={ownerMode ? 'owner-empty-state' : 'account-empty-state'}>{loadingCopy}</div>
+        ) : transactions.length === 0 ? (
+          <div className={ownerMode ? 'owner-empty-state' : 'account-empty-state'}>{emptyCopy}</div>
+        ) : (
+          <>
+            <div className="table-responsive">
+              <table className={`table align-middle mb-0 ${ownerMode ? 'owner-finance-table' : ''}`}>
+                <thead>
+                  <tr>
+                    <th>Ngày giao dịch</th>
+                    <th>Loại giao dịch</th>
+                    <th>Cơ sở</th>
+                    <th>Sân</th>
+                    {ownerMode && <th>Khách hàng</th>}
+                    <th>Trạng thái</th>
+                    <th className="text-end">Số tiền</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transactions.map((transaction, index) => {
+                    const mappedType = transactionLabelMap[transaction.type] || transactionLabelMap.payment;
+
+                    return (
+                      <tr key={`${transaction.type}-${transaction.bookingId}-${index}`}>
+                        <td>{formatDate(transaction.transactionDate)}</td>
+                        <td>
+                          <span className={`owner-finance-badge ${mappedType.className}`}>
+                            {mappedType.label}
+                          </span>
+                        </td>
+                        <td>{transaction.stadiumName || '--'}</td>
+                        <td>{transaction.fieldName || '--'}</td>
+                        {ownerMode && (
                           <td>
-                            <span
-                              className={`badge ${
-                                transaction.type === 'refund' ? 'bg-danger' : 'bg-success'
-                              }`}
-                            >
-                              {transaction.type === 'refund' ? 'Hoan tien' : 'Thanh toan'}
-                            </span>
+                            <div className="owner-finance-customer">
+                              <strong>{transaction.userName || '--'}</strong>
+                              <span className="owner-subtle">{transaction.userPhone || ''}</span>
+                            </div>
                           </td>
-                          <td>{transaction.stadiumName || '--'}</td>
-                          <td>{transaction.fieldName || '--'}</td>
-                          {isOwner && (
-                            <td>
-                              <div>{transaction.userName || '--'}</div>
-                              <div className="small text-muted">{transaction.userPhone || ''}</div>
-                            </td>
-                          )}
-                          <td>{transaction.status || '--'}</td>
-                          <td
-                            className={`text-end fw-semibold ${
-                              transaction.type === 'refund' ? 'text-danger' : 'text-success'
-                            }`}
-                          >
-                            {formatCurrency(transaction.amount)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                        )}
+                        <td>{transaction.status || '--'}</td>
+                        <td
+                          className={`text-end fw-semibold ${
+                            transaction.type === 'refund' ? 'text-danger' : 'text-success'
+                          }`}
+                        >
+                          {formatOwnerCurrency(transaction.amount)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-                {hasMore && (
-                  <div className="text-center mt-3">
-                    <button
-                      type="button"
-                      className="btn btn-outline-success"
-                      onClick={handleLoadMore}
-                      disabled={loading}
-                    >
-                      {loading ? 'Dang tai...' : 'Xem them'}
-                    </button>
-                  </div>
-                )}
-              </>
+            {hasMore && (
+              <div className="text-center mt-3">
+                <button
+                  type="button"
+                  className="secondary-button px-4 py-3"
+                  onClick={handleLoadMore}
+                  disabled={loading}
+                >
+                  {loading ? 'Đang tải thêm...' : 'Xem thêm'}
+                </button>
+              </div>
             )}
+          </>
+        )}
+      </div>
+    );
+  };
+
+  if (!isOwner) {
+    return renderUserView();
+  }
+
+  return (
+    <div className="account-page owner-finance-grid">
+      <section className="owner-hero-panel">
+        <div className="owner-hero-layout">
+          <div>
+            <p className="eyebrow">Finance Workspace</p>
+            <h1>Lịch sử thanh toán chủ sân</h1>
+            <p className="mb-0">
+              Theo dõi dòng tiền, các khoản hoàn tiền và doanh thu thực nhận theo từng giai đoạn
+              để điều hành khu sân chắc tay hơn.
+            </p>
+          </div>
+          <div className="owner-hero-metrics">
+            <div className="owner-hero-metric">
+              <span>Tổng thanh toán</span>
+              <strong>{formatOwnerCurrency(summary.totalPayment)}</strong>
+            </div>
+            <div className="owner-hero-metric">
+              <span>Tổng hoàn tiền</span>
+              <strong>{formatOwnerCurrency(summary.totalRefund)}</strong>
+            </div>
+            <div className="owner-hero-metric">
+              <span>Doanh thu thực nhận</span>
+              <strong>{formatOwnerCurrency(summary.netRevenue)}</strong>
+            </div>
+            <div className="owner-hero-metric">
+              <span>Số giao dịch đang xem</span>
+              <strong>{transactions.length}</strong>
+            </div>
           </div>
         </div>
-      )}
+      </section>
+
+      <section className="owner-finance-summary">
+        {ownerInsights.map((item) => (
+          <article key={item.label} className="owner-kpi-card">
+            <div className="owner-kpi-card__meta">
+              <p className="owner-kpi-card__label">{item.label}</p>
+              <span className="owner-kpi-card__icon">
+                <i className="bi bi-graph-up-arrow"></i>
+              </span>
+            </div>
+            <p className="owner-kpi-value">{item.value}</p>
+            <p className="owner-kpi-note">{item.note}</p>
+          </article>
+        ))}
+      </section>
+
+      <section className="owner-filter-panel">
+        <div className="owner-panel-heading">
+          <div>
+            <h2>Bộ lọc dòng tiền</h2>
+            <p className="owner-panel-description">
+              Chuyển nhanh giữa góc nhìn theo tháng và theo khoảng ngày để so sánh doanh thu.
+            </p>
+          </div>
+        </div>
+
+        <div className="owner-finance-toolbar">
+          <button
+            type="button"
+            className={mode === 'month' ? 'primary-button px-4 py-3' : 'secondary-button px-4 py-3'}
+            onClick={() => setMode('month')}
+          >
+            Theo tháng
+          </button>
+          <button
+            type="button"
+            className={mode === 'custom' ? 'primary-button px-4 py-3' : 'secondary-button px-4 py-3'}
+            onClick={() => setMode('custom')}
+          >
+            Theo khoảng ngày
+          </button>
+        </div>
+
+        {renderFilterFields()}
+      </section>
+
+      <section className="owner-workspace-grid">
+        <div className="owner-panel-heading">
+          <div>
+            <h2>Bảng giao dịch</h2>
+            <p className="owner-panel-description">
+              Danh sách chi tiết các khoản thanh toán và hoàn tiền để bạn đối chiếu với lịch đặt
+              sân và chăm sóc khách hàng.
+            </p>
+          </div>
+        </div>
+
+        {renderTable(true)}
+      </section>
     </div>
   );
 };

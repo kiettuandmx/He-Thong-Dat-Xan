@@ -1,251 +1,83 @@
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
+
 :root {
-  /* Green Palette - Tươi và sang hơn */
-  --primary: #1b4332 !important; /* Xanh rừng sâu (Rất sang) */
-  --primary-light: #2d6a4f !important;
-  --accent-green: #d8f3dc !important;
-
-  /* Grey Palette - Chuyển sang tông Slate (Xám xanh) thay vì xám nâu */
-  --bg-main: #f1f5f9 !important; /* Màu nền trắng xám cực sạch */
-  --bg-card: #ffffff !important;
-  --text-dark: #0f172a !important; /* Xám đen Slate */
-  --text-gray: #64748b !important; /* Xám trung tính */
-
-  /* Spacing & Radius */
-  --radius-lg: 20px;
-  --radius-md: 12px;
+  --font-family-base: 'Be Vietnam Pro', sans-serif;
+  --color-bg: #f4f7fb;
+  --color-bg-alt: #eef3f8;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f7f9fc;
+  --color-text: #172033;
+  --color-text-muted: #60708f;
+  --color-border: rgba(23, 32, 51, 0.08);
+  --color-accent: #ff6b2c;
+  --color-accent-strong: #f04e23;
+  --color-accent-soft: rgba(255, 107, 44, 0.12);
+  --color-success: #1f9d55;
+  --color-success-soft: rgba(31, 157, 85, 0.12);
+  --color-danger: #dc3d42;
+  --color-warning: #ffb020;
+  --shadow-soft: 0 18px 40px rgba(23, 32, 51, 0.08);
+  --shadow-card: 0 26px 50px rgba(23, 32, 51, 0.12);
+  --radius-2xl: 32px;
+  --radius-xl: 24px;
+  --radius-lg: 18px;
+  --radius-md: 14px;
+  --container-width: 1240px;
 }
 
-/* Reset & Base */
+* {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
 body {
-  background-color: var(--bg-main) !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  font-family:
-    'Inter',
-    -apple-system,
-    sans-serif;
-  color: var(--text-dark);
-  letter-spacing: -0.01em;
-}
-/* Navbar: Hiệu ứng kính mờ cao cấp */
-.navbar {
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  background-color: rgba(255, 255, 255, 0.8) !important;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
-  padding: 15px 0 !important;
+  margin: 0;
+  font-family: var(--font-family-base);
+  color: var(--color-text);
+  background:
+    radial-gradient(circle at top, #fff7f2 0%, #f4f7fb 45%, #eef3f8 100%);
 }
 
-/* Card - Tinh chỉnh Shadow cực mịn */
-.field-card {
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.04) !important;
-  /* Shadow đa lớp giúp card trông nổi khối tự nhiên */
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.02),
-    0 10px 20px -5px rgba(0, 0, 0, 0.04) !important;
-  transition: all 0.5s cubic-bezier(0.2, 1, 0.3, 1);
-  height: 100%;
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-family-base);
 }
 
-.field-card:hover {
-  transform: translateY(-10px);
-  /* Shadow khi hover có pha chút màu xanh primary */
-  box-shadow: 0 30px 60px -12px rgba(27, 67, 50, 0.15) !important;
-  border-color: rgba(45, 106, 79, 0.2) !important;
+a {
+  color: inherit;
 }
-/* Căn chỉnh lại grid để sân không bị dính vào nhau */
-.field-list-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 2rem;
-  padding: 20px;
-  max-width: 1400px;
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+.container-shell {
+  width: min(100% - 32px, var(--container-width));
   margin: 0 auto;
 }
 
-.card-image-wrapper {
-  height: 220px;
-  position: relative;
-  overflow: hidden;
+.surface-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-soft);
 }
 
-.card-image-wrapper img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.6s ease;
-}
-
-.field-card:hover .card-image-wrapper img {
-  transform: scale(1.1);
-}
-
-/* Badge Trạng thái - Làm nhỏ và tinh tế hơn */
-.status-badge {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 6px 12px;
-  border-radius: 100px;
-  font-size: 10px;
+.eyebrow {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  color: var(--primary);
-  border: 1px solid var(--accent-green);
-  z-index: 10;
-}
-
-/* Price & Button */
-.price-amount {
-  color: var(--primary);
-  font-weight: 800;
-  font-size: 1.25rem;
-}
-
-.btn-book-now {
-  background-color: var(--primary);
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 12px;
-  font-weight: 700;
-  width: 100%;
-  transition: all 0.3s ease;
-  margin-top: auto;
-}
-
-.btn-book-now:hover {
-  background-color: var(--primary-hover);
-  box-shadow: 0 5px 15px rgba(45, 106, 79, 0.3);
-}
-.section-title {
-  margin-top: 50px;
-  margin-bottom: 30px;
-  font-weight: 700;
-  color: var(--primary);
-}
-
-.transition-all {
-  transition: all 0.3s ease;
-}
-.transition-all:hover {
-  transform: translateY(-2px);
-  filter: brightness(0.95);
-}
-
-/* Container quản lý icon chuông và dropdown */
-.noti-wrapper {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 9999; /* Luôn nổi trên cùng */
-}
-
-.noti-dropdown {
-  position: absolute;
-  top: 60px;
-  right: 0;
-  width: 350px;
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); /* Bóng mềm */
-  padding: 0; /* Xóa padding để nhìn gọn hơn */
-  max-height: 400px;
-  overflow-y: auto;
-  border: 1px solid #eee;
-  z-index: 9999;
-}
-
-.noti-item {
-  padding: 16px;
-  border-bottom: 1px solid #f4f4f4;
-  font-size: 0.9rem;
-  color: #333;
-  transition: background 0.2s;
-  cursor: pointer;
-}
-
-.noti-item:hover {
-  background-color: #f9f9f9; /* Hiệu ứng hover */
-}
-
-/* Hiệu ứng khi thông báo mới */
-.bell-icon {
-  background: #ffffff;
-  padding: 8px 10px; /* Giảm padding */
-  border-radius: 50%;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); /* Bóng nhẹ hơn */
-  cursor: pointer;
-  font-size: 1.1rem; /* Thu nhỏ icon chuông */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-/* Tinh chỉnh lại cái chấm đỏ */
-.bell-icon span {
-  position: absolute;
-  top: 0px; /* Đẩy lên sát góc */
-  right: -2px; /* Đẩy sang phải */
-  background: #ef4444;
-  color: white;
-  font-size: 9px; /* Chữ nhỏ lại */
-  font-weight: 700;
-  padding: 1px 4px; /* Thu nhỏ badge */
-  border-radius: 10px;
-  border: 2px solid white; /* Tạo khoảng hở với chuông cho thoáng */
-}
-
-.bell-icon:hover {
-  transform: scale(1.1);
-}
-
-.noti-dropdown {
-  animation: fadeIn 0.3s ease;
-}
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-/* Yêu thích sân */
-.favorite-btn {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  border: none;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  transition: all 0.25s ease;
-  z-index: 10;
-  position: relative;
-}
-
-.favorite-btn:hover {
-  background: #e3f2fd;
-  transform: scale(1.1);
-}
-
-.favorite-btn:active {
-  transform: scale(0.9);
-}
-
-.dropdown-menu {
-  animation: slideIn 0.2s ease-out;
-}
-@keyframes slideIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }

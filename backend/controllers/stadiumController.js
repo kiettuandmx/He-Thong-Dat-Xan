@@ -53,7 +53,7 @@ const getStadiumById = async (req, res) => {
 };
 
 const createStadium = async (req, res) => {
-  const { name, description, address, owner_id } = req.body;
+  const { name, description, address, district, city, owner_id } = req.body;
   const transaction = await db.sequelize.transaction();
 
   try {
@@ -65,7 +65,11 @@ const createStadium = async (req, res) => {
     }
 
     const location = await db.Location.create(
-      { address: address || 'Chua co dia chi' },
+      {
+        address: address || 'Chua co dia chi',
+        district: district || null,
+        city: city || 'TP. Hồ Chí Minh',
+      },
       { transaction }
     );
 
@@ -94,6 +98,8 @@ const createStadium = async (req, res) => {
         owner_id: newStadium.owner_id,
         location_id: newStadium.location_id,
         address: location.address,
+        district: location.district,
+        city: location.city,
       },
       ...getRequestMeta(req),
     });
@@ -107,7 +113,7 @@ const createStadium = async (req, res) => {
 };
 
 const updateStadium = async (req, res) => {
-  const { name, description, status, address, location_id } = req.body;
+  const { name, description, status, address, district, city, location_id } = req.body;
   const { id } = req.params;
 
   try {
@@ -128,8 +134,17 @@ const updateStadium = async (req, res) => {
       status: status || 'active',
     });
 
-    if ((location_id || stadium.location_id) && address !== undefined) {
-      await db.Location.update({ address }, { where: { id: location_id || stadium.location_id } });
+    if (location_id || stadium.location_id) {
+      const locationPayload = {};
+      if (address !== undefined) locationPayload.address = address;
+      if (district !== undefined) locationPayload.district = district || null;
+      if (city !== undefined) locationPayload.city = city || null;
+
+      if (Object.keys(locationPayload).length > 0) {
+        await db.Location.update(locationPayload, {
+          where: { id: location_id || stadium.location_id },
+        });
+      }
     }
 
     const updatedStadium = await db.Stadium.findByPk(id, {
@@ -146,12 +161,16 @@ const updateStadium = async (req, res) => {
         description: before.description,
         status: before.status,
         address: before.location?.address || null,
+        district: before.location?.district || null,
+        city: before.location?.city || null,
       },
       afterData: {
         name: updatedStadium.name,
         description: updatedStadium.description,
         status: updatedStadium.status,
         address: updatedStadium.location?.address || null,
+        district: updatedStadium.location?.district || null,
+        city: updatedStadium.location?.city || null,
       },
       ...getRequestMeta(req),
     });

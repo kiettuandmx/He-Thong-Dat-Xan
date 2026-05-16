@@ -69,6 +69,6 @@ export const getFieldTypeBadgeConfig = (value) => {
   return {
     label: getFieldTypeLabel(value),
     color: 'badge-default',
-    icon: 'bi-sport',
+    icon: 'bi-dribbble',
   };
 };

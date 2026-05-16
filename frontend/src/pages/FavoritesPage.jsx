@@ -1,58 +1,69 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import AccountPageHeader from '../components/AccountPageHeader';
 import FieldCard from '../components/FieldCard';
 
 const FavoritesPage = () => {
   const [favorites, setFavorites] = useState([]);
-
-  const fetchFavorites = async () => {
-    try {
-      const authData = JSON.parse(localStorage.getItem('user'));
-
-      const res = await axios.get('http://localhost:5000/api/favorites', {
-        headers: {
-          Authorization: `Bearer ${authData?.token}`,
-        },
-      });
-
-      setFavorites(res.data);
-    } catch (err) {
-      console.log(err);
-    }
-  };
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchFavorites = async () => {
+      try {
+        const authData = JSON.parse(localStorage.getItem('user') || 'null');
+        const response = await axios.get('http://localhost:5000/api/favorites', {
+          headers: {
+            Authorization: `Bearer ${authData?.token}`,
+          },
+        });
+
+        setFavorites(response.data || []);
+      } catch (error) {
+        console.log(error);
+        setFavorites([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchFavorites();
   }, []);
 
   return (
-    <div className="container py-4">
-      <h3 className="fw-bold mb-4 text-center">Danh sách sân yêu thích</h3>
+    <div className="account-page">
+      <AccountPageHeader
+        title="Sân yêu thích"
+        description="Lưu lại những sân bạn muốn đặt lại nhanh hơn trong lần tiếp theo."
+      />
 
-      <div className="row g-4">
-        {favorites.length > 0 ? (
-          favorites.map((fav) => (
-            <div className="col-md-4" key={fav.id}>
-              <FieldCard
-                field={{
-                  id: fav.field.id,
-                  name: fav.field.name,
-                  address: fav.field?.stadium?.name || '',
-                  price: fav.field.price_per_hour,
-                  image: fav.field.images?.[0]?.image_url?.startsWith('http')
-                    ? fav.field.images[0].image_url
-                    : `http://localhost:5000/uploads/${fav.field.images?.[0]?.image_url || ''}`,
-                  type: fav.field.type,
-                }}
-              />
-            </div>
-          ))
-        ) : (
-          <p className="text-center text-muted">
-            Bạn chưa có sân yêu thích nào
-          </p>
-        )}
-      </div>
+      {loading ? (
+        <div className="account-empty-state">Đang tải danh sách sân yêu thích...</div>
+      ) : favorites.length === 0 ? (
+        <div className="account-empty-state">
+          Bạn chưa lưu sân nào. Hãy khám phá danh sách sân để thêm mục yêu thích.
+        </div>
+      ) : (
+        <div className="listing-results__grid">
+          {favorites.map((favorite) => (
+            <FieldCard
+              key={favorite.id}
+              field={{
+                id: favorite.field.id,
+                name: favorite.field.name,
+                address:
+                  favorite.field?.stadium?.name ||
+                  favorite.field?.stadium?.location?.address ||
+                  'TP. Hồ Chí Minh',
+                price: Number(favorite.field.price_per_hour || 0),
+                image: favorite.field.images?.[0]?.image_url?.startsWith('http')
+                  ? favorite.field.images[0].image_url
+                  : `http://localhost:5000/uploads/${favorite.field.images?.[0]?.image_url || ''}`,
+                type: favorite.field.type,
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

@@ -1,21 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import PropTypes from 'prop-types';
 import { FIELD_TYPE_OPTIONS } from '../constants/fieldTypes';
 
-const FilterSidebar = ({ onResults }) => {
+const DEFAULT_FILTERS = {
+  keyword: '',
+  type: '',
+  minPrice: 0,
+  maxPrice: 500000,
+  minRating: 0,
+  sortBy: '',
+  userLat: null,
+  userLng: null,
+};
+
+const FilterSidebar = ({ defaultKeyword = '', onLoadingChange, onResults }) => {
   const [filters, setFilters] = useState({
-    keyword: '',
-    type: '',
-    minPrice: 0,
-    maxPrice: 500000,
-    minRating: 0,
-    sortBy: '',
-    userLat: null,
-    userLng: null,
+    ...DEFAULT_FILTERS,
+    keyword: defaultKeyword,
   });
 
   useEffect(() => {
     const fetchFilteredFields = async () => {
+      onLoadingChange?.(true);
+
       try {
         const params = {};
         if (filters.keyword) params.keyword = filters.keyword;
@@ -30,18 +38,19 @@ const FilterSidebar = ({ onResults }) => {
         const response = await axios.get('http://localhost:5000/api/fields/search', {
           params,
         });
+
         onResults(response.data);
       } catch (error) {
         console.error('Lỗi khi lọc danh sách sân:', error);
+        onResults([]);
+      } finally {
+        onLoadingChange?.(false);
       }
     };
 
-    const delayDebounceFn = setTimeout(() => {
-      fetchFilteredFields();
-    }, 500);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [filters, onResults]);
+    const debounceId = window.setTimeout(fetchFilteredFields, 350);
+    return () => window.clearTimeout(debounceId);
+  }, [filters, onLoadingChange, onResults]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -49,159 +58,166 @@ const FilterSidebar = ({ onResults }) => {
   };
 
   const handleRatingSelect = (rating) => {
-    setFilters((prev) => ({ ...prev, minRating: rating }));
+    setFilters((prev) => ({
+      ...prev,
+      minRating: prev.minRating === rating ? 0 : rating,
+    }));
   };
 
   const handleSortChange = (event) => {
     const value = event.target.value;
-    if (value === 'gan_nhat') {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            setFilters((prev) => ({
-              ...prev,
-              sortBy: value,
-              userLat: position.coords.latitude,
-              userLng: position.coords.longitude,
-            }));
-          },
-          () => {
-            alert(
-              'Không thể lấy được vị trí của bạn. Vui lòng kiểm tra quyền truy cập vị trí.'
-            );
-            setFilters((prev) => ({ ...prev, sortBy: '' }));
-          }
-        );
-      } else {
-        alert('Trình duyệt của bạn không hỗ trợ Geolocation.');
-        setFilters((prev) => ({ ...prev, sortBy: '' }));
-      }
-    } else {
+
+    if (value !== 'gan_nhat') {
       setFilters((prev) => ({
         ...prev,
         sortBy: value,
         userLat: null,
         userLng: null,
       }));
+      return;
     }
+
+    if (!navigator.geolocation) {
+      window.alert('Trình duyệt của bạn không hỗ trợ định vị vị trí.');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setFilters((prev) => ({
+          ...prev,
+          sortBy: value,
+          userLat: position.coords.latitude,
+          userLng: position.coords.longitude,
+        }));
+      },
+      () => {
+        window.alert('Không thể lấy vị trí hiện tại. Vui lòng kiểm tra quyền truy cập vị trí.');
+        setFilters((prev) => ({ ...prev, sortBy: '' }));
+      }
+    );
   };
 
   const clearFilters = () => {
     setFilters({
-      keyword: '',
-      type: '',
-      minPrice: 0,
-      maxPrice: 500000,
-      minRating: 0,
-      sortBy: '',
-      userLat: null,
-      userLng: null,
+      ...DEFAULT_FILTERS,
+      keyword: defaultKeyword,
     });
   };
 
   return (
-    <div className="p-4 bg-white border rounded-4 shadow-sm h-100">
-      <h4 className="fw-bold mb-4 text-dark">
-        <i className="bi bi-funnel-fill text-success me-2"></i> Lọc Tìm Kiếm
-      </h4>
-
-      <div className="mb-4">
-        <label className="form-label fw-semibold text-secondary">Sắp xếp theo</label>
-        <select
-          name="sortBy"
-          value={filters.sortBy}
-          onChange={handleSortChange}
-          className="form-select border-success"
-        >
-          <option value="">Mặc định (Mới nhất)</option>
-          <option value="gia_tang">Giá tăng dần</option>
-          <option value="gia_giam">Giá giảm dần</option>
-          <option value="danh_gia">Đánh giá cao nhất</option>
-          <option value="gan_nhat">Gần tôi nhất</option>
-        </select>
+    <aside className="filter-panel">
+      <div className="filter-panel__header">
+        <div>
+          <h2>Bộ lọc tìm sân</h2>
+          <p className="mb-0 text-muted">Thu gọn lựa chọn để thấy đúng sân bạn cần.</p>
+        </div>
+        <button type="button" className="filter-reset" onClick={clearFilters}>
+          Xóa bộ lọc
+        </button>
       </div>
 
-      <div className="mb-4">
-        <label className="form-label fw-semibold text-secondary">Từ khóa / Vị trí</label>
-        <div className="input-group">
-          <span className="input-group-text bg-white">
-            <i className="bi bi-search text-muted"></i>
-          </span>
+      <div className="filter-stack">
+        <div className="filter-group">
+          <label className="filter-label" htmlFor="sortBy">
+            Sắp xếp theo
+          </label>
+          <select
+            id="sortBy"
+            className="filter-select"
+            name="sortBy"
+            onChange={handleSortChange}
+            value={filters.sortBy}
+          >
+            <option value="">Mặc định</option>
+            <option value="gia_tang">Giá tăng dần</option>
+            <option value="gia_giam">Giá giảm dần</option>
+            <option value="danh_gia">Đánh giá cao nhất</option>
+            <option value="gan_nhat">Gần tôi nhất</option>
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label className="filter-label" htmlFor="keyword">
+            Từ khóa hoặc khu vực
+          </label>
           <input
-            type="text"
+            id="keyword"
+            className="filter-input"
             name="keyword"
-            value={filters.keyword}
             onChange={handleChange}
-            placeholder="Tên sân, Quận..."
-            className="form-control"
+            placeholder="Ví dụ: Quận 7, sân cỏ nhân tạo"
+            type="text"
+            value={filters.keyword}
           />
         </div>
-      </div>
 
-      <div className="mb-4">
-        <label className="form-label fw-semibold text-secondary">Loại sân</label>
-        <select
-          name="type"
-          value={filters.type}
-          onChange={handleChange}
-          className="form-select"
-        >
-          <option value="">Tất cả các môn</option>
-          {FIELD_TYPE_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              Sân {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
+        <div className="filter-group">
+          <label className="filter-label" htmlFor="type">
+            Môn thể thao
+          </label>
+          <select
+            id="type"
+            className="filter-select"
+            name="type"
+            onChange={handleChange}
+            value={filters.type}
+          >
+            <option value="">Tất cả môn thể thao</option>
+            {FIELD_TYPE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
-      <div className="mb-4">
-        <label className="form-label fw-semibold text-secondary d-flex justify-content-between">
-          <span>Giá tối đa:</span>
-          <span className="text-success fw-bold">
-            {Number(filters.maxPrice).toLocaleString('vi-VN')} đ/h
-          </span>
-        </label>
-        <input
-          type="range"
-          name="maxPrice"
-          min="0"
-          max="500000"
-          step="50000"
-          value={filters.maxPrice}
-          onChange={handleChange}
-          className="form-range"
-        />
-        <div className="d-flex justify-content-between text-muted small">
-          <span>0đ</span>
-          <span>500k+</span>
+        <div className="filter-group">
+          <div className="d-flex align-items-center justify-content-between gap-3">
+            <label className="filter-label mb-0" htmlFor="maxPrice">
+              Mức giá tối đa
+            </label>
+            <span className="filter-range-value">
+              {Number(filters.maxPrice).toLocaleString('vi-VN')}đ/giờ
+            </span>
+          </div>
+          <input
+            id="maxPrice"
+            className="form-range"
+            max="500000"
+            min="0"
+            name="maxPrice"
+            onChange={handleChange}
+            step="50000"
+            type="range"
+            value={filters.maxPrice}
+          />
+        </div>
+
+        <div className="filter-group">
+          <span className="filter-label">Đánh giá tối thiểu</span>
+          <div className="rating-row">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                type="button"
+                className={`rating-star-button ${filters.minRating >= star ? 'is-active' : ''}`}
+                onClick={() => handleRatingSelect(star)}
+              >
+                <i className="bi bi-star-fill"></i>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-
-      <div className="mb-4">
-        <label className="form-label fw-semibold text-secondary">Đánh giá tối thiểu</label>
-        <div className="d-flex gap-2">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <i
-              key={star}
-              onClick={() => handleRatingSelect(star)}
-              className={`bi bi-star-fill fs-4 cursor-pointer ${
-                filters.minRating >= star ? 'text-warning' : 'text-light'
-              }`}
-              style={{ cursor: 'pointer', transition: 'color 0.2s' }}
-            ></i>
-          ))}
-        </div>
-      </div>
-
-      <button
-        onClick={clearFilters}
-        className="btn btn-light w-100 fw-semibold mt-3 text-secondary border"
-      >
-        <i className="bi bi-arrow-counterclockwise me-2"></i> Xóa bộ lọc
-      </button>
-    </div>
+    </aside>
   );
+};
+
+FilterSidebar.propTypes = {
+  defaultKeyword: PropTypes.string,
+  onLoadingChange: PropTypes.func,
+  onResults: PropTypes.func.isRequired,
 };
 
 export default FilterSidebar;

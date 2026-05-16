@@ -129,7 +129,7 @@ function App() {
             path="/403"
             element={
               <div className="text-center mt-5">
-                <h1>403 - Khong co quyen!</h1>
+                <h1>403 - Bạn không có quyền truy cập</h1>
               </div>
             }
           />
@@ -137,7 +137,7 @@ function App() {
             path="*"
             element={
               <div className="text-center mt-5">
-                <h1>404 - Khong ton tai!</h1>
+                <h1>404 - Trang bạn tìm không tồn tại</h1>
               </div>
             }
           />

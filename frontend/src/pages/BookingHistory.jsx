@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import ReviewModal from '../components/ReviewModal';
 import ComplaintModal from '../components/ComplaintModal';
+import AccountPageHeader from '../components/AccountPageHeader';
 import Swal from 'sweetalert2';
 
 // --- COMPONENT CON: XỬ LÝ TỪNG DÒNG ĐÁNH GIÁ ---
@@ -264,15 +265,21 @@ const BookingHistory = () => {
     };
 
     return (
-        <div className="container mt-5 mb-5">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-                <h3 className="fw-bold mb-0">
-                    {isOwner ? "📊 Quản lý đơn đặt sân" : "📅 Lịch sử đặt sân của bạn"}
-                </h3>
-                <button className="btn btn-outline-success btn-sm rounded-pill px-3" onClick={fetchHistory}>
-                    <i className="bi bi-arrow-clockwise"></i> {loading ? "Đang tải..." : "Làm mới"}
-                </button>
-            </div>
+        <div className="account-page">
+            <AccountPageHeader
+                title={isOwner ? 'Quản lý đơn đặt sân' : 'Lịch sử đặt sân'}
+                description={
+                    isOwner
+                        ? 'Theo dõi các yêu cầu đặt sân, duyệt đơn và xử lý hoàn tiền khi cần.'
+                        : 'Xem lại các lượt đặt sân của bạn, trạng thái xử lý và những việc cần làm tiếp theo.'
+                }
+                action={
+                    <button className="secondary-button px-4 py-3" onClick={fetchHistory} type="button">
+                        <i className="bi bi-arrow-clockwise me-2"></i>
+                        {loading ? 'Đang tải...' : 'Làm mới'}
+                    </button>
+                }
+            />
 
             {error && (
                 <div className="alert alert-warning rounded-4 shadow-sm mb-4" role="alert">
@@ -364,7 +371,7 @@ const BookingHistory = () => {
                                                 return existingComplaint ? (
                                                     <div className="mt-2">
                                                         <span className="badge bg-danger-subtle text-danger border">
-                                                            Khieu nai: {existingComplaint.status}
+                                                            Khiếu nại: {existingComplaint.status}
                                                         </span>
                                                     </div>
                                                 ) : (
@@ -373,7 +380,7 @@ const BookingHistory = () => {
                                                         onClick={() => setComplaintBooking(b)}
                                                     >
                                                         <i className="bi bi-exclamation-triangle me-1"></i>
-                                                        Khieu nai
+                                                        Khiếu nại
                                                     </button>
                                                 );
                                             })()
@@ -403,15 +410,15 @@ const BookingHistory = () => {
                         </div>
                     ))
                 ) : (
-                    <div className="text-center py-5 bg-light rounded-4 w-100">
-                        <p className="text-muted mb-0">{isOwner ? "Chưa có đơn hàng nào." : "Bạn chưa có lịch sử đặt sân."}</p>
+                    <div className="account-empty-state w-100">
+                        <p className="text-muted mb-0">{isOwner ? "Chưa có đơn hàng nào." : "Bạn chưa có lịch sử đặt sân nào."}</p>
                     </div>
                 )}
             </div>
 
             {isOwner && (
                 <div className="mt-5 pt-4 border-top">
-                    <h4 className="fw-bold mb-4">💬 Đánh giá & Phản hồi</h4>
+                    <h4 className="fw-bold mb-4">Đánh giá và phản hồi</h4>
                     <div className="row g-3">
                         {reviews.length > 0 ? (
                             reviews.map(rev => (

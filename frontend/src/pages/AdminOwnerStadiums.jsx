@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
+import { formatLocationParts } from '../utils/locationHelpers';
 
 const getAuthHeader = () => {
   const authData = JSON.parse(localStorage.getItem('user') || '{}');
@@ -12,6 +13,8 @@ const emptyForm = {
   name: '',
   description: '',
   address: '',
+  district: '',
+  city: 'TP. Hồ Chí Minh',
   owner_id: '',
   status: 'active',
   location_id: '',
@@ -57,6 +60,8 @@ const AdminOwnerStadiums = () => {
       name: stadium.name || '',
       description: stadium.description || '',
       address: stadium.location?.address || '',
+      district: stadium.location?.district || '',
+      city: stadium.location?.city || 'TP. Hồ Chí Minh',
       owner_id: stadium.owner_id || '',
       status: stadium.status || 'active',
       location_id: stadium.location_id || '',
@@ -78,6 +83,8 @@ const AdminOwnerStadiums = () => {
         name: formData.name,
         description: formData.description,
         address: formData.address,
+        district: formData.district,
+        city: formData.city,
         owner_id: Number(formData.owner_id),
         status: formData.status,
         location_id: formData.location_id || undefined,
@@ -164,6 +171,26 @@ const AdminOwnerStadiums = () => {
               </div>
 
               <div>
+                <label className="form-label fw-semibold">Quan / Huyen</label>
+                <input
+                  className="form-control"
+                  value={formData.district}
+                  onChange={(event) => setFormData({ ...formData, district: event.target.value })}
+                  placeholder="Vi du: Quan 10, Thu Duc"
+                />
+              </div>
+
+              <div>
+                <label className="form-label fw-semibold">Thanh pho</label>
+                <input
+                  className="form-control"
+                  value={formData.city}
+                  onChange={(event) => setFormData({ ...formData, city: event.target.value })}
+                  placeholder="TP. Hồ Chí Minh"
+                />
+              </div>
+
+              <div>
                 <label className="form-label fw-semibold">Mo ta</label>
                 <textarea
                   className="form-control"
@@ -241,7 +268,12 @@ const AdminOwnerStadiums = () => {
                           Email: {stadium.owner?.email || 'N/A'}
                         </div>
                         <div className="text-muted small mb-1">
-                          Dia chi: {stadium.location?.address || 'Chua co dia chi'}
+                          Dia chi:{' '}
+                          {formatLocationParts(
+                            stadium.location?.address,
+                            stadium.location?.district,
+                            stadium.location?.city
+                          ) || 'Chua co dia chi'}
                         </div>
                         <div className="small">{stadium.description || 'Chua co mo ta'}</div>
                       </div>
