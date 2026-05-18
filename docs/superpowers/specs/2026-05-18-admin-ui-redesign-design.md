@@ -2,7 +2,7 @@
 
 ## Goal
 
-Redesign khu admin theo hướng giao diện sáng, gọn, hiện đại và dễ scan, dựa trên tinh thần của `design.md` nhưng hòa vào visual language hiện tại của website thay vì bê nguyên dark enterprise style. Phase đầu chỉ tập trung vào `AdminLayout` và `AdminDashboard` để tạo nền visual chung cho các màn admin về sau.
+Redesign khu admin để đồng bộ hơn với phần user và owner về màu sắc, card, button và spacing, nhưng vẫn giữ cấu trúc điều hướng và bố cục riêng của admin. Mục tiêu là để toàn bộ frontend nhìn như cùng một sản phẩm, thay vì admin mang một visual language tách biệt.
 
 ## Scope
 
@@ -22,230 +22,252 @@ Không thay đổi:
 
 Các màn admin khác như `AdminUsers`, `AdminStadiums`, `AdminComplaints`, `AdminActivityLogs` chưa redesign trong phase này, nhưng sẽ là đối tượng kế tiếp bám theo cùng visual system.
 
-## Design Direction
+## Updated Design Direction
 
-Hướng thiết kế được chốt là một hybrid giữa hệ thiết kế trong `design.md` và frontend hiện tại:
+Hướng thiết kế mới được chốt là:
 
-- giữ nền sáng, sạch, dễ đọc của website hiện tại
-- mượn bố cục mạnh tay hơn từ `design.md`
-- dùng xanh teal và xanh lá làm màu nhấn có kiểm soát
-- tránh dark dashboard toàn phần
-- ưu tiên scan nhanh, thao tác nhanh và cảm giác control center vừa phải
+- giữ cấu trúc admin đã làm: `topbar + dropdown navigation`
+- giữ bố cục dashboard: `hero ngắn + KPI grid + quick actions + broadcast panel`
+- bỏ visual nghiêng enterprise teal
+- kéo toàn bộ ngôn ngữ thị giác của admin về gần hệ user/owner hơn
 
-Từ khóa thẩm mỹ:
+Admin sẽ đồng bộ với user/owner ở các tầng sau:
 
-- sáng
-- nổi khối vừa phải
-- premium nhẹ
-- điều hướng rõ
-- nhiều khoảng thở
-- quản trị nhưng không nặng nề
+- màu sắc
+- card surface
+- button treatment
+- border softness
+- shadow softness
+- radius
+- spacing
+
+Admin sẽ **không** bê nguyên bố cục user/owner, mà chỉ dùng chung visual language.
+
+## Color System
+
+### Primary Accent
+
+Màu nhấn chính của admin sẽ là **cam**, cùng họ với user/owner.
+
+### Secondary Accent
+
+Màu xanh chỉ được giữ ở vai trò phụ:
+
+- trạng thái hệ thống ổn định
+- trạng thái tích cực
+- tín hiệu hỗ trợ
+
+Nó không còn là màu dẫn dắt toàn giao diện admin.
+
+### Surface and Text
+
+Admin sẽ dùng lại hệ sáng của frontend hiện tại:
+
+- nền sáng
+- surface trắng
+- text xanh đậm
+- border mềm
+- shadow nhẹ
+
+Nguyên tắc:
+
+- cam là màu nhấn chính cho CTA, active state và visual focus
+- xanh là tín hiệu trạng thái phụ
+- tránh dark gradient lớn
+- tránh làm admin trông như một sản phẩm tách rời
 
 ## Information Architecture
 
-Phase đầu chốt hai quyết định chính:
+Phase đầu vẫn giữ hai quyết định đã chốt:
 
 - `AdminLayout` dùng `topbar + dropdown navigation`
 - `AdminDashboard` ưu tiên `nhiều KPI + quick actions`
 
-Điều này có nghĩa khu admin sẽ không chuyển sang sidebar trái ở desktop trong phase này. Điều hướng chính vẫn nằm trên topbar để giữ cảm giác thoáng và gần với cách dùng hiện tại, nhưng được thiết kế lại để rõ cấu trúc hơn.
+Điều thay đổi là visual treatment, không phải structure.
 
 ## AdminLayout
 
 ### Structure
 
-`AdminLayout` sẽ dùng một topbar sticky, nổi bật hơn hiện tại nhưng vẫn nhẹ mắt:
+`AdminLayout` vẫn dùng:
 
-- bên trái là brand admin và ngữ cảnh khu vực
-- ở giữa là một `navigation switcher` dạng dropdown lớn
-- bên phải là cụm account, trạng thái và thao tác nhanh
+- topbar sticky
+- brand admin bên trái
+- navigation switcher dạng dropdown ở giữa
+- cụm account/actions bên phải
 
-`navigation switcher` là thành phần điều hướng trung tâm. Nó hiển thị module hiện tại và khi mở ra sẽ chia menu thành các nhóm rõ ràng, ví dụ:
+Đây tiếp tục là shell chính cho admin vì phù hợp với nhu cầu điều hướng, nhưng phần nhìn sẽ được kéo gần về `MainLayout` và các panel/account shell của user/owner.
 
-- Quản trị
-- Vận hành chủ sân
-- Người dùng
+### Visual Behavior
 
-Mỗi nhóm có tiêu đề rõ, item active nổi bật, khoảng cách thoáng và visual đồng nhất với phần còn lại của admin shell.
+Topbar mới cần:
 
-### Behavior
-
-- topbar sticky khi cuộn
-- dropdown mở gọn, có phân nhóm và active state rõ
-- mobile vẫn dùng cùng pattern topbar, chỉ thu gọn cách hiển thị menu và account để không vỡ layout
-- account area giữ được khả năng mở panel cá nhân hoặc thao tác như đăng xuất
-
-### Visual Rules
-
-- nền topbar sáng, hơi trong nhẹ, có blur nhẹ
+- sáng
+- blur nhẹ
 - border mảnh
-- bo góc lớn cho dropdown panel
-- active state dùng teal/green accent
-- tránh inline style rời rạc, gom thành class có hệ thống
+- khoảng thở thoáng
+- typography cùng hệ
+
+`navigation switcher` cần nhìn như một control nằm cùng họ với:
+
+- account trigger
+- filter panel
+- secondary button
+
+Dropdown menu cần:
+
+- là card trắng bo lớn
+- shadow mềm
+- phân nhóm rõ
+- item active dùng nền cam nhạt và chữ cam đậm
+
+Account drawer cần:
+
+- cùng tinh thần với account drawer/page shell của user/owner
+- section title rõ
+- item spacing thoáng
+- action row mềm, sáng, đồng nhất
+
+### Desired Feel
+
+`AdminLayout` phải cho cảm giác:
+
+- vẫn là khu quản trị
+- nhưng là khu quản trị của cùng một website
+- không phải một dashboard tách thương hiệu
 
 ## AdminDashboard
 
 ### Layout Priority
 
-Dashboard sẽ đi theo thứ tự ưu tiên:
+Dashboard vẫn theo thứ tự:
 
-1. hero summary ngắn
+1. hero ngắn
 2. KPI grid 4 ô
 3. quick actions là khối chính
-4. thông báo hệ thống là khối phụ
+4. broadcast panel là khối phụ
 
-Trọng tâm không phải analytics sâu mà là bảng điều phối nhanh cho admin.
+Không bổ sung analytics sâu hay chart phức tạp trong phase này.
 
-### Hero Summary
+### Hero
 
-Hero không nên quá cao hoặc quá nặng. Nó chỉ cần:
+Hero đầu trang sẽ chuyển sang tinh thần gần owner workspace hơn:
 
-- tạo cảm giác control center
+- ngắn
+- sạch
+- nền sáng
+- có thể dùng gradient rất nhẹ
+- không dùng panel tối làm điểm nhấn chính
+
+Hero chỉ cần:
+
 - nhắc ngữ cảnh điều hành
-- đưa ra 1 đến 2 CTA chính
+- tạo visual hierarchy đầu trang
+- đưa 1 đến 2 CTA quan trọng
 
-CTA nên ưu tiên các luồng quản trị quan trọng như:
+### KPI Cards
 
-- xử lý khiếu nại
-- duyệt sân
+KPI cards sẽ bám gần hệ owner/user hơn:
 
-### KPI Grid
+- card trắng
+- icon block màu nhạt
+- số lớn dễ scan
+- hint ngắn
+- điểm nhấn cam vừa phải
 
-KPI grid gồm 4 ô lớn:
-
-- Tài khoản
-- Khu sân
-- Sân lẻ
-- Chờ duyệt
-
-Mỗi KPI card có:
-
-- icon block
-- nhãn ngắn
-- số liệu lớn
-- mô tả phụ ngắn
-
-Mục tiêu là để admin nhìn vào là nắm ngay tình trạng hệ thống mà không cần đọc nhiều.
+Mục tiêu là nhìn vào thấy quen với design system toàn site, không bị “lệch admin”.
 
 ### Quick Actions
 
-Quick actions là vùng chính của dashboard. Các card hành động nhanh sẽ dẫn tới những luồng quản trị cốt lõi:
+Quick actions được chốt theo hướng:
 
-- quản lý tài khoản
-- duyệt khu/sân
-- xử lý khiếu nại
-- nhật ký hoạt động
+- giống owner panel hơn
+- gọn
+- chuyên nghiệp
+- ít phô diễn
 
-Mỗi quick action card nên có:
+Nó không nên giống field card của user. Đây là action panel dành cho thao tác quản trị, nên cần:
 
-- icon nổi bật nhưng gọn
-- tiêu đề ngắn
-- mô tả một dòng
-- hover nhấc nhẹ
+- icon nền mềm
+- title ngắn
+- mô tả súc tích
+- hover nhẹ
+- card rõ nhưng không quá nhiều hiệu ứng
 
-### System Broadcast
+### Broadcast Panel
 
-Khối gửi thông báo hệ thống vẫn được giữ nhưng là thành phần phụ trợ. Nó phải:
+Khối thông báo hệ thống vẫn là công cụ phụ trợ, nhưng visual sẽ đổi sang cùng hệ card sáng như các panel khác.
 
-- dễ thấy
-- rõ là công cụ tác vụ
-- không chiếm spotlight hơn KPI và quick actions
+Nó không nên dùng dark gradient riêng vì điều đó phá tính thống nhất với:
 
-Form giữ logic hiện tại, chỉ thay lớp trình bày.
+- owner workspace
+- account pages
+- listing/detail pages
 
-## Visual System
+## Component Alignment With User/Owner
 
-### Color
+Admin không sao chép từng component từ user/owner, nhưng phải cùng rule hệ thống:
 
-Hệ màu dự kiến:
+- button primary cùng ngôn ngữ với primary action của site
+- button secondary cùng logic với surface button hiện có
+- card cùng border radius và shadow family
+- spacing cùng nhịp
+- section shell cùng tinh thần với owner panel/account card
 
-- nền tổng thể: trắng ngà, xanh xám rất nhạt
-- card: trắng
-- text chính: xanh than đậm hoặc slate đậm
-- text phụ: xám xanh
-- nhấn chính: teal
-- nhấn tích cực/CTA: xanh lá sáng theo tinh thần `design.md`
+Mức đồng bộ được chốt là:
 
-Nguyên tắc dùng màu:
+- giống màu
+- giống button
+- giống card
+- giống khoảng thở
 
-- không dùng xanh neon trên diện rộng
-- màu nhấn chỉ xuất hiện ở CTA chính, active state, trạng thái tích cực và một số icon block
-- dark surface chỉ dùng tiết chế ở panel phụ hoặc điểm neo thị giác, không dùng làm nền toàn màn
-
-### Typography
-
-Typography nên thống nhất với frontend hiện tại để tránh lệch thương hiệu, nhưng phần admin sẽ có:
-
-- heading đậm hơn
-- phân cấp mạnh hơn giữa title, label, meta text
-- ưu tiên khả năng scan thay vì phong cách trang trí
-
-### Components
-
-Các component/pattern cần chuẩn hóa trong phase này:
-
-- admin topbar
-- navigation switcher
-- dropdown panel
-- admin hero
-- KPI card
-- quick action card
-- panel/card chuẩn cho khối phụ
-- button chính và button phụ
-
-Rule chung:
-
-- bo góc lớn
-- shadow mềm
-- border mảnh
-- spacing thoáng
-- hover tinh tế khoảng 150ms đến 200ms
+Nhưng không bắt buộc giống toàn bộ look & feel.
 
 ## Responsive Strategy
 
-Responsive không đổi cấu trúc thông tin chính, chỉ co giãn hiển thị:
+Responsive vẫn theo logic cũ:
 
-- topbar giữ nguyên vai trò trên mobile
-- dropdown và account controls thu gọn hợp lý
-- KPI grid có thể từ 4 cột xuống 2 cột rồi 1 cột
-- quick actions co thành lưới nhỏ hơn trên tablet/mobile
-- hero giữ ngắn và không chiếm quá nhiều chiều cao
+- topbar giữ vai trò chính trên mobile
+- dropdown và account area thu gọn hợp lý
+- KPI grid co từ nhiều cột về ít cột
+- quick actions co theo lưới nhỏ hơn
+- hero giữ ngắn để không chiếm quá nhiều chiều cao
 
-Mục tiêu là không vỡ bố cục và không khiến admin mobile bị quá tải.
+Điểm cần chú ý là khi đổi sang visual cùng hệ user/owner, mobile admin vẫn phải rõ là khu quản trị chứ không bị “quá giống” màn người dùng phổ thông.
 
 ## Implementation Boundaries
 
-Khi vào implementation, nhóm thay đổi chỉ nên:
+Khi cập nhật implementation, chỉ nên:
 
-- thay JSX structure và CSS classes của `AdminLayout`
-- thay JSX structure và CSS classes của `AdminDashboard`
-- chuyển inline styling rời rạc sang hệ class có tổ chức
-- chuẩn hóa text tiếng Việt admin nếu đang chưa đồng đều
+- giữ structure admin hiện tại
+- thay visual tokens/class styling để đồng bộ với user/owner
+- bỏ những phần còn mang chất teal enterprise
+- chỉnh microcopy nếu cần để phù hợp layout mới
 
 Không nên:
 
-- mở rộng phạm vi sang các màn admin khác
-- đổi dữ liệu backend
-- đổi API contract
-- đưa thêm biểu đồ hoặc analytics sâu ngoài phạm vi đã chốt
+- đổi lại điều hướng admin sang sidebar
+- đổi flow dashboard
+- mở rộng sang các màn admin khác
+- thay logic backend
 
 ## Testing and Verification Expectations
 
-Phase implementation sau đó nên kiểm tra:
+Sau khi cập nhật code theo hướng mới, cần kiểm tra:
 
-- render ổn ở desktop và mobile
-- dropdown điều hướng hoạt động đúng
-- trạng thái active hiển thị đúng
-- dashboard vẫn lấy và hiển thị đúng dữ liệu hiện tại
-- form thông báo hệ thống vẫn hoạt động như cũ
-- không phát sinh regression về route hoặc auth flow admin
+- admin shell vẫn hoạt động đúng
+- dropdown navigation vẫn mở/đóng và highlight đúng
+- dashboard vẫn lấy dữ liệu đúng
+- broadcast form vẫn giữ nguyên behavior
+- visual mới không làm vỡ responsive
+- test admin hiện có vẫn phản ánh đúng intent
 
 ## Success Criteria
 
 Phase này được coi là thành công khi:
 
-- admin nhìn khác biệt rõ so với hiện trạng nhưng vẫn cùng hệ với website
-- `AdminLayout` và `AdminDashboard` có visual system thống nhất
-- dashboard scan nhanh hơn và thao tác nhanh hơn
-- code presentation gọn hơn, ít inline style hơn
-- tạo được nền đủ rõ để redesign tiếp các màn admin còn lại
+- admin nhìn thống nhất hơn rõ rệt với user/owner
+- toàn site có cùng một design language
+- admin vẫn giữ được cấu trúc điều hướng và tính chất quản trị riêng
+- không còn cảm giác admin là một giao diện thuộc “hệ khác”
+- code presentation vẫn gọn và dễ mở rộng cho các màn admin tiếp theo

@@ -17,12 +17,12 @@ const verifyToken = (req, res, next) => {
   const token = authHeader?.split(' ')[1];
 
   if (!token) {
-    return res.status(403).json({ message: 'Khong tim thay token!' });
+    return res.status(403).json({ message: 'Không tìm thấy token!' });
   }
 
   jwt.verify(token, process.env.JWT_SECRET || 'secret_key', (err, decoded) => {
     if (err) {
-      return res.status(401).json({ message: 'Token khong hop le hoac het han!' });
+      return res.status(401).json({ message: 'Token không hợp lệ hoặc hết hạn!' });
     }
 
     decoded.role = normalizeRole(decoded.role);
@@ -42,7 +42,7 @@ const checkRole = (roles = []) => {
     }
 
     if (!normalizedRoles.includes(currentRole)) {
-      return res.status(403).json({ message: 'Ban khong co quyen truy cap!' });
+      return res.status(403).json({ message: 'Bạn không có quyền truy cập!' });
     }
 
     next();

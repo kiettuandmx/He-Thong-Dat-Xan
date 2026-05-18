@@ -45,7 +45,7 @@ const getStadiumById = async (req, res) => {
       ],
     });
 
-    if (!stadium) return res.status(404).json({ message: 'Khong tim thay' });
+    if (!stadium) return res.status(404).json({ message: 'Không tìm thấy' });
     res.json(stadium);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -61,7 +61,7 @@ const createStadium = async (req, res) => {
 
     if (!resolvedOwnerId) {
       await transaction.rollback();
-      return res.status(401).json({ error: 'Khong xac dinh duoc chu san' });
+      return res.status(401).json({ error: 'Không xác định được chủ sân' });
     }
 
     const location = await db.Location.create(
@@ -121,9 +121,9 @@ const updateStadium = async (req, res) => {
       include: [{ model: db.Location, as: 'location' }],
     });
 
-    if (!stadium) return res.status(404).json({ message: 'Khong tim thay' });
+    if (!stadium) return res.status(404).json({ message: 'Không tìm thấy' });
     if (!isAdminUser(req) && Number(stadium.owner_id) !== Number(req.user?.id)) {
-      return res.status(403).json({ error: 'Ban khong co quyen cap nhat khu san nay' });
+      return res.status(403).json({ error: 'Bạn không có quyền cập nhật khu sân này' });
     }
 
     const before = toPlain(stadium);
@@ -175,7 +175,7 @@ const updateStadium = async (req, res) => {
       ...getRequestMeta(req),
     });
 
-    res.json({ message: 'Cap nhat thanh cong!' });
+    res.json({ message: 'Cập nhật thành công!' });
   } catch (err) {
     console.error('Loi:', err.message);
     res.status(500).json({ error: err.message });
@@ -188,11 +188,11 @@ const deleteStadium = async (req, res) => {
     const stadium = await db.Stadium.findByPk(id);
 
     if (!stadium) {
-      return res.status(404).json({ error: 'Khong tim thay khu san' });
+      return res.status(404).json({ error: 'Không tìm thấy khu sân' });
     }
 
     if (!isAdminUser(req) && Number(stadium.owner_id) !== Number(req.user?.id)) {
-      return res.status(403).json({ error: 'Ban khong co quyen xoa khu san nay' });
+      return res.status(403).json({ error: 'Bạn không có quyền xóa khu sân này' });
     }
 
     const before = toPlain(stadium);
@@ -212,7 +212,7 @@ const deleteStadium = async (req, res) => {
       ...getRequestMeta(req),
     });
 
-    res.json({ message: 'Xoa thanh cong khu va cac du lieu lien quan' });
+    res.json({ message: 'Xóa thành công khu và các dữ liệu liên quan' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -224,7 +224,7 @@ const getOwnerStadiums = async (req, res) => {
     const { ownerId } = req.params;
 
     if (!isAdminUser(req) && Number(ownerId) !== Number(req.user?.id)) {
-      return res.status(403).json({ error: 'Ban khong co quyen xem danh sach khu san nay' });
+      return res.status(403).json({ error: 'Bạn không có quyền xem danh sách khu sân này' });
     }
 
     const stadiums = await db.Stadium.findAll({

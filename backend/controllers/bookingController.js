@@ -211,7 +211,7 @@ exports.getBookingById = async (req, res) => {
         }
 
         if (!canAccessBookingDetail(req, booking)) {
-            return res.status(403).json({ success: false, message: "Ban khong co quyen xem don dat san nay!" });
+            return res.status(403).json({ success: false, message: "Bạn không có quyền xem đơn đặt sân này!" });
         }
 
         res.json({ success: true, data: booking });
@@ -260,7 +260,7 @@ exports.getUserPaymentHistory = async (req, res) => {
         if (!userId) {
             return res.status(401).json({
                 success: false,
-                message: 'Khong xac dinh duoc nguoi dung.',
+                message: 'Không xác định được người dùng.',
             });
         }
 
@@ -332,7 +332,7 @@ exports.getOwnerPaymentHistory = async (req, res) => {
         if (!ownerId) {
             return res.status(401).json({
                 success: false,
-                message: 'Khong xac dinh duoc chu san.',
+                message: 'Không xác định được chủ sân.',
             });
         }
 
@@ -495,7 +495,7 @@ exports.approveBooking = async (req, res) => {
         // 2. Cập nhật trạng thái
         const bookingStadium = await db.Stadium.findByPk(booking.stadium_id);
         if (!isAdminUser(req) && Number(bookingStadium?.owner_id) !== Number(req.user?.id)) {
-            return res.status(403).json({ success: false, message: "Ban khong co quyen duyet don nay!" });
+            return res.status(403).json({ success: false, message: "Bạn không có quyền duyệt đơn này!" });
         }
 
         const before = toPlain(booking);
@@ -565,7 +565,7 @@ exports.rejectBooking = async (req, res) => {
         });
 
         if (!isAdminUser(req) && Number(bookingField?.stadium?.owner_id) !== Number(req.user?.id)) {
-            return res.status(403).json({ success: false, message: "Ban khong co quyen tu choi don nay!" });
+            return res.status(403).json({ success: false, message: "Bạn không có quyền từ chối đơn này!" });
         }
 
         const before = toPlain(booking);
@@ -796,7 +796,7 @@ exports.updatePaymentStatus = async (req, res) => {
 
         // Cập nhật các thông tin thanh toán
         if (!isAdminUser(req) && Number(booking.user_id) !== Number(req.user?.id)) {
-            return res.status(403).json({ success: false, message: "Ban khong co quyen cap nhat thanh toan don nay!" });
+            return res.status(403).json({ success: false, message: "Bạn không có quyền cập nhật thanh toán đơn này!" });
         }
 
         booking.payment_status = payment_status || 'paid';
@@ -875,7 +875,7 @@ exports.createBooking = async (req, res) => {
 
         if (!field) {
             await transaction.rollback();
-            return res.status(404).json({ success: false, message: 'Khong tim thay san' });
+            return res.status(404).json({ success: false, message: 'Không tìm thấy sân' });
         }
 
         const existingBooking = await Booking.findOne({
@@ -902,7 +902,7 @@ exports.createBooking = async (req, res) => {
                 await transaction.rollback();
                 return res.status(400).json({
                     success: false,
-                    message: 'San hien dang duoc dat, vui long thu lai sau!',
+                    message: 'Sân hiện đang được đặt, vui lòng thử lại sau!',
                 });
             }
         }
@@ -922,7 +922,7 @@ exports.createBooking = async (req, res) => {
 
             if (!coupon) {
                 await transaction.rollback();
-                return res.status(400).json({ success: false, message: 'Ma giam gia khong hop le' });
+                return res.status(400).json({ success: false, message: 'Mã giảm giá không hợp lệ' });
             }
 
             try {
@@ -1185,7 +1185,7 @@ exports.getRefundHistory = async (req, res) => {
         if (!ownerId) {
             return res.status(401).json({
                 success: false,
-                message: 'Khong xac dinh duoc nguoi dung!',
+                message: 'Không xác định được người dùng!',
             });
         }
 
@@ -1279,7 +1279,7 @@ exports.updatePaymentStatus = async (req, res) => {
         const before = toPlain(booking);
 
         if (!isAdminUser(req) && Number(booking.user_id) !== Number(req.user?.id)) {
-            return res.status(403).json({ success: false, message: "Ban khong co quyen cap nhat thanh toan don nay!" });
+            return res.status(403).json({ success: false, message: "Bạn không có quyền cập nhật thanh toán đơn này!" });
         }
 
         const nextPaymentStatus = payment_status || booking.payment_status || 'unpaid';

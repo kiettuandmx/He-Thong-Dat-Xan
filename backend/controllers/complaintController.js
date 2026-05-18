@@ -66,17 +66,17 @@ exports.createComplaint = async (req, res) => {
     const { booking_id, stadium_id, field_id, reason, evidence_urls } = req.body;
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: 'Vui long dang nhap lai.' });
+      return res.status(401).json({ success: false, message: 'Vui lòng đăng nhập lại.' });
     }
 
     if (!reason || !reason.trim()) {
-      return res.status(400).json({ success: false, message: 'Vui long nhap noi dung khieu nai.' });
+      return res.status(400).json({ success: false, message: 'Vui lòng nhập nội dung khiếu nại.' });
     }
 
     if (!booking_id && !stadium_id && !field_id) {
       return res.status(400).json({
         success: false,
-        message: 'Can cung cap booking hoac doi tuong lien quan de tao khieu nai.',
+        message: 'Cần cung cấp booking hoặc đối tượng liên quan để tạo khiếu nại.',
       });
     }
 
@@ -90,17 +90,17 @@ exports.createComplaint = async (req, res) => {
       });
 
       if (!booking) {
-        return res.status(404).json({ success: false, message: 'Khong tim thay don dat san.' });
+        return res.status(404).json({ success: false, message: 'Không tìm thấy đơn đặt sân.' });
       }
 
       if (Number(booking.user_id) !== Number(userId)) {
-        return res.status(403).json({ success: false, message: 'Ban khong the khieu nai don cua nguoi khac.' });
+        return res.status(403).json({ success: false, message: 'Bạn không thể khiếu nại đơn của người khác.' });
       }
 
       if (!['paid', 'partially_paid'].includes(booking.payment_status) && booking.status === 'pending') {
         return res.status(400).json({
           success: false,
-          message: 'Don dat san chua du dieu kien de gui khieu nai.',
+          message: 'Đơn đặt sân chưa đủ điều kiện để gửi khiếu nại.',
         });
       }
 
@@ -117,7 +117,7 @@ exports.createComplaint = async (req, res) => {
       if (existingComplaint) {
         return res.status(409).json({
           success: false,
-          message: 'Don dat san nay da co khieu nai dang duoc xu ly.',
+          message: 'Đơn đặt sân này đã có khiếu nại đang được xử lý.',
         });
       }
     }
@@ -157,7 +157,7 @@ exports.createComplaint = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Da gui khieu nai. Admin se kiem tra va phan hoi.',
+      message: 'Đã gửi khiếu nại. Admin sẽ kiểm tra và phản hồi.',
       data: complaint,
     });
   } catch (error) {
@@ -232,7 +232,7 @@ exports.getAdminComplaintById = async (req, res) => {
     });
 
     if (!complaint) {
-      return res.status(404).json({ success: false, message: 'Khong tim thay khieu nai.' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy khiếu nại.' });
     }
 
     res.json({ success: true, data: complaint });
@@ -249,13 +249,13 @@ exports.updateComplaintStatus = async (req, res) => {
 
     if (!VALID_STATUSES.includes(status)) {
       await transaction.rollback();
-      return res.status(400).json({ success: false, message: 'Trang thai khong hop le.' });
+      return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ.' });
     }
 
     const complaint = await db.Complaint.findByPk(req.params.id, { transaction });
     if (!complaint) {
       await transaction.rollback();
-      return res.status(404).json({ success: false, message: 'Khong tim thay khieu nai.' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy khiếu nại.' });
     }
 
     const before = toPlain(complaint);
@@ -293,14 +293,14 @@ exports.updateComplaintStatus = async (req, res) => {
 
     await createNotification({
       userId: complaint.user_id,
-      content: `Khieu nai #${complaint.id} da duoc cap nhat trang thai: ${status}`,
+      content: `Khiếu nại #${complaint.id} đã được cập nhật trạng thái: ${status}`,
       type: 'complaint_status_updated',
       targetType: 'complaint',
       targetId: complaint.id,
       targetRoute: '/complaints',
     });
 
-    res.json({ success: true, message: 'Da cap nhat trang thai khieu nai.', data: complaint });
+    res.json({ success: true, message: 'Đã cập nhật trạng thái khiếu nại.', data: complaint });
   } catch (error) {
     if (!transaction.finished) await transaction.rollback();
     res.status(500).json({ success: false, message: error.message });
@@ -315,7 +315,7 @@ exports.resolveComplaint = async (req, res) => {
 
     if (!VALID_RESOLUTIONS.includes(resolution_type)) {
       await transaction.rollback();
-      return res.status(400).json({ success: false, message: 'Huong xu ly khong hop le.' });
+      return res.status(400).json({ success: false, message: 'Hướng xử lý không hợp lệ.' });
     }
 
     const complaint = await db.Complaint.findByPk(req.params.id, {
@@ -335,7 +335,7 @@ exports.resolveComplaint = async (req, res) => {
 
     if (!complaint) {
       await transaction.rollback();
-      return res.status(404).json({ success: false, message: 'Khong tim thay khieu nai.' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy khiếu nại.' });
     }
 
     const before = toPlain(complaint);
@@ -347,7 +347,7 @@ exports.resolveComplaint = async (req, res) => {
       await complaint.booking.update(
         {
           status: 'refunded',
-          refund_reason: resolution_note || 'Admin hoan tien sau khi xu ly khieu nai.',
+          refund_reason: resolution_note || 'Admin hoàn tiền sau khi xử lý khiếu nại.',
           refunded_at: new Date(),
         },
         { transaction }
@@ -407,7 +407,7 @@ exports.resolveComplaint = async (req, res) => {
     if (resolution_type === 'refund_user') {
       await createNotification({
         userId: complaint.user_id,
-        content: `Khieu nai #${complaint.id} da duoc chap nhan va hoan tien.`,
+        content: `Khiếu nại #${complaint.id} đã được chấp nhận và hoàn tiền.`,
         type: 'complaint_refund_approved',
         targetType: 'complaint',
         targetId: complaint.id,
@@ -416,7 +416,7 @@ exports.resolveComplaint = async (req, res) => {
     } else if (resolution_type === 'penalize_owner') {
       await createNotification({
         userId: complaint.user_id,
-        content: `Khieu nai #${complaint.id} da duoc xu ly. Chu san se bi xu phat theo ghi chu admin.`,
+        content: `Khiếu nại #${complaint.id} đã được xử lý. Chủ sân sẽ bị xử phạt theo ghi chú admin.`,
         type: 'complaint_owner_penalized',
         targetType: 'complaint',
         targetId: complaint.id,
@@ -425,7 +425,7 @@ exports.resolveComplaint = async (req, res) => {
       const ownerId = complaint.booking?.stadium?.owner_id || complaint.stadium?.owner_id;
       await createNotification({
         userId: ownerId,
-        content: `Admin da xu ly khieu nai #${complaint.id}. Vui long xem ghi chu xu phat.`,
+        content: `Admin đã xử lý khiếu nại #${complaint.id}. Vui lòng xem ghi chú xử phạt.`,
         type: 'complaint_penalty_notice',
         targetType: 'complaint',
         targetId: complaint.id,
@@ -434,7 +434,7 @@ exports.resolveComplaint = async (req, res) => {
     } else {
       await createNotification({
         userId: complaint.user_id,
-        content: `Khieu nai #${complaint.id} da duoc xem xet va tu choi.`,
+        content: `Khiếu nại #${complaint.id} đã được xem xét và từ chối.`,
         type: 'complaint_rejected',
         targetType: 'complaint',
         targetId: complaint.id,
@@ -442,7 +442,7 @@ exports.resolveComplaint = async (req, res) => {
       });
     }
 
-    res.json({ success: true, message: 'Da xu ly khieu nai.', data: complaint });
+    res.json({ success: true, message: 'Đã xử lý khiếu nại.', data: complaint });
   } catch (error) {
     if (!transaction.finished) await transaction.rollback();
     res.status(500).json({ success: false, message: error.message });
@@ -453,7 +453,7 @@ exports.getComplaintActivityContext = async (req, res) => {
   try {
     const complaint = await db.Complaint.findByPk(req.params.id);
     if (!complaint) {
-      return res.status(404).json({ success: false, message: 'Khong tim thay khieu nai.' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy khiếu nại.' });
     }
 
     const targets = [{ target_type: 'complaint', target_id: String(complaint.id) }];

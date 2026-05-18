@@ -27,7 +27,7 @@ const AdminBookingManagement = () => {
       });
       setBookings(res.data || []);
     } catch (error) {
-      console.error('Loi tai danh sach don admin:', error);
+      console.error('Lỗi tải danh sách đơn admin:', error);
     }
   };
 
@@ -58,7 +58,7 @@ const AdminBookingManagement = () => {
       }
 
       if (action === 'reject') {
-        const reject_reason = window.prompt('Nhap ly do tu choi don:');
+        const reject_reason = window.prompt('Nhập lý do từ chối đơn:');
         if (!reject_reason) return;
         await axios.patch(
           `http://localhost:5000/api/bookings/reject/${bookingId}`,
@@ -68,7 +68,7 @@ const AdminBookingManagement = () => {
       }
 
       if (action === 'refund') {
-        const refund_reason = window.prompt('Nhap ly do hoan tien don:');
+        const refund_reason = window.prompt('Nhập lý do hoàn tiền đơn:');
         if (!refund_reason) return;
         await axios.put(
           `http://localhost:5000/api/bookings/refund/${bookingId}`,
@@ -79,7 +79,7 @@ const AdminBookingManagement = () => {
 
       loadBookings();
     } catch (error) {
-      alert(error.response?.data?.message || 'Khong the cap nhat don dat san.');
+      alert(error.response?.data?.message || 'Không thể cập nhật đơn đặt sân.');
     }
   };
 
@@ -88,25 +88,25 @@ const AdminBookingManagement = () => {
       <div className="row g-3 mb-4">
         <div className="col-md-3">
           <div className="bg-white border rounded-4 shadow-sm p-3">
-            <small className="text-muted d-block mb-1">Tong don</small>
+            <small className="text-muted d-block mb-1">Tổng đơn</small>
             <div className="fs-2 fw-bold">{summary.total}</div>
           </div>
         </div>
         <div className="col-md-3">
           <div className="bg-white border rounded-4 shadow-sm p-3">
-            <small className="text-muted d-block mb-1">Cho xu ly</small>
+            <small className="text-muted d-block mb-1">Chờ xử lý</small>
             <div className="fs-2 fw-bold text-warning">{summary.pending}</div>
           </div>
         </div>
         <div className="col-md-3">
           <div className="bg-white border rounded-4 shadow-sm p-3">
-            <small className="text-muted d-block mb-1">Da duyet</small>
+            <small className="text-muted d-block mb-1">Đã duyệt</small>
             <div className="fs-2 fw-bold text-success">{summary.confirmed}</div>
           </div>
         </div>
         <div className="col-md-3">
           <div className="bg-white border rounded-4 shadow-sm p-3">
-            <small className="text-muted d-block mb-1">Da hoan tien</small>
+            <small className="text-muted d-block mb-1">Đã hoàn tiền</small>
             <div className="fs-2 fw-bold text-info">{summary.refunded}</div>
           </div>
         </div>
@@ -115,8 +115,8 @@ const AdminBookingManagement = () => {
       <div className="bg-white border rounded-4 shadow-sm p-4">
         <div className="d-flex flex-wrap justify-content-between gap-3 align-items-center mb-4">
           <div>
-            <h3 className="fw-bold mb-1">Quan ly don dat san toan he thong</h3>
-            <p className="text-muted mb-0">Admin co the duyet, tu choi va hoan tien ngay tren dashboard.</p>
+            <h3 className="fw-bold mb-1">Quản lý đơn đặt sân toàn hệ thống</h3>
+            <p className="text-muted mb-0">Admin có thể duyệt, từ chối và hoàn tiền ngay trên dashboard.</p>
           </div>
           <div className="d-flex flex-wrap gap-2">
             {['all', 'pending', 'confirmed', 'rejected', 'refunded'].map((status) => (
@@ -125,7 +125,7 @@ const AdminBookingManagement = () => {
                 className={`btn btn-sm rounded-pill ${statusFilter === status ? 'btn-success' : 'btn-outline-secondary'}`}
                 onClick={() => setStatusFilter(status)}
               >
-                {status === 'all' ? 'Tat ca' : status}
+                {status === 'all' ? 'Tất cả' : status}
               </button>
             ))}
           </div>
@@ -135,13 +135,13 @@ const AdminBookingManagement = () => {
           <table className="table align-middle">
             <thead>
               <tr>
-                <th>Khach hang</th>
-                <th>Chu san</th>
-                <th>San</th>
-                <th>Lich choi</th>
-                <th>Thanh toan</th>
-                <th>Trang thai</th>
-                <th className="text-end">Thao tac</th>
+                <th>Khách hàng</th>
+                <th>Chủ sân</th>
+                <th>Sân</th>
+                <th>Lịch chơi</th>
+                <th>Thanh toán</th>
+                <th>Trạng thái</th>
+                <th className="text-end">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -166,7 +166,7 @@ const AdminBookingManagement = () => {
                     </div>
                   </td>
                   <td>
-                    <div className="fw-semibold">{Number(booking.amount_paid || 0).toLocaleString()}d</div>
+                    <div className="fw-semibold">{Number(booking.amount_paid || 0).toLocaleString()}đ</div>
                     <div className="small text-muted">
                       {booking.payment_type || 'N/A'} / {booking.payment_status || 'N/A'}
                     </div>
@@ -181,16 +181,16 @@ const AdminBookingManagement = () => {
                       {booking.status === 'pending' && (
                         <>
                           <button className="btn btn-success btn-sm rounded-pill" onClick={() => performAction(booking.id, 'approve')}>
-                            Duyet
+                            Duyệt
                           </button>
                           <button className="btn btn-outline-danger btn-sm rounded-pill" onClick={() => performAction(booking.id, 'reject')}>
-                            Tu choi
+                            Từ chối
                           </button>
                         </>
                       )}
                       {['pending', 'confirmed'].includes(booking.status) && (
                         <button className="btn btn-outline-warning btn-sm rounded-pill" onClick={() => performAction(booking.id, 'refund')}>
-                          Hoan tien
+                          Hoàn tiền
                         </button>
                       )}
                     </div>
@@ -201,7 +201,7 @@ const AdminBookingManagement = () => {
               {filteredBookings.length === 0 && (
                 <tr>
                   <td colSpan="7" className="text-center text-muted py-5">
-                    Khong co don dat san phu hop bo loc.
+                    Không có đơn đặt sân phù hợp bộ lọc.
                   </td>
                 </tr>
               )}

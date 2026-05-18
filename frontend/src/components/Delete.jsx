@@ -9,7 +9,7 @@ const Delete = ({ id, onSuccess }) => {
       const token = authData?.token;
 
       if (!token) {
-        alert('Vui long dang nhap de xoa san.');
+        alert('Vui lòng đăng nhập để xóa sân.');
         return;
       }
 
@@ -17,7 +17,7 @@ const Delete = ({ id, onSuccess }) => {
         await axios.delete(`http://localhost:5000/api/fields/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        alert('Xoa thanh cong!');
+        alert('Xóa thành công!');
 
         if (onSuccess) {
           onSuccess(id);

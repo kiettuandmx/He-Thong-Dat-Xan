@@ -20,11 +20,11 @@ const getMonthRange = (date = new Date()) => {
 const getCouponUsageMessage = (code) => {
   switch (normalizeCouponCode(code)) {
     case KHACHMOI_CODE:
-      return 'Ban chi duoc dung ma KHACHMOI mot lan cho tai khoan nay';
+      return 'Bạn chỉ được dùng mã KHACHMOI một lần cho tài khoản này';
     case THANGMOI_CODE:
       return 'Ban chi duoc dung ma THANGMOI mot lan trong moi thang';
     default:
-      return 'Ma giam gia khong con hop le voi tai khoan nay';
+      return 'Mã giảm giá không còn hợp lệ với tài khoản này';
   }
 };
 

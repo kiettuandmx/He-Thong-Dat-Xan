@@ -1,77 +1,58 @@
-import React, { useState } from 'react';
-import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const adminMenuSections = [
   {
-    title: 'Admin',
+    title: 'Quản trị',
+    icon: 'bi-shield-lock-fill',
     items: [
-      { to: '/admin/dashboard', label: 'Tong quan' },
-      { to: '/admin/users', label: 'Quan ly Tai khoan' },
-      { to: '/admin/stadiums', label: 'Quan ly San The Thao' },
-      { to: '/admin/hashtags', label: 'Hashtag' },
-      { to: '/admin/activity-logs', label: 'Nhat ky' },
-      { to: '/admin/complaints', label: 'Khieu nai' },
+      { to: '/admin/dashboard', label: 'Tổng quan' },
+      { to: '/admin/users', label: 'Quản lý tài khoản' },
+      { to: '/admin/stadiums', label: 'Quản lý sân thể thao' },
+      { to: '/admin/hashtags', label: 'Quản lý hashtag' },
+      { to: '/admin/activity-logs', label: 'Nhật ký hoạt động' },
+      { to: '/admin/complaints', label: 'Xử lý khiếu nại' },
     ],
   },
   {
-    title: 'Owner',
+    title: 'Vận hành chủ sân',
+    icon: 'bi-buildings-fill',
     items: [
-      { to: '/admin/owner/overview', label: 'Van hanh chu san' },
-      { to: '/admin/owner/stadiums', label: 'Khu san' },
-      { to: '/admin/owner/fields', label: 'Danh sach san' },
-      { to: '/admin/owner/bookings', label: 'Quan ly don' },
-      { to: '/admin/owner/reviews', label: 'Danh gia san' },
+      { to: '/admin/owner/overview', label: 'Tổng quan chủ sân' },
+      { to: '/admin/owner/stadiums', label: 'Khu sân' },
+      { to: '/admin/owner/fields', label: 'Danh sách sân' },
+      { to: '/admin/owner/bookings', label: 'Quản lý đơn đặt' },
+      { to: '/admin/owner/reviews', label: 'Đánh giá sân' },
     ],
   },
   {
-    title: 'User',
-    items: [{ to: '/admin/book-field', label: 'Dat san' }],
+    title: 'Người dùng',
+    icon: 'bi-person-lines-fill',
+    items: [{ to: '/admin/book-field', label: 'Đặt sân thay người dùng' }],
   },
 ];
 
 const accountMenuItems = [
-  {
-    to: '/admin/profile',
-    label: 'Ho so',
-    icon: 'bi-person-fill',
-    background: '#f6fdf5',
-    color: '#1f2937',
-    iconColor: '#198754',
-  },
+  { to: '/admin/profile', label: 'Hồ sơ', icon: 'bi-person-fill', tone: 'emerald' },
   {
     to: '/admin/history',
-    label: 'Danh sach lich da dat',
+    label: 'Danh sách lịch đã đặt',
     icon: 'bi-calendar-check',
-    background: '#f6fdf5',
-    color: '#1f2937',
-    iconColor: '#198754',
+    tone: 'emerald',
   },
-  {
-    to: '/admin/favorites',
-    label: 'San yeu thich',
-    icon: 'bi-heart-fill',
-    background: '#f6fdf5',
-    color: '#1f2937',
-    iconColor: '#dc3545',
-  },
+  { to: '/admin/favorites', label: 'Sân yêu thích', icon: 'bi-heart-fill', tone: 'rose' },
   {
     to: '/admin/my-complaints',
-    label: 'Khieu nai cua toi',
+    label: 'Khiếu nại của tôi',
     icon: 'bi-exclamation-triangle-fill',
-    background: '#fff8f1',
-    color: '#1f2937',
-    iconColor: '#f59e0b',
+    tone: 'amber',
   },
-  {
-    to: '/admin/my-reviews',
-    label: 'Danh gia',
-    icon: 'bi-star-fill',
-    background: '#f6fdf5',
-    color: '#1f2937',
-    iconColor: '#f0ad00',
-  },
+  { to: '/admin/my-reviews', label: 'Đánh giá', icon: 'bi-star-fill', tone: 'gold' },
 ];
+
+const matchesPath = (pathname, path) =>
+  pathname === path || pathname.startsWith(`${path}/`);
 
 const AdminLayout = () => {
   const { user, logout } = useAuth();
@@ -81,373 +62,230 @@ const AdminLayout = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showLegalModal, setShowLegalModal] = useState(false);
 
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
+
   const handleLogout = () => {
     setDrawerOpen(false);
     logout();
     navigate('/login');
   };
 
-  const isActive = (path) =>
-    location.pathname === path || location.pathname.startsWith(`${path}/`)
-      ? 'text-success border-bottom border-3 border-success'
-      : 'text-secondary';
-
   const getInitial = () =>
     (user?.user?.full_name || user?.user?.name || 'A').charAt(0).toUpperCase();
 
-  const activeMenuItem =
-    adminMenuSections
-      .flatMap((section) => section.items)
-      .find((item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)) ||
-    adminMenuSections[0].items[0];
+  const displayName = user?.user?.full_name || user?.user?.name || 'Admin';
+
+  const activeMenuItem = useMemo(
+    () =>
+      adminMenuSections
+        .flatMap((section) => section.items)
+        .find((item) => matchesPath(location.pathname, item.to)) || adminMenuSections[0].items[0],
+    [location.pathname]
+  );
 
   return (
-    <div className="min-vh-100 bg-light">
-      <nav className="navbar navbar-expand-lg navbar-white bg-white shadow-sm sticky-top py-3">
-        <div className="container">
-          <Link className="navbar-brand fw-bold d-flex align-items-center" to="/admin/dashboard">
-            <div className="bg-success text-white rounded-3 p-2 me-2">
-              <i className="bi bi-shield-check"></i>
-            </div>
-            <span className="text-dark">
-              He thong <span className="text-success">Admin</span>
+    <div className="admin-shell">
+      <header className="admin-topbar">
+        <div className="admin-topbar__inner">
+          <Link className="admin-brand" to="/admin/dashboard">
+            <span className="admin-brand__badge">
+              <i className="bi bi-shield-check" />
+            </span>
+            <span className="admin-brand__copy">
+              <strong>Hệ thống Admin</strong>
+              <small>Điều phối và kiểm soát vận hành</small>
             </span>
           </Link>
 
-          <button
-            className="navbar-toggler"
-            type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#adminNavbar"
-          >
-            <span className="navbar-toggler-icon"></span>
-          </button>
+          <div className="admin-nav-switcher">
+            <button
+              type="button"
+              className="admin-nav-switcher__trigger"
+              aria-expanded={menuOpen}
+              aria-label={`Chức năng hiện tại ${activeMenuItem.label}`}
+              onClick={() => setMenuOpen((current) => !current)}
+            >
+              <span className="admin-nav-switcher__copy">
+                <small>Chức năng hiện tại</small>
+                <strong>{activeMenuItem.label}</strong>
+              </span>
+              <i className={`bi ${menuOpen ? 'bi-chevron-up' : 'bi-chevron-down'}`} />
+            </button>
 
-          <div className="collapse navbar-collapse" id="adminNavbar">
-            <div className="admin-menu-dropdown mx-auto position-relative">
-              <button
-                type="button"
-                className="btn btn-light border shadow-sm d-flex align-items-center justify-content-between gap-3 px-3 py-2 w-100"
-                style={{ minWidth: '300px', borderRadius: '16px' }}
-                onClick={() => setMenuOpen((current) => !current)}
-              >
-                <span className="d-flex flex-column align-items-start text-start">
-                  <span className="small text-muted text-uppercase fw-bold">Chuc nang</span>
-                  <span className="fw-semibold text-dark">{activeMenuItem.label}</span>
-                </span>
-                <i className={`bi ${menuOpen ? 'bi-chevron-up' : 'bi-chevron-down'} text-success`}></i>
-              </button>
-
-              {menuOpen && (
-                <div className="admin-menu-panel position-absolute start-0 mt-2 bg-white border shadow rounded-4 p-2">
-                  {adminMenuSections.map((section) => (
-                    <div key={section.title} className="mb-2">
-                      <div
-                        className={`admin-menu-label px-3 pt-2 pb-1 text-uppercase small fw-bold ${
-                          section.title === 'Admin' ? 'admin-section-highlight' : 'owner-section-highlight'
-                        }`}
-                      >
-                        <span className="d-inline-flex align-items-center gap-2">
-                          <i className={`bi ${section.title === 'Admin' ? 'bi-shield-lock-fill' : 'bi-buildings-fill'}`}></i>
-                          {section.title}
-                        </span>
-                      </div>
+            {menuOpen ? (
+              <div className="admin-nav-panel">
+                {adminMenuSections.map((section) => (
+                  <section key={section.title} className="admin-nav-panel__section">
+                    <p className="admin-nav-panel__label">
+                      <i className={`bi ${section.icon}`} />
+                      <span>{section.title}</span>
+                    </p>
+                    <div className="admin-nav-panel__list">
                       {section.items.map((item) => (
                         <Link
                           key={item.to}
-                          className={`dropdown-item admin-menu-item rounded-3 px-3 py-2 ${isActive(item.to)}`}
                           to={item.to}
-                          onClick={() => setMenuOpen(false)}
+                          className={`admin-nav-panel__item ${
+                            matchesPath(location.pathname, item.to) ? 'is-active' : ''
+                          }`}
                         >
                           {item.label}
                         </Link>
                       ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="d-flex align-items-center gap-3">
-              <div className="text-end d-none d-sm-block">
-                <p className="mb-0 small fw-bold">{user?.user?.full_name || user?.user?.name || 'Admin'}</p>
-                <p className="mb-0 x-small text-muted" style={{ fontSize: '0.75rem' }}>
-                  Quan tri vien cap cao
-                </p>
+                  </section>
+                ))}
               </div>
-
-              <button
-                type="button"
-                className="btn btn-white border shadow-sm d-flex align-items-center gap-2 px-2 py-2"
-                onClick={() => setDrawerOpen(true)}
-                style={{ borderRadius: '16px' }}
-              >
-                <div
-                  className="bg-success text-white rounded-circle d-flex align-items-center justify-content-center"
-                  style={{ width: '40px', height: '40px', fontWeight: '700' }}
-                >
-                  {getInitial()}
-                </div>
-                <span className="fw-semibold pe-2">{user?.user?.full_name || user?.user?.name || 'Admin'}</span>
-              </button>
-
-              <button onClick={handleLogout} className="btn btn-outline-danger btn-sm rounded-pill px-3">
-                <i className="bi bi-box-arrow-left me-1"></i> Thoat
-              </button>
-            </div>
+            ) : null}
           </div>
-        </div>
-      </nav>
 
-      {drawerOpen && (
-        <div
-          onClick={() => setDrawerOpen(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.36)',
-            zIndex: 1040,
-          }}
-        />
-      )}
-
-      <aside
-        style={{
-          position: 'fixed',
-          top: 0,
-          right: 0,
-          height: '100vh',
-          width: '360px',
-          maxWidth: '100%',
-          padding: '1.5rem',
-          backgroundColor: '#ffffff',
-          boxShadow: 'rgba(15, 23, 42, 0.18) 0px 28px 90px',
-          transform: drawerOpen ? 'translateX(0)' : 'translateX(120%)',
-          transition: 'transform 0.28s ease',
-          zIndex: 1050,
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <div className="d-flex align-items-start justify-content-between mb-4">
-          <div>
-            <p className="user-panel-badge text-uppercase small mb-2">
-              <span className="d-inline-flex align-items-center gap-2">
-                <i className="bi bi-person-badge-fill"></i>
-                User
-              </span>
-            </p>
-            <div className="d-flex align-items-center gap-3">
-              <div
-                className="bg-success text-white rounded-circle d-flex align-items-center justify-content-center"
-                style={{ width: '56px', height: '56px', fontWeight: 800, fontSize: '1.5rem' }}
-              >
-                {getInitial()}
-              </div>
-              <div>
-                <h5 className="fw-bold mb-1" style={{ color: '#1f2937' }}>
-                  {user?.user?.full_name || user?.user?.name || 'Admin'}
-                </h5>
-                <p className="text-muted mb-0">Chao mung ban tro lai</p>
-              </div>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="btn btn-light btn-sm rounded-circle border"
-            onClick={() => setDrawerOpen(false)}
-            style={{ width: '36px', height: '36px' }}
-          >
-            <i className="bi bi-x-lg"></i>
-          </button>
-        </div>
-
-        <div className="mb-4">
-          <p className="user-activity-title fw-semibold mb-3">Hoat dong ca nhan</p>
-          {accountMenuItems.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              onClick={() => setDrawerOpen(false)}
-              className="d-flex align-items-center gap-2 rounded-4 p-3 mb-3 text-decoration-none"
-              style={{ background: item.background, color: item.color }}
+          <div className="admin-topbar__actions">
+            <button
+              type="button"
+              className="admin-account-trigger"
+              aria-label={displayName}
+              onClick={() => setDrawerOpen(true)}
             >
-              <i className={`bi ${item.icon} fs-5`} style={{ color: item.iconColor }}></i>
-              <span>{item.label}</span>
-            </Link>
-          ))}
+              <span className="admin-account-trigger__avatar">{getInitial()}</span>
+              <span className="admin-account-trigger__meta">
+                <strong>{displayName}</strong>
+                <small>Điều phối hệ thống</small>
+              </span>
+            </button>
+
+            <button type="button" className="admin-logout-button" onClick={handleLogout}>
+              <i className="bi bi-box-arrow-left" />
+              <span>Thoát</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div
+        className={`admin-drawer-backdrop ${drawerOpen || showLegalModal ? 'is-open' : ''}`}
+        onClick={() => {
+          setDrawerOpen(false);
+          setShowLegalModal(false);
+        }}
+      />
+
+      <aside className={`admin-account-drawer ${drawerOpen ? 'is-open' : ''}`}>
+        <div className="admin-account-drawer__header">
+          <div>
+            <p className="admin-account-drawer__eyebrow">Tài khoản admin</p>
+            <div className="admin-account-card">
+              <span className="admin-account-card__avatar">{getInitial()}</span>
+              <div>
+                <h2>{displayName}</h2>
+                <p>Chào mừng bạn trở lại</p>
+              </div>
+            </div>
+          </div>
 
           <button
             type="button"
-            onClick={handleLogout}
-            className="w-100 d-flex align-items-center gap-2 rounded-4 p-3 border-0 mt-2"
-            style={{ background: '#fff5f5', color: '#dc3545' }}
+            className="admin-icon-button"
+            aria-label="Đóng bảng tài khoản"
+            onClick={() => setDrawerOpen(false)}
           >
-            <i className="bi bi-box-arrow-right fs-5"></i>
-            <span className="fw-bold">Dang xuat</span>
+            <i className="bi bi-x-lg" />
           </button>
         </div>
 
-        <div className="mt-auto">
-          <p className="text-success fw-semibold mb-3">He thong</p>
+        <div className="admin-account-drawer__section">
+          <p className="admin-account-drawer__title">Hoạt động cá nhân</p>
+          <div className="admin-account-link-list">
+            {accountMenuItems.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`admin-account-link admin-account-link--${item.tone}`}
+                onClick={() => setDrawerOpen(false)}
+              >
+                <i className={`bi ${item.icon}`} />
+                <span>{item.label}</span>
+              </Link>
+            ))}
+          </div>
+
+          <button type="button" className="admin-account-logout" onClick={handleLogout}>
+            <i className="bi bi-box-arrow-right" />
+            <span>Đăng xuất</span>
+          </button>
+        </div>
+
+        <div className="admin-account-drawer__footer">
+          <p className="admin-account-drawer__title">Hệ thống</p>
           <button
             type="button"
+            className="admin-legal-button"
             onClick={() => setShowLegalModal(true)}
-            className="d-flex align-items-center justify-content-between w-100 bg-white rounded-4 shadow-sm p-3 border-0"
-            style={{ color: '#1f2937' }}
           >
-            <span className="d-flex align-items-center gap-2">
-              <i className="bi bi-shield-lock text-success fs-5"></i>
-              Dieu khoan va chinh sach
+            <span>
+              <i className="bi bi-shield-lock" />
+              <span>Điều khoản và chính sách</span>
             </span>
-            <i className="bi bi-chevron-right text-muted"></i>
+            <i className="bi bi-chevron-right" />
           </button>
         </div>
       </aside>
 
-      {showLegalModal && (
-        <div
-          className="position-fixed inset-0 d-flex align-items-center justify-content-center"
-          style={{ zIndex: 1060, backgroundColor: 'rgba(15, 23, 42, 0.55)' }}
-          onClick={() => setShowLegalModal(false)}
-        >
-          <div
-            className="bg-white rounded-4 shadow p-4"
-            style={{ width: 'min(680px, 95vw)', maxHeight: '80vh', overflowY: 'auto' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="d-flex justify-content-between align-items-start mb-4">
+      {showLegalModal ? (
+        <div className="admin-modal-layer" onClick={() => setShowLegalModal(false)}>
+          <div className="admin-modal-card" onClick={(event) => event.stopPropagation()}>
+            <div className="admin-modal-card__header">
               <div>
-                <h5 className="fw-bold mb-1">Dieu khoan va chinh sach</h5>
-                <p className="text-muted mb-0" style={{ fontSize: '0.95rem' }}>
-                  Noi dung dieu khoan va chinh sach su dung dich vu.
-                </p>
+                <h2>Điều khoản và chính sách</h2>
+                <p>Nội dung điều khoản và chính sách sử dụng dịch vụ.</p>
               </div>
               <button
                 type="button"
-                className="btn btn-light btn-sm rounded-circle border"
+                className="admin-icon-button"
+                aria-label="Đóng cửa sổ chính sách"
                 onClick={() => setShowLegalModal(false)}
-                style={{ width: '36px', height: '36px' }}
               >
-                <i className="bi bi-x-lg"></i>
+                <i className="bi bi-x-lg" />
               </button>
             </div>
-            <div style={{ lineHeight: 1.8, color: '#344054' }}>
-              <p className="fw-semibold">1. Dieu khoan su dung</p>
+
+            <div className="admin-modal-card__body">
+              <p className="admin-modal-card__heading">1. Điều khoản sử dụng</p>
               <p>
-                Nguoi dung dong y su dung he thong theo quy dinh, khong chia se tai khoan va chiu
-                trach nhiem ve thong tin dat san.
+                Người dùng đồng ý sử dụng hệ thống theo quy định, không chia sẻ tài khoản và chịu
+                trách nhiệm về thông tin đặt sân.
               </p>
-              <p className="fw-semibold">2. Chinh sach bao mat</p>
+              <p className="admin-modal-card__heading">2. Chính sách bảo mật</p>
               <p>
-                Chung toi bao ve du lieu ca nhan, cam ket khong chia se thong tin cho ben thu ba
-                khi chua duoc phep.
+                Chúng tôi bảo vệ dữ liệu cá nhân, cam kết không chia sẻ thông tin cho bên thứ ba
+                khi chưa được phép.
               </p>
-              <p className="fw-semibold">3. Quyen loi va trach nhiem</p>
+              <p className="admin-modal-card__heading">3. Quyền lợi và trách nhiệm</p>
               <p>
-                Nguoi dung co quyen truy cap, chinh sua va xoa thong tin ca nhan theo quy dinh,
-                cung tuan thu cac dieu kien dat san va thanh toan.
+                Người dùng có quyền truy cập, chỉnh sửa và xóa thông tin cá nhân theo quy định,
+                cũng tuân thủ các điều kiện đặt sân và thanh toán.
               </p>
             </div>
-            <div className="text-end mt-4">
-              <button className="btn btn-success" onClick={() => setShowLegalModal(false)}>
-                Dong
+
+            <div className="admin-modal-card__footer">
+              <button
+                type="button"
+                className="admin-modal-card__confirm"
+                onClick={() => setShowLegalModal(false)}
+              >
+                Đóng
               </button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
-      <main className="container py-5">
-        <div className="fade-in">
+      <main className="admin-shell__content">
+        <div className="admin-shell__content-inner">
           <Outlet />
         </div>
       </main>
-
-      <style>{`
-        .fade-in {
-          animation: fadeIn 0.5s ease-in;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .nav-link {
-          transition: all 0.3s ease;
-          white-space: nowrap;
-        }
-        .admin-menu-dropdown {
-          width: min(100%, 340px);
-        }
-        .admin-menu-panel {
-          width: min(92vw, 360px);
-          z-index: 1045;
-          max-height: 70vh;
-          overflow-y: auto;
-        }
-        .admin-menu-label {
-          letter-spacing: 0.08em;
-          white-space: nowrap;
-        }
-        .admin-section-highlight {
-          color: #0f5132;
-        }
-        .admin-section-highlight span {
-          background: linear-gradient(135deg, #dcfce7, #bbf7d0);
-          border: 1px solid #86efac;
-          border-radius: 999px;
-          padding: 0.45rem 0.8rem;
-          box-shadow: 0 8px 18px rgba(25, 135, 84, 0.12);
-        }
-        .owner-section-highlight {
-          color: #1f2937;
-        }
-        .owner-section-highlight span {
-          background: linear-gradient(135deg, #eef2ff, #e0f2fe);
-          border: 1px solid #bfdbfe;
-          border-radius: 999px;
-          padding: 0.45rem 0.8rem;
-        }
-        .admin-menu-item {
-          color: #475467;
-          font-weight: 600;
-          transition: all 0.2s ease;
-        }
-        .admin-menu-item:hover {
-          background: #f6fdf5;
-          color: #198754 !important;
-        }
-        .user-panel-badge {
-          color: #0f5132;
-        }
-        .user-panel-badge span {
-          background: linear-gradient(135deg, #dcfce7, #d1fae5);
-          border: 1px solid #86efac;
-          border-radius: 999px;
-          padding: 0.4rem 0.8rem;
-          font-weight: 800;
-          letter-spacing: 0.08em;
-          box-shadow: 0 10px 20px rgba(25, 135, 84, 0.14);
-        }
-        .user-activity-title {
-          color: #0f5132;
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          background: #f0fdf4;
-          border: 1px solid #bbf7d0;
-          border-radius: 999px;
-          padding: 0.45rem 0.85rem;
-        }
-        .user-activity-title::before {
-          content: '●';
-          color: #16a34a;
-          font-size: 0.8rem;
-        }
-        .nav-link:hover {
-          color: #198754 !important;
-        }
-      `}</style>
     </div>
   );
 };

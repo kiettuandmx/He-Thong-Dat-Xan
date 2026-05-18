@@ -5,7 +5,7 @@ const getOwnerStats = async (req, res) => {
 
     try {
         if (Number(req.user?.role) !== 3 && Number(ownerId) !== Number(req.user?.id)) {
-            return res.status(403).json({ error: 'Ban khong co quyen xem thong ke nay' });
+            return res.status(403).json({ error: 'Bạn không có quyền xem thống kê này' });
         }
 
         // 1. Đếm đơn đặt hôm nay

@@ -55,7 +55,7 @@ const AdminActivityLogs = () => {
       setPagination(res.data?.pagination || pagination);
     } catch (err) {
       console.error(err);
-      setError('Khong the tai nhat ky hoat dong. Vui long thu lai.');
+      setError('Không thể tải nhật ký hoạt động. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -92,14 +92,14 @@ const AdminActivityLogs = () => {
       <section className="activity-hero">
         <div>
           <span className="eyebrow">Audit Trail</span>
-          <h2>Nhat ky hoat dong toan he thong</h2>
+          <h2>Nhật ký hoạt động toàn hệ thống</h2>
           <p>
             Tra cuu chi tiet tung thay doi, loc theo doi tuong, hanh dong va moc thoi gian
             de phuc vu doi soat hoac xu ly tranh chap.
           </p>
         </div>
         <div className="hero-actions">
-          <span className="pill">Tong {pagination.total} ban ghi</span>
+          <span className="pill">Tổng {pagination.total} bản ghi</span>
           <button className="btn btn-dark rounded-pill px-4" onClick={() => fetchLogs(1)}>
             <i className="bi bi-arrow-clockwise me-2"></i>
             Lam moi
@@ -171,11 +171,11 @@ const AdminActivityLogs = () => {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="6" className="text-center py-5 text-muted">Dang tai du lieu...</td>
+                    <td colSpan="6" className="text-center py-5 text-muted">Đang tải dữ liệu...</td>
                   </tr>
                 ) : logs.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="text-center py-5 text-muted">Khong co ban ghi nao phu hop.</td>
+                    <td colSpan="6" className="text-center py-5 text-muted">Không có bản ghi nào phù hợp.</td>
                   </tr>
                 ) : (
                   logs.map((log) => (
@@ -191,7 +191,7 @@ const AdminActivityLogs = () => {
                       </td>
                       <td>
                         <div className="fw-semibold">{log.target_type || '-'}</div>
-                        <div className="small text-muted">{log.target_id ? `#${log.target_id}` : 'Khong co ID'}</div>
+                        <div className="small text-muted">{log.target_id ? `#${log.target_id}` : 'Không có ID'}</div>
                       </td>
                       <td className="text-end">
                         <button className="btn btn-sm btn-outline-primary rounded-pill px-3" onClick={() => setSelectedLog(log)}>

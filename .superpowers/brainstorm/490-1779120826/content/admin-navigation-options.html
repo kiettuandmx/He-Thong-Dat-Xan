@@ -1,0 +1,421 @@
+<h2>Chọn kiểu navigation cho AdminLayout</h2>
+<p class="subtitle">Cả ba phương án đều giữ visual hướng B: control center sáng, card nổi, nhấn xanh-teal. Khác nhau chủ yếu ở cách điều hướng.</p>
+
+<style>
+  .nav-options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+  }
+  .nav-option {
+    background: #fff;
+    border: 1px solid #d9e4ea;
+    border-radius: 22px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+  }
+  .nav-option:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 22px 42px rgba(17, 31, 54, 0.12);
+    border-color: #b7c9d3;
+  }
+  .nav-option.selected {
+    border-color: #0c8a61;
+    box-shadow: 0 0 0 3px rgba(16, 181, 121, 0.12);
+  }
+  .nav-copy {
+    padding: 18px 18px 8px;
+  }
+  .nav-copy h3 {
+    margin: 0;
+    font-size: 19px;
+  }
+  .nav-copy p {
+    margin: 8px 0 0;
+    color: #5c6b79;
+    line-height: 1.6;
+    font-size: 14px;
+  }
+  .nav-preview {
+    padding: 16px 18px;
+  }
+  .shell {
+    min-height: 500px;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid #dbe4ea;
+    background: linear-gradient(180deg, #f4f8fa 0%, #f8fbfd 100%);
+  }
+  .topbar {
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(246,250,252,0.95));
+    border-bottom: 1px solid #dbe6ec;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #15293b;
+  }
+  .brand-badge {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #123847, #11a572);
+    color: #dffbee;
+    font-weight: 800;
+  }
+  .top-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .action-pill {
+    height: 36px;
+    border-radius: 999px;
+    background: #eef4f7;
+  }
+  .action-pill.wide {
+    width: 112px;
+  }
+  .action-pill.short {
+    width: 42px;
+  }
+  .layout {
+    display: grid;
+    min-height: 436px;
+  }
+  .layout.sidebar {
+    grid-template-columns: 232px minmax(0, 1fr);
+  }
+  .layout.hybrid {
+    grid-template-columns: 232px minmax(0, 1fr);
+  }
+  .sidebar {
+    background: linear-gradient(180deg, #112d38 0%, #183d4b 100%);
+    padding: 16px;
+    border-right: 1px solid rgba(255,255,255,0.08);
+  }
+  .sidebar-group {
+    margin-bottom: 16px;
+  }
+  .sidebar-label {
+    height: 10px;
+    width: 44%;
+    border-radius: 999px;
+    background: rgba(234, 249, 241, 0.28);
+    margin-bottom: 10px;
+  }
+  .sidebar-item {
+    height: 40px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    margin-bottom: 9px;
+  }
+  .sidebar-item.active {
+    background: linear-gradient(135deg, #11a874, #1ecb8d);
+  }
+  .body {
+    padding: 16px;
+  }
+  .hero {
+    min-height: 148px;
+    border-radius: 24px;
+    border: 1px solid #d9e4ea;
+    background:
+      radial-gradient(circle at top left, rgba(20, 179, 121, 0.14), transparent 30%),
+      linear-gradient(135deg, rgba(255,255,255,0.96), rgba(245,249,252,0.98));
+    margin-bottom: 14px;
+    padding: 18px;
+  }
+  .line {
+    height: 12px;
+    border-radius: 999px;
+    background: #a3b2bf;
+    margin-bottom: 10px;
+  }
+  .line.title {
+    width: 62%;
+    height: 22px;
+    background: #173244;
+  }
+  .line.medium {
+    width: 80%;
+  }
+  .line.short {
+    width: 48%;
+  }
+  .hero-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .hero-btn {
+    height: 38px;
+    border-radius: 999px;
+  }
+  .hero-btn.primary {
+    width: 120px;
+    background: linear-gradient(135deg, #0f8f64, #16b97d);
+  }
+  .hero-btn.secondary {
+    width: 132px;
+    background: #f5f9fb;
+    border: 1px solid #dae5eb;
+  }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .stat {
+    min-height: 88px;
+    border-radius: 20px;
+    border: 1px solid #dbe5ea;
+    background: #fff;
+    box-shadow: 0 12px 24px rgba(16, 36, 58, 0.05);
+    padding: 12px;
+  }
+  .stat-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+  }
+  .stat-icon.green { background: linear-gradient(135deg, #d8f7e8, #eefdf6); }
+  .stat-icon.teal { background: linear-gradient(135deg, #dff5f1, #eef9fa); }
+  .stat-icon.gold { background: linear-gradient(135deg, #fff1d8, #fff8ec); }
+  .stat-icon.blue { background: linear-gradient(135deg, #e7efff, #f5f8ff); }
+  .stat .line {
+    margin-bottom: 8px;
+  }
+  .stat .line.title {
+    height: 16px;
+    width: 42%;
+    background: #1f3648;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 12px;
+  }
+  .panel {
+    min-height: 182px;
+    border-radius: 22px;
+    border: 1px solid #dbe5ea;
+    background: #fff;
+    padding: 14px;
+  }
+  .panel.dark {
+    background:
+      radial-gradient(circle at top right, rgba(43, 212, 146, 0.12), transparent 38%),
+      linear-gradient(180deg, #17303d 0%, #21485a 100%);
+  }
+  .panel-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .mini {
+    min-height: 62px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #ffffff, #f7fafc);
+    border: 1px solid #edf2f6;
+  }
+  .textarea {
+    min-height: 94px;
+    border-radius: 16px;
+    margin-top: 16px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  .dropdown-wrap {
+    padding: 14px;
+    display: flex;
+    justify-content: center;
+  }
+  .dropdown-box {
+    width: 78%;
+    min-height: 54px;
+    border-radius: 18px;
+    background: #fff;
+    border: 1px solid #dbe5ea;
+    box-shadow: 0 12px 26px rgba(16, 36, 58, 0.08);
+  }
+  .drawer-indicator {
+    margin-left: auto;
+    width: 40px;
+    height: 34px;
+    border-radius: 12px;
+    background: #eff4f7;
+  }
+  .meta {
+    padding: 4px 18px 18px;
+    color: #5d6b79;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .meta strong {
+    color: #16293b;
+  }
+  @media (max-width: 1180px) {
+    .nav-options {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="nav-options">
+  <div class="nav-option" data-choice="1" onclick="toggleSelect(this)">
+    <div class="nav-copy">
+      <h3>1. Sidebar cố định bên trái</h3>
+      <p>Điều hướng rõ ràng, chuyên nghiệp, phù hợp nếu admin làm việc lâu và chuyển nhiều màn hình trong ngày.</p>
+    </div>
+    <div class="nav-preview">
+      <div class="shell">
+        <div class="topbar">
+          <div class="brand"><span class="brand-badge">1</span> Admin</div>
+          <div class="top-actions"><div class="action-pill wide"></div><div class="action-pill short"></div></div>
+        </div>
+        <div class="layout sidebar">
+          <div class="sidebar">
+            <div class="sidebar-group">
+              <div class="sidebar-label"></div>
+              <div class="sidebar-item active"></div>
+              <div class="sidebar-item"></div>
+              <div class="sidebar-item"></div>
+            </div>
+            <div class="sidebar-group">
+              <div class="sidebar-label"></div>
+              <div class="sidebar-item"></div>
+              <div class="sidebar-item"></div>
+            </div>
+          </div>
+          <div class="body">
+            <div class="hero">
+              <div class="line title"></div>
+              <div class="line medium"></div>
+              <div class="line short"></div>
+              <div class="hero-actions"><div class="hero-btn primary"></div><div class="hero-btn secondary"></div></div>
+            </div>
+            <div class="stats">
+              <div class="stat"><div class="stat-icon green"></div><div class="line medium"></div><div class="line title"></div></div>
+              <div class="stat"><div class="stat-icon teal"></div><div class="line medium"></div><div class="line title"></div></div>
+              <div class="stat"><div class="stat-icon gold"></div><div class="line medium"></div><div class="line title"></div></div>
+              <div class="stat"><div class="stat-icon blue"></div><div class="line medium"></div><div class="line title"></div></div>
+            </div>
+            <div class="grid">
+              <div class="panel"><div class="line medium"></div><div class="panel-grid"><div class="mini"></div><div class="mini"></div><div class="mini"></div><div class="mini"></div></div></div>
+              <div class="panel dark"><div class="line" style="background:#eff7ff;width:58%;"></div><div class="textarea"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="meta">
+      <strong>Điểm mạnh:</strong> ổn định, dễ scan, rất hợp dashboard và quản trị nhiều module.
+    </div>
+  </div>
+
+  <div class="nav-option" data-choice="2" onclick="toggleSelect(this)">
+    <div class="nav-copy">
+      <h3>2. Topbar + dropdown</h3>
+      <p>Giữ gần cách dùng hiện tại, giao diện thoáng hơn nhưng điều hướng sâu sẽ chậm hơn khi số module tăng.</p>
+    </div>
+    <div class="nav-preview">
+      <div class="shell">
+        <div class="topbar">
+          <div class="brand"><span class="brand-badge">2</span> Admin</div>
+          <div class="top-actions"><div class="action-pill wide"></div><div class="action-pill short"></div></div>
+        </div>
+        <div class="dropdown-wrap">
+          <div class="dropdown-box"></div>
+        </div>
+        <div class="body" style="padding-top:0;">
+          <div class="hero">
+            <div class="line title"></div>
+            <div class="line medium"></div>
+            <div class="line short"></div>
+            <div class="hero-actions"><div class="hero-btn primary"></div><div class="hero-btn secondary"></div></div>
+          </div>
+          <div class="stats">
+            <div class="stat"><div class="stat-icon green"></div><div class="line medium"></div><div class="line title"></div></div>
+            <div class="stat"><div class="stat-icon teal"></div><div class="line medium"></div><div class="line title"></div></div>
+            <div class="stat"><div class="stat-icon gold"></div><div class="line medium"></div><div class="line title"></div></div>
+            <div class="stat"><div class="stat-icon blue"></div><div class="line medium"></div><div class="line title"></div></div>
+          </div>
+          <div class="grid">
+            <div class="panel"><div class="line medium"></div><div class="panel-grid"><div class="mini"></div><div class="mini"></div><div class="mini"></div><div class="mini"></div></div></div>
+            <div class="panel dark"><div class="line" style="background:#eff7ff;width:58%;"></div><div class="textarea"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="meta">
+      <strong>Điểm mạnh:</strong> ít thay đổi thói quen hiện tại, phù hợp nếu bạn muốn phần admin nhìn gọn và nhẹ hơn.
+    </div>
+  </div>
+
+  <div class="nav-option" data-choice="3" onclick="toggleSelect(this)">
+    <div class="nav-copy">
+      <h3>3. Hybrid</h3>
+      <p>Desktop có sidebar để thao tác nhanh, mobile thu về topbar/drawer. Đây là hướng cân bằng nhất giữa trải nghiệm và responsive.</p>
+    </div>
+    <div class="nav-preview">
+      <div class="shell">
+        <div class="topbar">
+          <div class="brand"><span class="brand-badge">3</span> Admin</div>
+          <div class="top-actions"><div class="drawer-indicator"></div><div class="action-pill short"></div></div>
+        </div>
+        <div class="layout hybrid">
+          <div class="sidebar">
+            <div class="sidebar-group">
+              <div class="sidebar-label"></div>
+              <div class="sidebar-item active"></div>
+              <div class="sidebar-item"></div>
+              <div class="sidebar-item"></div>
+            </div>
+            <div class="sidebar-group">
+              <div class="sidebar-label"></div>
+              <div class="sidebar-item"></div>
+              <div class="sidebar-item"></div>
+            </div>
+          </div>
+          <div class="body">
+            <div class="hero">
+              <div class="line title"></div>
+              <div class="line medium"></div>
+              <div class="line short"></div>
+              <div class="hero-actions"><div class="hero-btn primary"></div><div class="hero-btn secondary"></div></div>
+            </div>
+            <div class="stats">
+              <div class="stat"><div class="stat-icon green"></div><div class="line medium"></div><div class="line title"></div></div>
+              <div class="stat"><div class="stat-icon teal"></div><div class="line medium"></div><div class="line title"></div></div>
+              <div class="stat"><div class="stat-icon gold"></div><div class="line medium"></div><div class="line title"></div></div>
+              <div class="stat"><div class="stat-icon blue"></div><div class="line medium"></div><div class="line title"></div></div>
+            </div>
+            <div class="grid">
+              <div class="panel"><div class="line medium"></div><div class="panel-grid"><div class="mini"></div><div class="mini"></div><div class="mini"></div><div class="mini"></div></div></div>
+              <div class="panel dark"><div class="line" style="background:#eff7ff;width:58%;"></div><div class="textarea"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="meta">
+      <strong>Điểm mạnh:</strong> desktop làm việc thoải mái như app quản trị thật, mobile vẫn gọn và dùng được.
+    </div>
+  </div>
+</div>

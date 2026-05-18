@@ -37,7 +37,7 @@ const AdminOwnerStadiums = () => {
       setStadiums(stadiumRes.data || []);
       setOwners((userRes.data || []).filter((user) => Number(user.role_id) === 2));
     } catch (error) {
-      console.error('Loi tai danh sach khu san admin:', error);
+      console.error('Lỗi tải danh sách khu sân admin:', error);
     }
   };
 
@@ -99,18 +99,18 @@ const AdminOwnerStadiums = () => {
       resetForm();
       loadData();
     } catch (error) {
-      alert(error.response?.data?.error || 'Khong the luu khu san.');
+      alert(error.response?.data?.error || 'Không thể lưu khu sân.');
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Ban chac chan muon xoa khu san nay?')) return;
+    if (!window.confirm('Bạn chắc chắn muốn xóa khu sân này?')) return;
 
     try {
       await axios.delete(`http://localhost:5000/api/stadiums/${id}`, { headers: getAuthHeader() });
       loadData();
     } catch (error) {
-      alert(error.response?.data?.error || 'Khong the xoa khu san.');
+      alert(error.response?.data?.error || 'Không thể xóa khu sân.');
     }
   };
 
@@ -122,19 +122,19 @@ const AdminOwnerStadiums = () => {
             <div className="d-flex justify-content-between align-items-start mb-4">
               <div>
                 <span className="badge text-bg-success rounded-pill px-3 py-2 mb-2">Admin Stadium Desk</span>
-                <h3 className="fw-bold mb-1">{editingId ? 'Cap nhat khu san' : 'Tao khu san moi'}</h3>
-                <p className="text-muted mb-0">Admin co the tao va phan cong khu san cho owner.</p>
+                <h3 className="fw-bold mb-1">{editingId ? 'Cập nhật khu sân' : 'Tạo khu sân mới'}</h3>
+                <p className="text-muted mb-0">Admin có thể tạo và phân công khu sân cho owner.</p>
               </div>
               {editingId && (
                 <button className="btn btn-outline-secondary btn-sm rounded-pill" onClick={resetForm}>
-                  Huy
+                  Hủy
                 </button>
               )}
             </div>
 
             <form className="d-grid gap-3" onSubmit={handleSubmit}>
               <div>
-                <label className="form-label fw-semibold">Ten khu san</label>
+                <label className="form-label fw-semibold">Tên khu sân</label>
                 <input
                   className="form-control"
                   value={formData.name}
@@ -144,14 +144,14 @@ const AdminOwnerStadiums = () => {
               </div>
 
               <div>
-                <label className="form-label fw-semibold">Owner phu trach</label>
+                <label className="form-label fw-semibold">Owner phụ trách</label>
                 <select
                   className="form-select"
                   value={formData.owner_id}
                   onChange={(event) => setFormData({ ...formData, owner_id: event.target.value })}
                   required
                 >
-                  <option value="">-- Chon owner --</option>
+                  <option value="">-- Chọn owner --</option>
                   {owners.map((owner) => (
                     <option key={owner.id} value={owner.id}>
                       {owner.name} - {owner.email}
@@ -161,7 +161,7 @@ const AdminOwnerStadiums = () => {
               </div>
 
               <div>
-                <label className="form-label fw-semibold">Dia chi</label>
+                <label className="form-label fw-semibold">Địa chỉ</label>
                 <input
                   className="form-control"
                   value={formData.address}
@@ -171,17 +171,17 @@ const AdminOwnerStadiums = () => {
               </div>
 
               <div>
-                <label className="form-label fw-semibold">Quan / Huyen</label>
+                <label className="form-label fw-semibold">Quận / Huyện</label>
                 <input
                   className="form-control"
                   value={formData.district}
                   onChange={(event) => setFormData({ ...formData, district: event.target.value })}
-                  placeholder="Vi du: Quan 10, Thu Duc"
+                  placeholder="Ví dụ: Quận 10, Thủ Đức"
                 />
               </div>
 
               <div>
-                <label className="form-label fw-semibold">Thanh pho</label>
+                <label className="form-label fw-semibold">Thành phố</label>
                 <input
                   className="form-control"
                   value={formData.city}
@@ -191,7 +191,7 @@ const AdminOwnerStadiums = () => {
               </div>
 
               <div>
-                <label className="form-label fw-semibold">Mo ta</label>
+                <label className="form-label fw-semibold">Mô tả</label>
                 <textarea
                   className="form-control"
                   rows="4"
@@ -201,7 +201,7 @@ const AdminOwnerStadiums = () => {
               </div>
 
               <div>
-                <label className="form-label fw-semibold">Trang thai</label>
+                <label className="form-label fw-semibold">Trạng thái</label>
                 <select
                   className="form-select"
                   value={formData.status}
@@ -213,7 +213,7 @@ const AdminOwnerStadiums = () => {
               </div>
 
               <button className="btn btn-success rounded-pill" type="submit">
-                {editingId ? 'Luu thay doi' : 'Tao khu san'}
+                {editingId ? 'Lưu thay đổi' : 'Tạo khu sân'}
               </button>
             </form>
           </div>
@@ -223,19 +223,19 @@ const AdminOwnerStadiums = () => {
           <div className="row g-3 mb-3">
             <div className="col-md-4">
               <div className="bg-white border rounded-4 shadow-sm p-3">
-                <small className="text-muted d-block mb-1">Tong khu san</small>
+                <small className="text-muted d-block mb-1">Tổng khu sân</small>
                 <div className="fs-2 fw-bold">{summary.total}</div>
               </div>
             </div>
             <div className="col-md-4">
               <div className="bg-white border rounded-4 shadow-sm p-3">
-                <small className="text-muted d-block mb-1">Dang hoat dong</small>
+                <small className="text-muted d-block mb-1">Đang hoạt động</small>
                 <div className="fs-2 fw-bold text-success">{summary.activeCount}</div>
               </div>
             </div>
             <div className="col-md-4">
               <div className="bg-white border rounded-4 shadow-sm p-3">
-                <small className="text-muted d-block mb-1">Can xem lai</small>
+                <small className="text-muted d-block mb-1">Cần xem lại</small>
                 <div className="fs-2 fw-bold text-warning">{summary.reviewingCount}</div>
               </div>
             </div>
@@ -244,8 +244,8 @@ const AdminOwnerStadiums = () => {
           <div className="bg-white border rounded-4 shadow-sm p-4">
             <div className="d-flex justify-content-between align-items-center mb-3">
               <div>
-                <h3 className="fw-bold mb-1">Danh sach khu san toan he thong</h3>
-                <p className="text-muted mb-0">Quan ly khu san theo owner ngay trong dashboard admin.</p>
+                <h3 className="fw-bold mb-1">Danh sách khu sân toàn hệ thống</h3>
+                <p className="text-muted mb-0">Quản lý khu sân theo owner ngay trong dashboard admin.</p>
               </div>
             </div>
 
@@ -262,28 +262,28 @@ const AdminOwnerStadiums = () => {
                           </span>
                         </div>
                         <div className="text-muted small mb-1">
-                          Owner: <strong>{stadium.owner?.name || 'Chua gan'}</strong>
+                          Owner: <strong>{stadium.owner?.name || 'Chưa gán'}</strong>
                         </div>
                         <div className="text-muted small mb-1">
                           Email: {stadium.owner?.email || 'N/A'}
                         </div>
                         <div className="text-muted small mb-1">
-                          Dia chi:{' '}
+                          Địa chỉ:{' '}
                           {formatLocationParts(
                             stadium.location?.address,
                             stadium.location?.district,
                             stadium.location?.city
-                          ) || 'Chua co dia chi'}
+                          ) || 'Chưa có địa chỉ'}
                         </div>
-                        <div className="small">{stadium.description || 'Chua co mo ta'}</div>
+                        <div className="small">{stadium.description || 'Chưa có mô tả'}</div>
                       </div>
 
                       <div className="d-flex gap-2 align-items-start">
                         <button className="btn btn-outline-primary btn-sm rounded-pill" onClick={() => handleEdit(stadium)}>
-                          Sua
+                          Sửa
                         </button>
                         <button className="btn btn-outline-danger btn-sm rounded-pill" onClick={() => handleDelete(stadium.id)}>
-                          Xoa
+                          Xóa
                         </button>
                       </div>
                     </div>
@@ -292,7 +292,7 @@ const AdminOwnerStadiums = () => {
               ))}
 
               {stadiums.length === 0 && (
-                <div className="col-12 text-center text-muted py-5">Chua co khu san nao trong he thong.</div>
+                <div className="col-12 text-center text-muted py-5">Chưa có khu sân nào trong hệ thống.</div>
               )}
             </div>
           </div>

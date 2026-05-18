@@ -7,7 +7,7 @@ const updateProfile = async (req, res) => {
         const isAdmin = Number(req.user?.role) === 3;
 
         if (!isAdmin && Number(req.user?.id) !== Number(id)) {
-            return res.status(403).json({ success: false, message: "Ban khong co quyen cap nhat ho so nay" });
+            return res.status(403).json({ success: false, message: "Bạn không có quyền cập nhật hồ sơ này" });
         }
 
         const user = await User.findByPk(id);

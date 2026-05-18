@@ -14,7 +14,7 @@ async function findValidCoupon({
   const normalizedCode = normalizeCouponCode(code);
 
   if (!normalizedCode) {
-    return { error: "Ma giam gia khong hop le" };
+    return { error: "Mã giảm giá không hợp lệ" };
   }
 
   const coupon = await Coupon.findOne({
@@ -27,7 +27,7 @@ async function findValidCoupon({
   });
 
   if (!coupon) {
-    return { error: "Ma giam gia khong ton tai hoac da het han" };
+    return { error: "Mã giảm giá không tồn tại hoặc đã hết hạn" };
   }
 
   if (coupon.expires_at && new Date() > new Date(coupon.expires_at)) {

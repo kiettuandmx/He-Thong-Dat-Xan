@@ -202,7 +202,7 @@ router.get("/fields/:id", async (req, res) => {
       ],
     });
 
-    if (!field) return res.status(404).json({ error: "Khong tim thay san" });
+    if (!field) return res.status(404).json({ error: "Không tìm thấy sân" });
     res.json(field);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -217,11 +217,11 @@ router.post("/fields", verifyToken, upload.single("image"), async (req, res) => 
     const allowed = await ensureStadiumAccess(req, finalStadiumId);
 
     if (!allowed) {
-      return res.status(403).json({ error: "Ban khong co quyen them san vao khu nay" });
+      return res.status(403).json({ error: "Bạn không có quyền thêm sân vào khu này" });
     }
 
     if (!isValidFieldType(normalizedType)) {
-      return res.status(400).json({ error: "Loai san khong hop le" });
+      return res.status(400).json({ error: "Loại sân không hợp lệ" });
     }
 
     const field = await Field.create({
@@ -253,7 +253,7 @@ router.post("/fields", verifyToken, upload.single("image"), async (req, res) => 
     });
 
     res.status(201).json({
-      message: "Tao san thanh cong",
+      message: "Tạo sân thành công",
       field: fullField,
     });
   } catch (err) {
@@ -268,16 +268,16 @@ router.put("/fields/:id", verifyToken, upload.single("image"), async (req, res) 
     const field = await Field.findByPk(req.params.id);
 
     if (!field) {
-      return res.status(404).json({ error: "Khong tim thay san" });
+      return res.status(404).json({ error: "Không tìm thấy sân" });
     }
 
     const allowed = await ensureFieldAccess(req, field);
     if (!allowed) {
-      return res.status(403).json({ error: "Ban khong co quyen sua san nay" });
+      return res.status(403).json({ error: "Bạn không có quyền sửa sân này" });
     }
 
     if (!isValidFieldType(normalizedType)) {
-      return res.status(400).json({ error: "Loai san khong hop le" });
+      return res.status(400).json({ error: "Loại sân không hợp lệ" });
     }
 
     const before = toPlain(field);
@@ -317,7 +317,7 @@ router.put("/fields/:id", verifyToken, upload.single("image"), async (req, res) 
     });
 
     res.json({
-      message: "Cap nhat thanh cong",
+      message: "Cập nhật thành công",
       field: updatedField,
     });
   } catch (err) {
@@ -328,11 +328,11 @@ router.put("/fields/:id", verifyToken, upload.single("image"), async (req, res) 
 router.delete("/fields/:id", verifyToken, async (req, res) => {
   try {
     const field = await Field.findByPk(req.params.id);
-    if (!field) return res.status(404).json({ error: "Khong tim thay san" });
+    if (!field) return res.status(404).json({ error: "Không tìm thấy sân" });
 
     const allowed = await ensureFieldAccess(req, field);
     if (!allowed) {
-      return res.status(403).json({ error: "Ban khong co quyen xoa san nay" });
+      return res.status(403).json({ error: "Bạn không có quyền xóa sân này" });
     }
 
     const bookingCount = await Booking.count({
@@ -361,7 +361,7 @@ router.delete("/fields/:id", verifyToken, async (req, res) => {
       ...getRequestMeta(req),
     });
 
-    res.json({ message: "Xoa san thanh cong" });
+    res.json({ message: "Xóa sân thành công" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -372,11 +372,11 @@ router.post("/upload-only", verifyToken, upload.single("image"), async (req, res
     const { field_id } = req.body;
     const field = await Field.findByPk(field_id);
 
-    if (!field) return res.status(404).json({ error: "Khong tim thay san" });
+    if (!field) return res.status(404).json({ error: "Không tìm thấy sân" });
 
     const allowed = await ensureFieldAccess(req, field);
     if (!allowed) {
-      return res.status(403).json({ error: "Ban khong co quyen upload anh cho san nay" });
+      return res.status(403).json({ error: "Bạn không có quyền upload ảnh cho sân này" });
     }
 
     const image = await FieldImage.create({
@@ -384,7 +384,7 @@ router.post("/upload-only", verifyToken, upload.single("image"), async (req, res
       image_url: req.file.filename,
     });
 
-    res.json({ message: "Upload thanh cong", image });
+    res.json({ message: "Upload thành công", image });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -437,7 +437,7 @@ router.patch("/fields/:id/status", verifyToken, checkRole([3, "admin", "ADMIN"])
     const { status } = req.body;
     const field = await Field.findByPk(req.params.id);
 
-    if (!field) return res.status(404).json({ error: "Khong tim thay san" });
+    if (!field) return res.status(404).json({ error: "Không tìm thấy sân" });
 
     const before = toPlain(field);
     await field.update({ status });
@@ -452,7 +452,7 @@ router.patch("/fields/:id/status", verifyToken, checkRole([3, "admin", "ADMIN"])
       ...getRequestMeta(req),
     });
 
-    res.json({ message: "Da cap nhat trang thai san thanh cong", field });
+    res.json({ message: "Đã cập nhật trạng thái sân thành công", field });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

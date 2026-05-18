@@ -26,7 +26,7 @@ const AdminReviewManagement = () => {
         }, {})
       );
     } catch (error) {
-      console.error('Loi tai danh sach danh gia admin:', error);
+      console.error('Lỗi tải danh sách đánh giá admin:', error);
     }
   };
 
@@ -43,7 +43,7 @@ const AdminReviewManagement = () => {
       );
       loadReviews();
     } catch (error) {
-      alert(error.response?.data?.message || 'Khong the gui phan hoi danh gia.');
+      alert(error.response?.data?.message || 'Không thể gửi phản hồi đánh giá.');
     }
   };
 
@@ -52,10 +52,10 @@ const AdminReviewManagement = () => {
       <div className="bg-white border rounded-4 shadow-sm p-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
-            <h3 className="fw-bold mb-1">Quan ly danh gia san</h3>
-            <p className="text-muted mb-0">Admin xem toan bo danh gia va phan hoi ngay tren giao dien rieng.</p>
+            <h3 className="fw-bold mb-1">Quản lý đánh giá sân</h3>
+            <p className="text-muted mb-0">Admin xem toàn bộ đánh giá và phản hồi ngay trên giao diện riêng.</p>
           </div>
-          <span className="badge text-bg-dark rounded-pill px-3 py-2">{reviews.length} danh gia</span>
+          <span className="badge text-bg-dark rounded-pill px-3 py-2">{reviews.length} đánh giá</span>
         </div>
 
         <div className="row g-3">
@@ -64,7 +64,7 @@ const AdminReviewManagement = () => {
               <div className="border rounded-4 p-4">
                 <div className="d-flex flex-wrap justify-content-between gap-3 mb-3">
                   <div>
-                    <div className="fw-bold">{review.user?.name || 'Khach hang'}</div>
+                    <div className="fw-bold">{review.user?.name || 'Khách hàng'}</div>
                     <div className="small text-muted">
                       {review.field?.stadium?.name || 'N/A'} - {review.field?.name || 'N/A'}
                     </div>
@@ -77,23 +77,23 @@ const AdminReviewManagement = () => {
                   </div>
                 </div>
 
-                <div className="bg-light rounded-4 p-3 mb-3">{review.comment || 'Khong co noi dung.'}</div>
+                <div className="bg-light rounded-4 p-3 mb-3">{review.comment || 'Không có nội dung.'}</div>
 
                 <div className="row g-3 align-items-end">
                   <div className="col-lg-10">
-                    <label className="form-label fw-semibold">Phan hoi cua admin</label>
+                    <label className="form-label fw-semibold">Phản hồi của admin</label>
                     <input
                       className="form-control"
                       value={replyDrafts[review.id] || ''}
                       onChange={(event) =>
                         setReplyDrafts({ ...replyDrafts, [review.id]: event.target.value })
                       }
-                      placeholder="Nhap noi dung phan hoi..."
+                      placeholder="Nhập nội dung phản hồi..."
                     />
                   </div>
                   <div className="col-lg-2">
                     <button className="btn btn-success w-100 rounded-pill" onClick={() => submitReply(review.id)}>
-                      {review.owner_reply ? 'Cap nhat' : 'Phan hoi'}
+                      {review.owner_reply ? 'Cập nhật' : 'Phản hồi'}
                     </button>
                   </div>
                 </div>
@@ -102,7 +102,7 @@ const AdminReviewManagement = () => {
           ))}
 
           {reviews.length === 0 && (
-            <div className="col-12 text-center text-muted py-5">Chua co danh gia nao trong he thong.</div>
+            <div className="col-12 text-center text-muted py-5">Chưa có đánh giá nào trong hệ thống.</div>
           )}
         </div>
       </div>

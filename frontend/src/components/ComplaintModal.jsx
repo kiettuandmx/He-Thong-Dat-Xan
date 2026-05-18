@@ -21,7 +21,7 @@ const ComplaintModal = ({ booking, onClose, onSuccess }) => {
     e.preventDefault();
 
     if (!reason.trim()) {
-      Swal.fire('Thieu thong tin', 'Vui long nhap noi dung khieu nai.', 'warning');
+      Swal.fire('Thiếu thông tin', 'Vui lòng nhập nội dung khiếu nại.', 'warning');
       return;
     }
 
@@ -42,11 +42,11 @@ const ComplaintModal = ({ booking, onClose, onSuccess }) => {
         }
       );
 
-      Swal.fire('Da gui', 'Khieu nai cua ban da duoc gui den admin.', 'success');
+      Swal.fire('Đã gửi', 'Khiếu nại của bạn đã được gửi đến admin.', 'success');
       onSuccess?.();
       onClose();
     } catch (error) {
-      Swal.fire('Loi', error.response?.data?.message || 'Khong the gui khieu nai.', 'error');
+      Swal.fire('Lỗi', error.response?.data?.message || 'Không thể gửi khiếu nại.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -65,9 +65,9 @@ const ComplaintModal = ({ booking, onClose, onSuccess }) => {
       >
         <div className="d-flex justify-content-between align-items-start mb-3">
           <div>
-            <h5 className="fw-bold mb-1">Gui khieu nai</h5>
+            <h5 className="fw-bold mb-1">Gửi khiếu nại</h5>
             <p className="text-muted small mb-0">
-              Don #{booking?.id} - {booking?.field?.name || 'San da dat'}
+              Đơn #{booking?.id} - {booking?.field?.name || 'Sân đã đặt'}
             </p>
           </div>
           <button className="btn btn-light btn-sm border" onClick={onClose}>
@@ -77,7 +77,7 @@ const ComplaintModal = ({ booking, onClose, onSuccess }) => {
 
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
-            <label className="form-label fw-semibold">Noi dung khieu nai</label>
+            <label className="form-label fw-semibold">Nội dung khiếu nại</label>
             <textarea
               className="form-control"
               rows="5"
@@ -103,7 +103,7 @@ const ComplaintModal = ({ booking, onClose, onSuccess }) => {
               Huy
             </button>
             <button type="submit" className="btn btn-danger" disabled={submitting}>
-              {submitting ? 'Dang gui...' : 'Gui khieu nai'}
+              {submitting ? 'Đang gửi...' : 'Gửi khiếu nại'}
             </button>
           </div>
         </form>
@@ -113,4 +113,3 @@ const ComplaintModal = ({ booking, onClose, onSuccess }) => {
 };
 
 export default ComplaintModal;
-

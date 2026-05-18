@@ -35,7 +35,7 @@ router.patch("/users/:id/role", async (req, res) => {
   try {
     const { role_id } = req.body;
     const user = await User.findByPk(req.params.id);
-    if (!user) return res.status(404).json({ error: "Khong tim thay user" });
+    if (!user) return res.status(404).json({ error: "Không tìm thấy user" });
 
     const before = toPlain(user);
     await user.update({ role_id });
@@ -77,7 +77,7 @@ router.patch("/stadiums/:id/status", async (req, res) => {
     const { status } = req.body;
     const stadium = await Stadium.findByPk(req.params.id);
     if (!stadium)
-      return res.status(404).json({ error: "Khong tim thay Stadium" });
+      return res.status(404).json({ error: "Không tìm thấy Stadium" });
 
     const before = toPlain(stadium);
     await stadium.update({ status });
@@ -167,7 +167,7 @@ router.post("/send-global-notification", async (req, res) => {
     const notifications = await createNotificationsForUsers(
       users.map((user) => ({
         userId: user.id,
-        title: title || "Thong bao he thong",
+        title: title || "Thông báo hệ thống",
         content,
         type: type || "system_announcement",
         targetType: "announcement",
@@ -186,7 +186,7 @@ router.post("/send-global-notification", async (req, res) => {
       targetType: "notification",
       targetId: notifications[0]?.id,
       afterData: {
-        title: title || "Thong bao he thong",
+        title: title || "Thông báo hệ thống",
         content,
         type: type || "system_announcement",
         recipients: notifications.length,
@@ -196,8 +196,8 @@ router.post("/send-global-notification", async (req, res) => {
 
     res.json({ success: true, data: notifications });
   } catch (err) {
-    console.error("Loi khi gui thong bao:", err);
-    res.status(500).json({ error: "Loi server khong the luu thong bao" });
+    console.error("Lỗi khi gửi thông báo:", err);
+    res.status(500).json({ error: "Lỗi server không thể lưu thông báo" });
   }
 });
 

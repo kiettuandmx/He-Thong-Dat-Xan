@@ -21,10 +21,10 @@ router.patch('/users/:id/role', verifyToken, checkRole([3]), async (req, res) =>
   try {
     const { role_id } = req.body;
     const user = await User.findByPk(req.params.id);
-    if (!user) return res.status(404).json({ error: 'Khong tim thay nguoi dung' });
+    if (!user) return res.status(404).json({ error: 'Không tìm thấy người dùng' });
 
     await user.update({ role_id });
-    res.json({ message: 'Cap nhat quyen han thanh cong' });
+    res.json({ message: 'Cập nhật quyền hạn thành công' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -33,7 +33,7 @@ router.patch('/users/:id/role', verifyToken, checkRole([3]), async (req, res) =>
 router.delete('/users/:id', verifyToken, checkRole([3]), async (req, res) => {
   try {
     await User.destroy({ where: { id: req.params.id } });
-    res.json({ message: 'Da xoa nguoi dung khoi he thong' });
+    res.json({ message: 'Đã xóa người dùng khỏi hệ thống' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
