@@ -23,6 +23,12 @@ const {
     normalizeCouponCode,
     assertCouponUsageAllowed,
 } = require('../utils/couponUsage');
+const {
+    applyWalletTransaction,
+} = require('../utils/walletService');
+const {
+    WALLET_TRANSACTION_TYPES,
+} = require('../utils/walletTypes');
 
 const getRequestMeta = (req) => ({
     ipAddress: req.ip || req.headers['x-forwarded-for'] || null,
@@ -53,6 +59,8 @@ const normalizePositiveInteger = (value, fallback) => {
 
 const isPaymentHistoryFilterError = (error) =>
     error instanceof Error && error.message.startsWith('Invalid ');
+
+const normalizePaymentMethod = (value) => String(value || '').trim().toLowerCase();
 
 const shouldPreserveProcessedBookingStatus = (status) =>
     ['confirmed', 'refunded', 'rejected', 'cancelled'].includes(status);
@@ -642,12 +650,30 @@ exports.refundBooking = async (req, res) => {
             return res.status(400).json({ success: false, message: "Chỉ có thể hoàn tiền cho các đơn đã được duyệt!" });
         }
 
+        const refundAmount = Number(booking.amount_paid || 0);
+
         // Cập nhật trạng thái đơn hàng
         await booking.update({
             status: 'refunded',
             refund_reason: refund_reason || "Chủ sân hoàn tiền đơn này.",
             refunded_at: new Date()
         }, { transaction });
+
+        if (refundAmount > 0) {
+            await applyWalletTransaction(
+                db,
+                {
+                    userId: booking.user_id,
+                    amount: refundAmount,
+                    type: WALLET_TRANSACTION_TYPES.BOOKING_REFUND,
+                    bookingId: booking.id,
+                    description: `Hoan tien huy san cho don #${booking.id}`,
+                    referenceType: 'booking_refund',
+                    referenceId: booking.id,
+                },
+                transaction
+            );
+        }
 
         // Tạo thông báo cho khách hàng
         const notiContent = `Đơn đặt sân ${booking.field.name} của bạn vào ngày ${booking.booking_date} đã được hoàn tiền. Lý do: ${refund_reason || "Liên hệ chủ sân để biết thêm chi tiết"}`;
@@ -864,6 +890,8 @@ exports.createBooking = async (req, res) => {
         const user_id = resolveBookingCreatorId(req, req.body);
         const normalizedCouponCode = normalizeCouponCode(coupon_code) || null;
         const normalizedStartTime = start_time.length === 5 ? `${start_time}:00` : start_time;
+        const paymentMethod = normalizePaymentMethod(req.body.payment_method || 'vnpay');
+        const isWalletPayment = paymentMethod === 'wallet';
 
         const field = await Field.findByPk(field_id, {
             include: {
@@ -973,13 +1001,30 @@ exports.createBooking = async (req, res) => {
             total_price: totalPrice,
             amount_paid: amountPaid,
             payment_type,
-            payment_method: 'Online',
-            payment_status: 'unpaid',
-            status: 'pending',
-            hold_until: holdUntilTime,
+            payment_method: isWalletPayment ? 'wallet' : paymentMethod,
+            payment_status: isWalletPayment ? 'paid' : 'unpaid',
+            payment_recorded_at: isWalletPayment ? new Date() : null,
+            status: isWalletPayment ? 'confirmed' : 'pending',
+            hold_until: isWalletPayment ? null : holdUntilTime,
             coupon_code: normalizedCouponCode,
             discount_amount: discountAmount,
         }, { transaction });
+
+        if (isWalletPayment) {
+            await applyWalletTransaction(
+                db,
+                {
+                    userId: user_id,
+                    amount: amountPaid,
+                    type: WALLET_TRANSACTION_TYPES.BOOKING_PAYMENT,
+                    bookingId: newBooking.id,
+                    description: `Thanh toan don dat san #${newBooking.id} bang vi`,
+                    referenceType: 'booking',
+                    referenceId: newBooking.id,
+                },
+                transaction
+            );
+        }
 
         await transaction.commit();
 
@@ -1011,11 +1056,21 @@ exports.createBooking = async (req, res) => {
             locked_by_user: user_id,
         });
 
+        if (isWalletPayment) {
+            io.emit('slotConfirmed', {
+                field_id,
+                date: booking_date,
+                start_time: normalizedStartTime,
+            });
+        }
+
         if (field?.stadium?.owner_id) {
             await createNotification({
                 userId: field.stadium.owner_id,
-                content: 'Ban co don dat san moi',
-                type: 'booking_created',
+                content: isWalletPayment
+                    ? 'Ban co don dat san moi da thanh toan bang vi'
+                    : 'Ban co don dat san moi',
+                type: isWalletPayment ? 'booking_paid' : 'booking_created',
                 targetType: 'booking',
                 targetId: newBooking.id,
                 targetRoute: '/history',
@@ -1024,12 +1079,21 @@ exports.createBooking = async (req, res) => {
 
         res.status(201).json({
             success: true,
-            message: 'Gui yeu cau dat san thanh cong!',
+            message: isWalletPayment
+                ? 'Dat san va thanh toan bang vi thanh cong!'
+                : 'Gui yeu cau dat san thanh cong!',
             data: newBooking,
         });
     } catch (error) {
         if (!transaction.finished) {
             await transaction.rollback();
+        }
+
+        if (error.message === 'INSUFFICIENT_WALLET_BALANCE') {
+            return res.status(400).json({
+                success: false,
+                message: 'So du vi khong du de thanh toan dat san.',
+            });
         }
 
         res.status(500).json({ success: false, message: error.message });
@@ -1346,3 +1410,4 @@ exports.updatePaymentStatus = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+

@@ -31,6 +31,7 @@ import ManageStadiums from './pages/ManageStadiums';
 import OwnerDashboard from './pages/OwnerDashboard';
 import OwnerReviews from './pages/OwnerReviews';
 import PaymentHistory from './pages/PaymentHistory';
+import WalletPage from './pages/WalletPage';
 import EditField from './pages/EditField';
 import AdminUsers from './pages/AdminUsers';
 import AdminDashboard from './pages/AdminDashboard';
@@ -80,6 +81,7 @@ function App() {
             <Route element={<MainLayout />}>
               <Route path="/history" element={<BookingHistory />} />
               <Route path="/payment-history" element={<PaymentHistory />} />
+              <Route path="/wallet" element={<WalletPage />} />
               <Route path="/favorites" element={<FavoritesPage />} />
               <Route path="/complaints" element={<MyComplaints />} />
               <Route path="/profile" element={<ProfilePage />} />

@@ -39,7 +39,17 @@ vi.mock('axios', () => ({
 
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({
-    user: null,
+    user: { user: { id: 7, role_id: 1 } },
+  }),
+}));
+
+vi.mock('../services/walletService', () => ({
+  getWalletSummary: vi.fn().mockResolvedValue({
+    data: {
+      data: {
+        balance: 150000,
+      },
+    },
   }),
 }));
 
@@ -64,5 +74,17 @@ describe('Trang chi tiết sân', () => {
     expect(await screen.findByRole('heading', { name: /sân bảy phúc/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /lịch đặt sân/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /xác nhận đặt sân/i })).toBeInTheDocument();
+  });
+
+  it('shows wallet beside VNPay and MoMo in the booking payment section', async () => {
+    render(
+      <MemoryRouter>
+        <FieldDetail />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole('button', { name: /vnpay/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /momo/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /ví/i })).toBeInTheDocument();
   });
 });

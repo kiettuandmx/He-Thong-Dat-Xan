@@ -20,6 +20,7 @@ const userAccountLinks = [
   { to: '/profile', label: 'Hồ sơ của tôi', icon: 'bi-person' },
   { to: '/history', label: 'Lịch sử đặt sân', icon: 'bi-calendar-check' },
   { to: '/payment-history', label: 'Lịch sử thanh toán', icon: 'bi-wallet2' },
+  { to: '/wallet', label: 'Ví tiền của tôi', icon: 'bi-credit-card-2-front' },
   { to: '/favorites', label: 'Sân yêu thích', icon: 'bi-heart' },
   { to: '/complaints', label: 'Khiếu nại của tôi', icon: 'bi-chat-left-text' },
   { to: '/my-reviews', label: 'Đánh giá của tôi', icon: 'bi-star' },

@@ -10,6 +10,7 @@ import {
   getCurrentUserId,
   getHistoryPathByRole,
 } from '../utils/authHelpers';
+import { getWalletSummary } from '../services/walletService';
 
 const TIME_SLOTS = [
   { id: 1, time: '05:00 - 06:00', start: '05:00', end: '06:00' },
@@ -55,6 +56,7 @@ const FieldDetail = () => {
   const [couponCode, setCouponCode] = useState('');
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [couponError, setCouponError] = useState('');
+  const [walletBalance, setWalletBalance] = useState(0);
 
   const fetchFieldDetail = async () => {
     try {
@@ -82,6 +84,34 @@ const FieldDetail = () => {
     setCouponDiscount(0);
     setCouponError('');
   }, [id, selectedDate]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    const loadWalletBalance = async () => {
+      if (!user) {
+        setWalletBalance(0);
+        return;
+      }
+
+      try {
+        const response = await getWalletSummary();
+        if (!ignore) {
+          setWalletBalance(Number(response.data?.data?.balance || 0));
+        }
+      } catch {
+        if (!ignore) {
+          setWalletBalance(0);
+        }
+      }
+    };
+
+    loadWalletBalance();
+
+    return () => {
+      ignore = true;
+    };
+  }, [user]);
 
   useEffect(() => {
     const socket = io('http://localhost:5000');
@@ -284,6 +314,12 @@ const FieldDetail = () => {
 
       if (!bookingId) {
         window.alert('Đặt sân thành công.');
+        navigate(getHistoryPathByRole(user));
+        return;
+      }
+
+      if (paymentMethod === 'wallet') {
+        window.alert('Đặt sân và thanh toán bằng ví thành công.');
         navigate(getHistoryPathByRole(user));
         return;
       }
@@ -525,7 +561,20 @@ const FieldDetail = () => {
               >
                 MoMo
               </button>
+              <button
+                type="button"
+                className={`payment-option flex-fill ${paymentMethod === 'wallet' ? 'is-active' : ''}`}
+                onClick={() => setPaymentMethod('wallet')}
+              >
+                Ví
+              </button>
             </div>
+            {paymentMethod === 'wallet' && (
+              <div className="wallet-payment-note">
+                Số dư hiện tại: {walletBalance.toLocaleString('vi-VN')}đ
+                {walletBalance < amountToPay ? ' - Số dư không đủ để thanh toán.' : ''}
+              </div>
+            )}
           </div>
 
           <div className="account-card">
@@ -540,7 +589,7 @@ const FieldDetail = () => {
             <button
               type="button"
               className="primary-button w-100 py-3"
-              disabled={!selectedSlot}
+              disabled={!selectedSlot || (paymentMethod === 'wallet' && walletBalance < amountToPay)}
               onClick={handleBooking}
             >
               Xác nhận đặt sân

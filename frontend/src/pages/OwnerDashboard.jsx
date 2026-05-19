@@ -20,7 +20,7 @@ import {
   normalizeOwnerSummary,
 } from '../utils/ownerMetricsHelpers';
 
-const CHART_COLORS = ['#f04e23', '#ff8a4c', '#1f9d55', '#3156c9', '#ffb020'];
+const CHART_COLORS = ['#2f8f4e', '#66a97d', '#1f9d55', '#3156c9', '#ffb020'];
 
 const formatTimeRange = (startTime, endTime) => {
   if (!startTime && !endTime) return 'Chưa có khung giờ';
@@ -471,3 +471,4 @@ const OwnerDashboard = () => {
 };
 
 export default OwnerDashboard;
+

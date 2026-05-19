@@ -9,9 +9,9 @@
   --color-text: #172033;
   --color-text-muted: #60708f;
   --color-border: rgba(23, 32, 51, 0.08);
-  --color-accent: #ff6b2c;
-  --color-accent-strong: #f04e23;
-  --color-accent-soft: rgba(255, 107, 44, 0.12);
+  --color-accent: #2f8f4e;
+  --color-accent-strong: #237242;
+  --color-accent-soft: rgba(47, 143, 78, 0.12);
   --color-success: #1f9d55;
   --color-success-soft: rgba(31, 157, 85, 0.12);
   --color-danger: #dc3d42;
@@ -42,7 +42,7 @@ body {
   font-family: var(--font-family-base);
   color: var(--color-text);
   background:
-    radial-gradient(circle at top, #fff7f2 0%, #f4f7fb 45%, #eef3f8 100%);
+    radial-gradient(circle at top, #f2fbf5 0%, #f4f7fb 45%, #eef3f8 100%);
 }
 
 body,
