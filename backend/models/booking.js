@@ -7,7 +7,15 @@ module.exports = (sequelize, DataTypes) => {
       Booking.belongsTo(models.Stadium, { foreignKey: 'stadium_id', as: 'stadium' });
       Booking.belongsTo(models.Field, { foreignKey: 'field_id', as: 'field' });
       Booking.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' });
+      Booking.belongsTo(models.RecurringBookingSeries, {
+        foreignKey: 'recurring_series_id',
+        as: 'recurringSeries',
+      });
       Booking.hasMany(models.WalletTransaction, { foreignKey: 'booking_id', as: 'walletTransactions' });
+      Booking.hasOne(models.RecurringBookingItem, {
+        foreignKey: 'booking_id',
+        as: 'recurringItem',
+      });
     }
   }
 
@@ -71,6 +79,18 @@ module.exports = (sequelize, DataTypes) => {
     discount_amount: {
       type: DataTypes.DECIMAL(10, 2),
       defaultValue: 0
+    },
+    recurring_series_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
+    remaining_amount: {
+      type: DataTypes.DECIMAL(12, 0),
+      defaultValue: 0
+    },
+    payment_due_date: {
+      type: DataTypes.DATEONLY,
+      allowNull: true
     },
   }, {
     sequelize,

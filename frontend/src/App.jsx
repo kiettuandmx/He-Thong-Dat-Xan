@@ -32,6 +32,7 @@ import OwnerDashboard from './pages/OwnerDashboard';
 import OwnerReviews from './pages/OwnerReviews';
 import PaymentHistory from './pages/PaymentHistory';
 import WalletPage from './pages/WalletPage';
+import RecurringBookingPage from './pages/RecurringBookingPage';
 import EditField from './pages/EditField';
 import AdminUsers from './pages/AdminUsers';
 import AdminDashboard from './pages/AdminDashboard';
@@ -46,6 +47,7 @@ import AdminOwnerOverview from './pages/AdminOwnerOverview';
 import AdminOwnerStadiums from './pages/AdminOwnerStadiums';
 import AdminBookingManagement from './pages/AdminBookingManagement';
 import AdminReviewManagement from './pages/AdminReviewManagement';
+import OwnerRecurringRequests from './pages/OwnerRecurringRequests';
 
 import './App.css';
 
@@ -82,6 +84,7 @@ function App() {
               <Route path="/history" element={<BookingHistory />} />
               <Route path="/payment-history" element={<PaymentHistory />} />
               <Route path="/wallet" element={<WalletPage />} />
+              <Route path="/recurring-bookings" element={<RecurringBookingPage />} />
               <Route path="/favorites" element={<FavoritesPage />} />
               <Route path="/complaints" element={<MyComplaints />} />
               <Route path="/profile" element={<ProfilePage />} />
@@ -97,6 +100,7 @@ function App() {
               <Route path="/owner/edit-field/:id" element={<EditField />} />
               <Route path="/owner/reviews" element={<OwnerReviews />} />
               <Route path="/owner/payment-history" element={<PaymentHistory />} />
+              <Route path="/owner/recurring-requests" element={<OwnerRecurringRequests />} />
             </Route>
           </Route>
 

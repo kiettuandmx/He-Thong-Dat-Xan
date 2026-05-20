@@ -35,6 +35,11 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "user_id",
         as: "walletTransactions",
       });
+
+      User.hasMany(models.RecurringBookingSeries, {
+        foreignKey: "user_id",
+        as: "recurringBookingSeries",
+      });
     }
   }
   User.init({

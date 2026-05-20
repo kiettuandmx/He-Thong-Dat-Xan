@@ -13,6 +13,7 @@ const ownerLinks = [
   { to: '/owner/dashboard', label: 'Tổng quan chủ sân' },
   { to: '/owner/stadiums', label: 'Khu sân của tôi' },
   { to: '/owner/fields', label: 'Danh sách sân' },
+  { to: '/owner/recurring-requests', label: 'Yêu cầu đặt định kỳ' },
   { to: '/owner/reviews', label: 'Đánh giá nhận được' },
 ];
 
@@ -21,6 +22,7 @@ const userAccountLinks = [
   { to: '/history', label: 'Lịch sử đặt sân', icon: 'bi-calendar-check' },
   { to: '/payment-history', label: 'Lịch sử thanh toán', icon: 'bi-wallet2' },
   { to: '/wallet', label: 'Ví tiền của tôi', icon: 'bi-credit-card-2-front' },
+  { to: '/recurring-bookings', label: 'Đặt sân định kỳ', icon: 'bi-calendar2-week' },
   { to: '/favorites', label: 'Sân yêu thích', icon: 'bi-heart' },
   { to: '/complaints', label: 'Khiếu nại của tôi', icon: 'bi-chat-left-text' },
   { to: '/my-reviews', label: 'Đánh giá của tôi', icon: 'bi-star' },
@@ -154,7 +156,7 @@ const MainLayout = () => {
             )}
 
             <section className="account-drawer__section">
-              <p className="account-drawer__title">Tác vụ cá nhân</p>
+                <p className="account-drawer__title">Tác vụ cá nhân</p>
               <div className="account-link-list">
                 {accountLinks.map((link) => (
                   <Link
@@ -171,7 +173,7 @@ const MainLayout = () => {
             </section>
 
             <section className="account-drawer__section">
-              <p className="account-drawer__title">Phiên làm việc</p>
+                <p className="account-drawer__title">Phiên làm việc</p>
               <button type="button" className="secondary-button w-100" onClick={handleLogout}>
                 Đăng xuất
               </button>

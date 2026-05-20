@@ -2,9 +2,10 @@ require('dotenv').config();
 
 const http = require('http');
 const { Op } = require('sequelize');
-const { sequelize, Booking } = require('./models');
+const { sequelize, Booking, Notification, RecurringBookingItem, RecurringBookingSeries, Stadium } = require('./models');
 const socket = require('./socket');
 const { createApp } = require('./app');
+const { processRecurringPaymentReminders } = require('./utils/recurringBookingService');
 
 const app = createApp();
 const server = http.createServer(app);
@@ -50,6 +51,19 @@ sequelize
 
           if (expiredBookings.length > 0) {
             console.log(`Auto-released ${expiredBookings.length} expired reservations.`);
+          }
+
+          try {
+            const reminderCount = await processRecurringPaymentReminders(
+              { Notification, RecurringBookingItem, RecurringBookingSeries, Stadium },
+              new Date()
+            );
+
+            if (reminderCount > 0) {
+              console.log(`Sent ${reminderCount} recurring payment reminders.`);
+            }
+          } catch (reminderError) {
+            console.error('Recurring reminder error:', reminderError);
           }
         } catch (err) {
           console.error('Auto-release error:', err);

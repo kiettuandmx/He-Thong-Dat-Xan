@@ -15,6 +15,7 @@ const bookingRoutes = require('./routes/bookingRoutes');
 const stadiumRoutes = require('./routes/stadiumRoutes');
 const userRoutes = require('./routes/userRoutes');
 const walletRoutes = require('./routes/walletRoutes');
+const recurringBookingRoutes = require('./routes/recurringBookingRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const favoriteRoutes = require('./routes/favoriteRoutes');
@@ -35,6 +36,7 @@ function createApp() {
   app.use('/api/admin', adminRoutes);
   app.use('/api/bookings', bookingRoutes);
   app.use('/api/wallet', walletRoutes);
+  app.use('/api/recurring-bookings', recurringBookingRoutes);
   app.use('/api/stadiums', stadiumRoutes);
   app.use('/api/users', userRoutes);
   app.use('/api/dashboard', dashboardRoutes);
