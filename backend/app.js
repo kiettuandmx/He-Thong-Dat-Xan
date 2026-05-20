@@ -22,6 +22,8 @@ const favoriteRoutes = require('./routes/favoriteRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 const hashtagRoutes = require('./routes/hashtagRoutes');
 const complaintRoutes = require('./routes/complaintRoutes');
+const menuRoutes = require('./routes/menuRoutes');
+const foodOrderRoutes = require('./routes/foodOrderRoutes');
 
 function createApp() {
   const app = express();
@@ -45,6 +47,8 @@ function createApp() {
   app.use('/api/coupons', couponRoutes);
   app.use('/api/hashtags', hashtagRoutes);
   app.use('/api/complaints', complaintRoutes);
+  app.use('/api/menu', menuRoutes);
+  app.use('/api/food-orders', foodOrderRoutes);
 
   const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, 'uploads/'),

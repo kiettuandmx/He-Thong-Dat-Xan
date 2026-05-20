@@ -33,6 +33,7 @@ import OwnerReviews from './pages/OwnerReviews';
 import PaymentHistory from './pages/PaymentHistory';
 import WalletPage from './pages/WalletPage';
 import RecurringBookingPage from './pages/RecurringBookingPage';
+import BookingDetailPage from './pages/BookingDetailPage';
 import EditField from './pages/EditField';
 import AdminUsers from './pages/AdminUsers';
 import AdminDashboard from './pages/AdminDashboard';
@@ -48,6 +49,8 @@ import AdminOwnerStadiums from './pages/AdminOwnerStadiums';
 import AdminBookingManagement from './pages/AdminBookingManagement';
 import AdminReviewManagement from './pages/AdminReviewManagement';
 import OwnerRecurringRequests from './pages/OwnerRecurringRequests';
+import OwnerFieldMenuPage from './pages/OwnerFieldMenuPage';
+import OwnerFoodOrdersPage from './pages/OwnerFoodOrdersPage';
 
 import './App.css';
 
@@ -82,6 +85,7 @@ function App() {
           <Route element={<ProtectedRoute allowedRoles={[1, 2, 3]} />}>
             <Route element={<MainLayout />}>
               <Route path="/history" element={<BookingHistory />} />
+              <Route path="/history/:bookingId" element={<BookingDetailPage />} />
               <Route path="/payment-history" element={<PaymentHistory />} />
               <Route path="/wallet" element={<WalletPage />} />
               <Route path="/recurring-bookings" element={<RecurringBookingPage />} />
@@ -101,6 +105,8 @@ function App() {
               <Route path="/owner/reviews" element={<OwnerReviews />} />
               <Route path="/owner/payment-history" element={<PaymentHistory />} />
               <Route path="/owner/recurring-requests" element={<OwnerRecurringRequests />} />
+              <Route path="/owner/fields/:fieldId/menu" element={<OwnerFieldMenuPage />} />
+              <Route path="/owner/fields/:fieldId/food-orders" element={<OwnerFoodOrdersPage />} />
             </Route>
           </Route>
 

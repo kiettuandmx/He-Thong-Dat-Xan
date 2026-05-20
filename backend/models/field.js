@@ -33,6 +33,20 @@ module.exports = (sequelize, DataTypes) => {
         });
       }
 
+      if (models.MenuItem) {
+        Field.hasMany(models.MenuItem, {
+          foreignKey: "field_id",
+          as: "menuItems",
+        });
+      }
+
+      if (models.FoodOrder) {
+        Field.hasMany(models.FoodOrder, {
+          foreignKey: "field_id",
+          as: "foodOrders",
+        });
+      }
+
       if (models.RecurringBookingSeries) {
         Field.hasMany(models.RecurringBookingSeries, {
           foreignKey: "field_id",

@@ -16,6 +16,10 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'booking_id',
         as: 'recurringItem',
       });
+      Booking.hasMany(models.FoodOrder, {
+        foreignKey: 'booking_id',
+        as: 'foodOrders',
+      });
     }
   }
 
