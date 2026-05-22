@@ -35,6 +35,7 @@ import WalletPage from './pages/WalletPage';
 import RecurringBookingPage from './pages/RecurringBookingPage';
 import BookingDetailPage from './pages/BookingDetailPage';
 import EditField from './pages/EditField';
+import SmartChatPage from './pages/SmartChatPage';
 import AdminUsers from './pages/AdminUsers';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminStadiums from './pages/AdminStadiums';
@@ -80,6 +81,7 @@ function App() {
             <Route path="/payment-momo/:bookingId" element={<PaymentMoMo />} />
             <Route path="/stadium/:id" element={<StadiumDetail />} />
             <Route path="/home" element={<Home />} />
+            <Route path="/smart-chat" element={<SmartChatPage />} />
           </Route>
 
           <Route element={<ProtectedRoute allowedRoles={[1, 2, 3]} />}>

@@ -7,6 +7,7 @@ const publicLinks = [
   { to: '/football', label: 'Bóng đá' },
   { to: '/badminton', label: 'Cầu lông' },
   { to: '/pickleball', label: 'Pickleball' },
+  { to: '/smart-chat', label: 'Tro ly san' },
 ];
 
 const ownerLinks = [

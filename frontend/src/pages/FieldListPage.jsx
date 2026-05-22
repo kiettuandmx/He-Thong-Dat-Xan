@@ -79,7 +79,14 @@ const FieldListPage = ({ detailBasePath = '/field' }) => {
           <strong>{fields.length} sân phù hợp</strong>
           <div className="text-muted mt-1">Bạn có thể lọc theo môn, giá và khu vực.</div>
         </div>
-        <div className="text-muted">Hình ảnh rõ ràng, thông tin gọn và thao tác đặt sân mạch lạc.</div>
+        <div className="d-flex align-items-center gap-3">
+          <div className="text-muted">
+            Hình ảnh rõ ràng, thông tin gọn và thao tác đặt sân mạch lạc.
+          </div>
+          <Link className="btn btn-success" to="/smart-chat">
+            Nho tro ly tu van san
+          </Link>
+        </div>
       </section>
 
       <div className="listing-layout">
