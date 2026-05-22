@@ -1,0 +1,9 @@
+[
+  {
+    "slug": "rule-group-size-7",
+    "condition": "group_size between 7 and 14",
+    "suggested_field_type": "san_7",
+    "reason": "Nhom 7-14 nguoi thuong phu hop voi san 7."
+  }
+]
+

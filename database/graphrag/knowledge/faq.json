@@ -1,0 +1,9 @@
+[
+  {
+    "slug": "faq-lighting",
+    "question": "San nao phu hop da buoi toi?",
+    "answer": "Uu tien cac san co den va lich hoat dong buoi toi ro rang.",
+    "about": ["Amenity:den", "TimePreference:evening"]
+  }
+]
+
