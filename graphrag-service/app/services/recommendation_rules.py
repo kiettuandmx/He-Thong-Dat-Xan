@@ -13,12 +13,26 @@ def normalize_price_band(text: str | None) -> str | None:
         return None
 
     lowered = text.lower()
+    if "re nhat" in lowered or "thap nhat" in lowered:
+        return "low"
     if "re" in lowered:
         return "low"
     if "vua phai" in lowered or "tam trung" in lowered:
         return "medium"
     if "cao" in lowered or "xinh" in lowered:
         return "high"
+    return None
+
+
+def normalize_price_sort(text: str | None) -> str | None:
+    if not text:
+        return None
+
+    lowered = text.lower()
+    if "re nhat" in lowered or "thap nhat" in lowered:
+        return "lowest"
+    if "dat nhat" in lowered or "cao nhat" in lowered:
+        return "highest"
     return None
 
 
@@ -35,3 +49,16 @@ def normalize_time_preference(text: str | None) -> str | None:
         return "afternoon"
     return None
 
+
+def normalize_sport_type(text: str | None) -> str | None:
+    if not text:
+        return None
+
+    lowered = text.lower()
+    if "bong da" in lowered or "football" in lowered:
+        return "football"
+    if "cau long" in lowered or "badminton" in lowered:
+        return "badminton"
+    if "pickleball" in lowered:
+        return "pickleball"
+    return None
