@@ -18,3 +18,28 @@ Non-responsibilities:
 Main local endpoint:
 - `POST /chat`
 
+## Local startup
+
+### 1. Start the Node backend
+
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+### 2. Start the Python GraphRAG service
+
+```bash
+cd graphrag-service
+C:\laragon6.0\bin\python\python-3.10\python.exe -m pip install -r requirements.txt
+C:\laragon6.0\bin\python\python-3.10\python.exe -m uvicorn app.main:app --reload --port 8000
+```
+
+### 3. Start the frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
