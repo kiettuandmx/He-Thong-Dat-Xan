@@ -13,3 +13,12 @@ class RecommendationConstraints(BaseModel):
     field_type: str | None = None
     amenities: list[str] = Field(default_factory=list)
 
+
+class ChatRequest(BaseModel):
+    message: str
+
+
+class ChatResponse(BaseModel):
+    answer: str
+    recommendations: list[dict]
+    constraints: RecommendationConstraints
