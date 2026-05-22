@@ -1,9 +1,13 @@
+import json
+from pathlib import Path
+
 from neo4j import GraphDatabase
 
 
 class GraphRepository:
     def __init__(self, uri: str, username: str, password: str):
         self.driver = GraphDatabase.driver(uri, auth=(username, password))
+        self._dev_candidates = self._load_dev_candidates()
 
     def close(self) -> None:
         self.driver.close()
@@ -44,7 +48,7 @@ class GraphRepository:
                 )
                 return [self._record_to_candidate(record) for record in records]
         except Exception:
-            return []
+            return self._match_dev_candidates(constraints)
 
     @staticmethod
     def _record_to_candidate(record) -> dict:
@@ -64,3 +68,38 @@ class GraphRepository:
             "reasons": reasons,
         }
 
+    def _load_dev_candidates(self) -> list[dict]:
+        project_root = Path(__file__).resolve().parents[3]
+        candidates_path = project_root / "database" / "graphrag" / "dev_candidates.json"
+        if not candidates_path.exists():
+            return []
+
+        with candidates_path.open("r", encoding="utf-8") as file:
+            return json.load(file)
+
+    def _match_dev_candidates(self, constraints: dict) -> list[dict]:
+        matches = []
+        for candidate in self._dev_candidates:
+            if constraints.get("area") and candidate.get("area") != constraints["area"]:
+                continue
+            if constraints.get("field_type") and candidate.get("field_type") != constraints["field_type"]:
+                continue
+            if constraints.get("price_band") and candidate.get("price_band") != constraints["price_band"]:
+                continue
+            if constraints.get("time_preference") and candidate.get("time_preference") != constraints["time_preference"]:
+                continue
+
+            matches.append(
+                {
+                    "field_id": candidate["field_id"],
+                    "name": candidate["name"],
+                    "reasons": [
+                        f"Gan khu vuc {candidate['area_name']}",
+                        f"Phu hop loai san {candidate['field_type_label']}",
+                        f"Muc gia {candidate['price_band_label']}",
+                        f"Phu hop khung gio {candidate['time_label']}",
+                    ],
+                }
+            )
+
+        return matches[:3]

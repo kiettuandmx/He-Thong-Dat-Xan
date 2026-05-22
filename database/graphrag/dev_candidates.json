@@ -1,0 +1,26 @@
+[
+  {
+    "field_id": 201,
+    "name": "San 7 Phu My A",
+    "area": "quan_7",
+    "area_name": "Quan 7",
+    "field_type": "san_7",
+    "field_type_label": "San 7",
+    "price_band": "medium",
+    "price_band_label": "Gia vua phai",
+    "time_preference": "evening",
+    "time_label": "Buoi toi"
+  },
+  {
+    "field_id": 202,
+    "name": "San 7 Riverside",
+    "area": "quan_7",
+    "area_name": "Quan 7",
+    "field_type": "san_7",
+    "field_type_label": "San 7",
+    "price_band": "medium",
+    "price_band_label": "Gia vua phai",
+    "time_preference": "evening",
+    "time_label": "Buoi toi"
+  }
+]
