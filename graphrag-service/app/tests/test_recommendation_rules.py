@@ -15,6 +15,10 @@ def test_normalize_price_band_maps_vua_phai_to_medium():
     assert normalize_price_band("gia vua phai") == "medium"
 
 
+def test_normalize_price_band_maps_hop_ly_to_medium():
+    assert normalize_price_band("gia hop ly") == "medium"
+
+
 def test_normalize_time_preference_maps_toi_nay_to_evening():
     assert normalize_time_preference("toi nay") == "evening"
 

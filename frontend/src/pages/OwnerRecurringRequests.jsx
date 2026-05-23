@@ -19,7 +19,7 @@ const OwnerRecurringRequests = () => {
       const response = await getOwnerRecurringBookings();
       setRows(response.data?.data || []);
     } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Khong the tai danh sach yeu cau.');
+      setError(requestError.response?.data?.message || 'Không thể tải danh sách yêu cầu.');
     } finally {
       setLoading(false);
     }
@@ -44,19 +44,19 @@ const OwnerRecurringRequests = () => {
       <section className="detail-hero">
         <div>
           <p className="eyebrow mb-2">Owner review</p>
-          <h1 className="display-title mb-3">Yeu cau dat san dinh ky</h1>
+          <h1 className="display-title mb-3">Yêu cầu đặt sân định kỳ</h1>
           <p className="detail-subtitle mb-0">
-            Xem cac chuoi dat dinh ky dang cho duyet va ra quyet dinh nhanh cho tung khach hang.
+            Xem các chuỗi đặt định kỳ đang chờ duyệt và ra quyết định nhanh cho từng khách hàng.
           </p>
         </div>
       </section>
 
       <section className="detail-panel">
-        {loading && <div className="account-empty-state text-start">Dang tai yeu cau...</div>}
+        {loading && <div className="account-empty-state text-start">Đang tải yêu cầu...</div>}
         {error && <div className="alert alert-danger rounded-4 mb-0">{error}</div>}
 
         {!loading && !error && rows.length === 0 && (
-          <div className="account-empty-state text-start">Khong co yeu cau nao dang cho duyet.</div>
+          <div className="account-empty-state text-start">Không có yêu cầu nào đang chờ duyệt.</div>
         )}
 
         {!loading && rows.length > 0 && (
@@ -66,21 +66,21 @@ const OwnerRecurringRequests = () => {
                 <div className="recurring-owner-card">
                   <div className="d-flex flex-column flex-lg-row justify-content-between gap-3">
                     <div>
-                      <h2 className="h5 fw-bold mb-2">{row.user?.name || 'Khach hang'}</h2>
+                      <h2 className="h5 fw-bold mb-2">{row.user?.name || 'Khách hàng'}</h2>
                       <p className="text-muted mb-2">
-                        {row.field?.name || 'San'} - Coc {formatCurrency(row.deposit_amount)}d / Tong{' '}
-                        {formatCurrency(row.total_estimated_amount)}d
+                        {row.field?.name || 'Sân'} - Cọc {formatCurrency(row.deposit_amount)}đ / Tổng{' '}
+                        {formatCurrency(row.total_estimated_amount)}đ
                       </p>
                       <div className="small text-muted">
-                        {row.items?.length || 0} buoi - Buoi dau {row.items?.[0]?.scheduled_date || 'dang cap nhat'}
+                        {row.items?.length || 0} buổi - Buổi đầu {row.items?.[0]?.scheduled_date || 'đang cập nhật'}
                       </div>
                     </div>
                     <div className="d-flex gap-2 align-items-start">
                       <button type="button" className="primary-button" onClick={() => handleApprove(row.id)}>
-                        Duyet
+                        Duyệt
                       </button>
                       <button type="button" className="secondary-button" onClick={() => handleReject(row.id)}>
-                        Tu choi
+                        Từ chối
                       </button>
                     </div>
                   </div>

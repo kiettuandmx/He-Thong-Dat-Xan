@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { login } from '../services/authService'; // Named Import chuẩn
+import { login } from '../services/authService';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -11,28 +11,21 @@ const Login = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    console.log('Đang đăng nhập với:', email);
 
     try {
-      // SỬA TẠI ĐÂY: Gọi trực tiếp hàm login đã import ở trên
       const data = await login(email, password);
-
-      // Cập nhật user vào AuthContext
       authLogin(data);
-
       alert(`Chào mừng ${data.user.name}!`);
 
-      // Điều hướng dựa trên Role (1: User, 2: Owner, 3: Admin)
       const role = data.user.role;
       if (role === 3) {
         navigate('/admin/dashboard');
       } else if (role === 2) {
-        navigate('/owner/stadiums'); // Chỉnh lại path cho khớp với App.jsx của bạn
+        navigate('/owner/stadiums');
       } else {
         navigate('/');
       }
     } catch (error) {
-      console.error('Lỗi đăng nhập:', error.response?.data || error.message);
       alert(error.response?.data?.message || 'Đăng nhập thất bại');
     }
   };
@@ -56,7 +49,6 @@ const Login = () => {
         }}
       >
         <div className="row g-0">
-          {/* Cột trái: Hình ảnh & Thương hiệu */}
           <div
             className="col-lg-5 d-none d-lg-flex flex-column justify-content-center align-items-center text-white p-5"
             style={{
@@ -81,7 +73,6 @@ const Login = () => {
             </p>
           </div>
 
-          {/* Cột phải: Form đăng nhập */}
           <div className="col-lg-7 p-4 p-md-5 d-flex flex-column justify-content-center">
             <div className="text-center text-lg-start mb-4">
               <h2
@@ -96,7 +87,6 @@ const Login = () => {
             </div>
 
             <form onSubmit={handleLogin}>
-              {/* Input Email với Floating Label */}
               <div className="form-floating mb-3 shadow-sm rounded-4 overflow-hidden">
                 <input
                   type="email"
@@ -112,7 +102,6 @@ const Login = () => {
                 </label>
               </div>
 
-              {/* Input Password */}
               <div className="form-floating mb-3 shadow-sm rounded-4 overflow-hidden">
                 <input
                   type="password"
@@ -128,7 +117,6 @@ const Login = () => {
                 </label>
               </div>
 
-              {/* Quên mật khẩu & Ghi nhớ */}
               <div className="d-flex justify-content-between align-items-center mb-4 px-2">
                 <div className="form-check">
                   <input
@@ -167,7 +155,6 @@ const Login = () => {
               </button>
             </form>
 
-            {/* Chân trang chuyển hướng sang Đăng ký */}
             <div className="text-center mt-5">
               <span className="small text-muted">Chưa có tài khoản? </span>
               <button

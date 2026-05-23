@@ -7,6 +7,7 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import MainLayout from './components/MainLayout';
 import NotificationComponent from './components/NotificationComponent';
+import SmartChatBox from './components/SmartChatBox';
 import Home from './components/Home';
 import MyReviews from './components/MyReviews';
 
@@ -156,6 +157,8 @@ function App() {
             }
           />
         </Routes>
+
+        <SmartChatBox />
       </BrowserRouter>
     </AuthProvider>
   );

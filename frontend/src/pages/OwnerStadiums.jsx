@@ -16,9 +16,9 @@ const getCurrentUserId = () =>
   JSON.parse(localStorage.getItem('user') || '{}')?.user?.id;
 
 const fieldStatusLabel = {
-  active: 'Da duyet',
-  pending: 'Cho duyet',
-  rejected: 'Tu choi',
+  active: 'Đã duyệt',
+  pending: 'Chờ duyệt',
+  rejected: 'Từ chối',
 };
 
 const OwnerStadiums = () => {
@@ -120,23 +120,23 @@ const OwnerStadiums = () => {
         await axios.put(`http://localhost:5000/api/fields/${currentFieldId}`, data, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        alert('Cap nhat san thanh cong!');
+        alert('Cập nhật sân thành công!');
       } else {
         await axios.post('http://localhost:5000/api/fields', data, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        alert('Them san moi thanh cong!');
+        alert('Thêm sân mới thành công!');
       }
 
       resetForm();
       fetchFields();
     } catch (error) {
-      alert(error.response?.data?.error || 'Loi khi luu du lieu!');
+      alert(error.response?.data?.error || 'Lỗi khi lưu dữ liệu!');
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Ban muon xoa san nay?')) return;
+    if (!window.confirm('Bạn muốn xóa sân này?')) return;
 
     try {
       const token = getAuthToken();
@@ -145,7 +145,7 @@ const OwnerStadiums = () => {
       });
       fetchFields();
     } catch (error) {
-      alert(error.response?.data?.error || 'Khong the xoa san!');
+      alert(error.response?.data?.error || 'Không thể xóa sân!');
     }
   };
 
@@ -154,24 +154,24 @@ const OwnerStadiums = () => {
       <section className="fields-hero">
         <div>
           <span className="fields-tag">Field Studio</span>
-          <h1>Quan ly san le theo tung khu theo mot bo cuc ro rang va hien dai.</h1>
+          <h1>Quản lý sân lẻ theo từng khu theo một bố cục rõ ràng và hiện đại.</h1>
           <p>
-            Chu san co the tao san moi, cap nhat gia, thay anh va theo doi trang thai
-            duyet ngay tai mot man hinh.
+            Chủ sân có thể tạo sân mới, cập nhật giá, thay ảnh và theo dõi trạng thái
+            duyệt ngay tại một màn hình.
           </p>
         </div>
 
         <div className="fields-hero-summary">
           <div>
-            <small>Khu san</small>
+            <small>Khu sân</small>
             <strong>{stadiums.length}</strong>
           </div>
           <div>
-            <small>Tong san le</small>
+            <small>Tổng sân lẻ</small>
             <strong>{totalFields}</strong>
           </div>
           <div>
-            <small>Cho duyet</small>
+            <small>Chờ duyệt</small>
             <strong>{pendingFields}</strong>
           </div>
         </div>
@@ -182,17 +182,17 @@ const OwnerStadiums = () => {
           <div className="fields-card-head">
             <div>
               <span className="fields-kicker">{isEditing ? 'Edit field' : 'New field'}</span>
-              <h2>{isEditing ? 'Cap nhat san le' : 'Dang ky san le moi'}</h2>
+              <h2>{isEditing ? 'Cập nhật sân lẻ' : 'Đăng ký sân lẻ mới'}</h2>
             </div>
             {isEditing && (
               <button type="button" className="field-ghost-button" onClick={resetForm}>
-                Huy
+                Hủy
               </button>
             )}
           </div>
 
           <form onSubmit={handleSubmit} className="field-form">
-            <label>Thuoc khu san</label>
+            <label>Thuộc khu sân</label>
             <select
               value={formData.stadium_id}
               onChange={(event) =>
@@ -200,7 +200,7 @@ const OwnerStadiums = () => {
               }
               required
             >
-              <option value="">-- Chon khu san --</option>
+              <option value="">-- Chọn khu sân --</option>
               {stadiums.map((stadium) => (
                 <option key={stadium.id} value={stadium.id}>
                   {stadium.name}
@@ -208,14 +208,14 @@ const OwnerStadiums = () => {
               ))}
             </select>
 
-            <label>Ten san</label>
+            <label>Tên sân</label>
             <input
               value={formData.name}
               onChange={(event) => setFormData({ ...formData, name: event.target.value })}
               required
             />
 
-            <label>Loai san</label>
+            <label>Loại sân</label>
             <select
               value={formData.type}
               onChange={(event) => setFormData({ ...formData, type: event.target.value })}
@@ -227,7 +227,7 @@ const OwnerStadiums = () => {
               ))}
             </select>
 
-            <label>Gia theo gio (VND)</label>
+            <label>Giá theo giờ (VND)</label>
             <input
               type="number"
               value={formData.price_per_hour}
@@ -237,7 +237,7 @@ const OwnerStadiums = () => {
               required
             />
 
-            <label>Anh dai dien</label>
+            <label>Ảnh đại diện</label>
             <input
               type="file"
               onChange={(event) =>
@@ -246,7 +246,7 @@ const OwnerStadiums = () => {
             />
 
             <button type="submit" className="field-primary-button">
-              {isEditing ? 'Luu thay doi' : 'Them san vao khu'}
+              {isEditing ? 'Lưu thay đổi' : 'Thêm sân vào khu'}
             </button>
           </form>
         </article>
@@ -260,7 +260,7 @@ const OwnerStadiums = () => {
                     <span className="fields-kicker">Stadium</span>
                     <h2>{stadium.name}</h2>
                   </div>
-                  <span className="group-count">{stadium.childFields.length} san</span>
+                  <span className="group-count">{stadium.childFields.length} sân</span>
                 </div>
 
                 <div className="field-grid">
@@ -282,7 +282,7 @@ const OwnerStadiums = () => {
                           <div className="field-title-row">
                             <h3>{field.name}</h3>
                             <span className={`field-status ${field.status || 'pending'}`}>
-                              {fieldStatusLabel[field.status] || field.status || 'Cho duyet'}
+                              {fieldStatusLabel[field.status] || field.status || 'Chờ duyệt'}
                             </span>
                           </div>
 
@@ -297,28 +297,28 @@ const OwnerStadiums = () => {
                                 navigate(`/owner/edit-field/${field.id}`)
                               }
                             >
-                              Sua
+                              Sửa
                             </button>
                             <button
                               type="button"
                               className="danger"
                               onClick={() => handleDelete(field.id)}
                             >
-                              Xoa
+                              Xóa
                             </button>
                           </div>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="field-empty-state">Khu nay chua co san le nao.</div>
+                    <div className="field-empty-state">Khu này chưa có sân lẻ nào.</div>
                   )}
                 </div>
               </article>
             ))
           ) : (
             <article className="fields-card field-empty-state">
-              Chua co khu san nao de hien thi danh sach san le.
+              Chưa có khu sân nào để hiển thị danh sách sân lẻ.
             </article>
           )}
         </div>

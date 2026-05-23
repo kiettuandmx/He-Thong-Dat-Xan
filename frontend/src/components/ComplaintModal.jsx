@@ -83,24 +83,24 @@ const ComplaintModal = ({ booking, onClose, onSuccess }) => {
               rows="5"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Mo ta ro van de: thoi gian, san, tinh huong va mong muon xu ly..."
+              placeholder="Mô tả rõ vấn đề: thời gian, sân, tình huống và mong muốn xử lý..."
             />
           </div>
 
           <div className="mb-4">
-            <label className="form-label fw-semibold">Bang chung / link anh</label>
+            <label className="form-label fw-semibold">Bằng chứng / link ảnh</label>
             <textarea
               className="form-control"
               rows="3"
               value={evidence}
               onChange={(e) => setEvidence(e.target.value)}
-              placeholder="Moi dong mot link anh/chung tu neu co"
+              placeholder="Mỗi dòng một link ảnh/chứng từ nếu có"
             />
           </div>
 
           <div className="d-flex justify-content-end gap-2">
             <button type="button" className="btn btn-light border" onClick={onClose}>
-              Huy
+              Hủy
             </button>
             <button type="submit" className="btn btn-danger" disabled={submitting}>
               {submitting ? 'Đang gửi...' : 'Gửi khiếu nại'}

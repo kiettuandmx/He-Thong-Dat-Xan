@@ -3,16 +3,16 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 
 const statusMap = {
-  pending: { label: 'Cho xu ly', badge: 'bg-warning-subtle text-warning-emphasis border border-warning-subtle' },
-  investigating: { label: 'Dang kiem tra', badge: 'bg-info-subtle text-info-emphasis border border-info-subtle' },
-  resolved: { label: 'Da xu ly', badge: 'bg-success-subtle text-success-emphasis border border-success-subtle' },
-  rejected: { label: 'Tu choi', badge: 'bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle' },
+  pending: { label: 'Chờ xử lý', badge: 'bg-warning-subtle text-warning-emphasis border border-warning-subtle' },
+  investigating: { label: 'Đang kiểm tra', badge: 'bg-info-subtle text-info-emphasis border border-info-subtle' },
+  resolved: { label: 'Đã xử lý', badge: 'bg-success-subtle text-success-emphasis border border-success-subtle' },
+  rejected: { label: 'Từ chối', badge: 'bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle' },
 };
 
 const resolutionOptions = [
-  { value: 'refund_user', label: 'Hoan tien nguoi choi' },
-  { value: 'penalize_owner', label: 'Phat chu san' },
-  { value: 'no_action', label: 'Tu choi khieu nai' },
+  { value: 'refund_user', label: 'Hoàn tiền người chơi' },
+  { value: 'penalize_owner', label: 'Phạt chủ sân' },
+  { value: 'no_action', label: 'Từ chối khiếu nại' },
 ];
 
 const getAuthToken = () => {
@@ -74,7 +74,7 @@ const AdminComplaints = () => {
         }
       }
     } catch (error) {
-      Swal.fire('Loi', error.response?.data?.message || 'Khong the tai khieu nai.', 'error');
+      Swal.fire('Lỗi', error.response?.data?.message || 'Không thể tải khiếu nại.', 'error');
     } finally {
       setLoading(false);
     }
@@ -96,7 +96,7 @@ const AdminComplaints = () => {
         penalty_amount: detail?.penalty_amount || '',
       });
     } catch (error) {
-      Swal.fire('Loi', error.response?.data?.message || 'Khong the tai chi tiet.', 'error');
+      Swal.fire('Lỗi', error.response?.data?.message || 'Không thể tải chi tiết.', 'error');
     }
   };
 
@@ -109,14 +109,14 @@ const AdminComplaints = () => {
     try {
       await axios.patch(
         `http://localhost:5000/api/admin/complaints/${selected.id}/status`,
-        { status: 'investigating', note: 'Admin bat dau kiem tra khieu nai' },
+        { status: 'investigating', note: 'Admin bắt đầu kiểm tra khiếu nại' },
         authHeader
       );
       await fetchComplaints();
       await fetchDetail(selected.id);
-      Swal.fire('Da nhan xu ly', 'Khieu nai da chuyen sang trang thai kiem tra.', 'success');
+      Swal.fire('Đã nhận xử lý', 'Khiếu nại đã chuyển sang trạng thái kiểm tra.', 'success');
     } catch (error) {
-      Swal.fire('Loi', error.response?.data?.message || 'Khong the cap nhat.', 'error');
+      Swal.fire('Lỗi', error.response?.data?.message || 'Không thể cập nhật.', 'error');
     }
   };
 
@@ -125,7 +125,7 @@ const AdminComplaints = () => {
     if (!selected) return;
 
     if (!resolution.resolution_note.trim()) {
-      Swal.fire('Thieu ghi chu', 'Vui long nhap ghi chu xu ly.', 'warning');
+      Swal.fire('Thiếu ghi chú', 'Vui lòng nhập ghi chú xử lý.', 'warning');
       return;
     }
 
@@ -138,9 +138,9 @@ const AdminComplaints = () => {
       );
       await fetchComplaints();
       await fetchDetail(selected.id);
-      Swal.fire('Da xu ly', 'Quyet dinh da duoc luu vao nhat ky.', 'success');
+      Swal.fire('Đã xử lý', 'Quyết định đã được lưu vào nhật ký.', 'success');
     } catch (error) {
-      Swal.fire('Loi', error.response?.data?.message || 'Khong the xu ly khieu nai.', 'error');
+      Swal.fire('Lỗi', error.response?.data?.message || 'Không thể xử lý khiếu nại.', 'error');
     } finally {
       setResolving(false);
     }
@@ -160,41 +160,41 @@ const AdminComplaints = () => {
       <section className="hero-panel">
         <div>
           <span className="eyebrow">Dispute Center</span>
-          <h2>Xu ly khieu nai va doi soat hoat dong</h2>
+          <h2>Xử lý khiếu nại và đối soát hoạt động</h2>
           <p>
-            Theo doi tranh chap theo thoi gian thuc, xem log lien quan va ra quyet dinh
-            xu ly tu mot man hinh duy nhat.
+            Theo dõi tranh chấp theo thời gian thực, xem log liên quan và ra quyết định
+            xử lý từ một màn hình duy nhất.
           </p>
         </div>
         <button className="btn btn-dark rounded-pill px-4 py-2" onClick={fetchComplaints}>
           <i className="bi bi-arrow-clockwise me-2"></i>
-          Lam moi
+          Làm mới
         </button>
       </section>
 
       <section className="summary-grid">
-        <ComplaintSummaryCard title="Tat ca" value={counts.total || 0} active={!statusFilter} onClick={() => setStatusFilter('')} tone="tone-neutral" />
-        <ComplaintSummaryCard title="Cho xu ly" value={counts.pending || 0} active={statusFilter === 'pending'} onClick={() => setStatusFilter('pending')} tone="tone-warning" />
-        <ComplaintSummaryCard title="Dang kiem tra" value={counts.investigating || 0} active={statusFilter === 'investigating'} onClick={() => setStatusFilter('investigating')} tone="tone-info" />
-        <ComplaintSummaryCard title="Da xu ly" value={counts.resolved || 0} active={statusFilter === 'resolved'} onClick={() => setStatusFilter('resolved')} tone="tone-success" />
-        <ComplaintSummaryCard title="Tu choi" value={counts.rejected || 0} active={statusFilter === 'rejected'} onClick={() => setStatusFilter('rejected')} tone="tone-muted" />
+        <ComplaintSummaryCard title="Tất cả" value={counts.total || 0} active={!statusFilter} onClick={() => setStatusFilter('')} tone="tone-neutral" />
+        <ComplaintSummaryCard title="Chờ xử lý" value={counts.pending || 0} active={statusFilter === 'pending'} onClick={() => setStatusFilter('pending')} tone="tone-warning" />
+        <ComplaintSummaryCard title="Đang kiểm tra" value={counts.investigating || 0} active={statusFilter === 'investigating'} onClick={() => setStatusFilter('investigating')} tone="tone-info" />
+        <ComplaintSummaryCard title="Đã xử lý" value={counts.resolved || 0} active={statusFilter === 'resolved'} onClick={() => setStatusFilter('resolved')} tone="tone-success" />
+        <ComplaintSummaryCard title="Từ chối" value={counts.rejected || 0} active={statusFilter === 'rejected'} onClick={() => setStatusFilter('rejected')} tone="tone-muted" />
       </section>
 
       <section className="content-grid">
         <div className="complaint-list-card">
           <div className="section-head">
             <div>
-              <h4>Hang doi khieu nai</h4>
-              <p>Chon tung case de xem bang chung, log va lich su xu ly.</p>
+              <h4>Hàng đợi khiếu nại</h4>
+              <p>Chọn từng case để xem bằng chứng, log và lịch sử xử lý.</p>
             </div>
-            <span className="pill">{complaints.length} ho so</span>
+            <span className="pill">{complaints.length} hồ sơ</span>
           </div>
 
           <div className="complaint-list-body">
             {loading ? (
-              <div className="empty-state">Dang tai danh sach khieu nai...</div>
+              <div className="empty-state">Đang tải danh sách khiếu nại...</div>
             ) : complaints.length === 0 ? (
-              <div className="empty-state">Khong co khieu nai nao trong nhom loc hien tai.</div>
+              <div className="empty-state">Không có khiếu nại nào trong nhóm lọc hiện tại.</div>
             ) : (
               complaints.map((item) => {
                 const status = statusMap[item.status] || statusMap.pending;
@@ -214,17 +214,17 @@ const AdminComplaints = () => {
                       <div>
                         <div className="row-title">{item.user?.name || 'N/A'}</div>
                         <div className="row-subtitle">
-                          {item.user?.phone || item.user?.email || 'Khong co thong tin'}
+                          {item.user?.phone || item.user?.email || 'Không có thông tin'}
                         </div>
                       </div>
                       <div className="text-end">
-                        <div className="row-title">Don #{item.booking_id || 'N/A'}</div>
-                        <div className="row-subtitle">{item.field?.name || item.booking?.field?.name || 'Khong ro san'}</div>
+                        <div className="row-title">Đơn #{item.booking_id || 'N/A'}</div>
+                        <div className="row-subtitle">{item.field?.name || item.booking?.field?.name || 'Không rõ sân'}</div>
                       </div>
                     </div>
                     <div className="row-footer">
                       <span>{formatDateTime(item.createdAt)}</span>
-                      <span>{item.booking?.stadium?.name || item.stadium?.name || 'Khong ro khu san'}</span>
+                      <span>{item.booking?.stadium?.name || item.stadium?.name || 'Không rõ khu sân'}</span>
                     </div>
                   </button>
                 );
@@ -237,8 +237,8 @@ const AdminComplaints = () => {
           {!selected ? (
             <div className="blank-detail">
               <i className="bi bi-inboxes fs-1 mb-3"></i>
-              <h5>Chua chon ho so</h5>
-              <p>Chon mot khieu nai ben trai de xem chi tiet va bat dau xu ly.</p>
+              <h5>Chưa chọn hồ sơ</h5>
+              <p>Chọn một khiếu nại bên trái để xem chi tiết và bắt đầu xử lý.</p>
             </div>
           ) : (
             <>
@@ -246,7 +246,7 @@ const AdminComplaints = () => {
                 <div className="detail-head">
                   <div>
                     <span className="eyebrow">Complaint #{selected.id}</span>
-                    <h4>{selected.user?.name || 'Nguoi gui khieu nai'}</h4>
+                    <h4>{selected.user?.name || 'Người gửi khiếu nại'}</h4>
                     <p>{formatDateTime(selected.createdAt)}</p>
                   </div>
                   <span className={`badge rounded-pill ${statusMap[selected.status]?.badge || ''}`}>
@@ -270,8 +270,8 @@ const AdminComplaints = () => {
                     <strong>{selected.field?.name || selected.booking?.field?.name || 'N/A'}</strong>
                   </div>
                   <div>
-                    <span>Admin phu trach</span>
-                    <strong>{selected.assignedAdmin?.name || 'Chua gan'}</strong>
+                    <span>Admin phụ trách</span>
+                    <strong>{selected.assignedAdmin?.name || 'Chưa gán'}</strong>
                   </div>
                 </div>
 
@@ -280,7 +280,7 @@ const AdminComplaints = () => {
                     {selected.evidence_urls.map((url, index) => (
                       <a key={url} href={url} target="_blank" rel="noreferrer" className="evidence-pill">
                         <i className="bi bi-link-45deg"></i>
-                        Bang chung {index + 1}
+                        Bằng chứng {index + 1}
                       </a>
                     ))}
                   </div>
@@ -290,19 +290,19 @@ const AdminComplaints = () => {
               <div className="detail-card">
                 <div className="section-head">
                   <div>
-                    <h5>Ra quyet dinh</h5>
-                    <p>Cap nhat trang thai va luu ket luan xu ly vao nhat ky.</p>
+                    <h5>Ra quyết định</h5>
+                    <p>Cập nhật trạng thái và lưu kết luận xử lý vào nhật ký.</p>
                   </div>
                   {selected.status === 'pending' && (
                     <button className="btn btn-outline-primary rounded-pill" onClick={handleInvestigate}>
-                      Nhan xu ly
+                      Nhận xử lý
                     </button>
                   )}
                 </div>
 
                 <form onSubmit={handleResolve} className="resolve-form">
                   <div className="form-group">
-                    <label>Quyet dinh</label>
+                    <label>Quyết định</label>
                     <select
                       className="form-select form-select-lg"
                       value={resolution.resolution_type}
@@ -316,7 +316,7 @@ const AdminComplaints = () => {
 
                   {resolution.resolution_type === 'penalize_owner' && (
                     <div className="form-group">
-                      <label>So tien phat</label>
+                      <label>Số tiền phạt</label>
                       <input
                         type="number"
                         className="form-control form-control-lg"
@@ -327,18 +327,18 @@ const AdminComplaints = () => {
                   )}
 
                   <div className="form-group">
-                    <label>Ghi chu ket luan</label>
+                    <label>Ghi chú kết luận</label>
                     <textarea
                       className="form-control"
                       rows="5"
                       value={resolution.resolution_note}
                       onChange={(e) => setResolution((prev) => ({ ...prev, resolution_note: e.target.value }))}
-                      placeholder="Mo ta ro ket qua xac minh, huong xu ly va ly do..."
+                      placeholder="Mô tả rõ kết quả xác minh, hướng xử lý và lý do..."
                     />
                   </div>
 
                   <button className="btn btn-success btn-lg rounded-pill w-100" disabled={resolving}>
-                    {resolving ? 'Dang luu quyet dinh...' : 'Luu quyet dinh xu ly'}
+                    {resolving ? 'Đang lưu quyết định...' : 'Lưu quyết định xử lý'}
                   </button>
                 </form>
               </div>
@@ -346,14 +346,14 @@ const AdminComplaints = () => {
               <div className="detail-card">
                 <div className="section-head">
                   <div>
-                    <h5>Log lien quan</h5>
-                    <p>Toan bo hoat dong anh huong den complaint, booking, field va stadium lien quan.</p>
+                    <h5>Log liên quan</h5>
+                    <p>Toàn bộ hoạt động ảnh hưởng đến complaint, booking, field và stadium liên quan.</p>
                   </div>
                 </div>
 
                 <div className="timeline-list">
                   {activityLogs.length === 0 ? (
-                    <div className="empty-inline">Chua co log lien quan.</div>
+                    <div className="empty-inline">Chưa có log liên quan.</div>
                   ) : (
                     activityLogs.map((log) => (
                       <div className="timeline-item" key={log.id}>
@@ -371,8 +371,8 @@ const AdminComplaints = () => {
               <div className="detail-card">
                 <div className="section-head">
                   <div>
-                    <h5>Lich su xu ly</h5>
-                    <p>Timeline cac thao tac da duoc admin thuc hien tren ho so nay.</p>
+                    <h5>Lịch sử xử lý</h5>
+                    <p>Timeline các thao tác đã được admin thực hiện trên hồ sơ này.</p>
                   </div>
                 </div>
 
@@ -389,7 +389,7 @@ const AdminComplaints = () => {
                       </div>
                     ))
                   ) : (
-                    <div className="empty-inline">Chua co thao tac xu ly.</div>
+                    <div className="empty-inline">Chưa có thao tác xử lý.</div>
                   )}
                 </div>
               </div>

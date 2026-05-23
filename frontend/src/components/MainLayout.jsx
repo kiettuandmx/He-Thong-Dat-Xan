@@ -7,7 +7,7 @@ const publicLinks = [
   { to: '/football', label: 'Bóng đá' },
   { to: '/badminton', label: 'Cầu lông' },
   { to: '/pickleball', label: 'Pickleball' },
-  { to: '/smart-chat', label: 'Tro ly san' },
+  { to: '/smart-chat', label: 'Trợ lý sân' },
 ];
 
 const ownerLinks = [
@@ -157,7 +157,7 @@ const MainLayout = () => {
             )}
 
             <section className="account-drawer__section">
-                <p className="account-drawer__title">Tác vụ cá nhân</p>
+              <p className="account-drawer__title">Tác vụ cá nhân</p>
               <div className="account-link-list">
                 {accountLinks.map((link) => (
                   <Link
@@ -174,7 +174,7 @@ const MainLayout = () => {
             </section>
 
             <section className="account-drawer__section">
-                <p className="account-drawer__title">Phiên làm việc</p>
+              <p className="account-drawer__title">Phiên làm việc</p>
               <button type="button" className="secondary-button w-100" onClick={handleLogout}>
                 Đăng xuất
               </button>

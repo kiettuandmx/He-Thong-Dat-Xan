@@ -17,7 +17,7 @@ def normalize_price_band(text: str | None) -> str | None:
         return "low"
     if "re" in lowered:
         return "low"
-    if "vua phai" in lowered or "tam trung" in lowered:
+    if "vua phai" in lowered or "tam trung" in lowered or "hop ly" in lowered:
         return "medium"
     if "cao" in lowered or "xinh" in lowered:
         return "high"

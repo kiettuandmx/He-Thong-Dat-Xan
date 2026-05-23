@@ -105,23 +105,23 @@ const ManageStadiums = () => {
         await axios.put(`http://localhost:5000/api/stadiums/${currentId}`, payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        alert('Cap nhat thanh cong!');
+        alert('Cập nhật thành công!');
       } else {
         await axios.post('http://localhost:5000/api/stadiums', payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        alert('Them khu moi thanh cong!');
+        alert('Thêm khu mới thành công!');
       }
 
       resetForm();
       fetchStadiums();
     } catch (err) {
-      alert(err.response?.data?.error || 'Thao tac that bai');
+      alert(err.response?.data?.error || 'Thao tác thất bại');
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Xoa khu nay se mat het du lieu san ben trong!')) return;
+    if (!window.confirm('Xóa khu này sẽ mất hết dữ liệu sân bên trong!')) return;
 
     try {
       const token = getAuthToken();
@@ -130,7 +130,7 @@ const ManageStadiums = () => {
       });
       fetchStadiums();
     } catch (err) {
-      alert(err.response?.data?.error || 'Khong the xoa!');
+      alert(err.response?.data?.error || 'Không thể xóa!');
     }
   };
 
@@ -139,24 +139,24 @@ const ManageStadiums = () => {
       <section className="workspace-hero">
         <div>
           <span className="workspace-tag">Owner Studio</span>
-          <h1>Quan ly khu san bang mot khong gian gon, dep va de van hanh.</h1>
+          <h1>Quản lý khu sân bằng một không gian gọn, đẹp và dễ vận hành.</h1>
           <p>
-            Them khu moi, sua thong tin, gan hashtag va theo doi trang thai ngay tren
-            cung mot man hinh.
+            Thêm khu mới, sửa thông tin, gắn hashtag và theo dõi trạng thái ngay trên
+            cùng một màn hình.
           </p>
         </div>
 
         <div className="workspace-summary">
           <div>
-            <small>Tong khu san</small>
+            <small>Tổng khu sân</small>
             <strong>{summary.total}</strong>
           </div>
           <div>
-            <small>Dang hoat dong</small>
+            <small>Đang hoạt động</small>
             <strong>{summary.activeCount}</strong>
           </div>
           <div>
-            <small>Can xem lai</small>
+            <small>Cần xem lại</small>
             <strong>{summary.otherCount}</strong>
           </div>
         </div>
@@ -167,48 +167,48 @@ const ManageStadiums = () => {
           <div className="card-head">
             <div>
               <span className="mini-kicker">{isEditing ? 'Edit mode' : 'Create mode'}</span>
-              <h2>{isEditing ? 'Cap nhat khu san' : 'Them khu san moi'}</h2>
+              <h2>{isEditing ? 'Cập nhật khu sân' : 'Thêm khu sân mới'}</h2>
             </div>
             {isEditing && (
               <button type="button" className="ghost-button" onClick={resetForm}>
-                Huy chinh sua
+                Hủy chỉnh sửa
               </button>
             )}
           </div>
 
           <form onSubmit={handleSubmit} className="workspace-form">
-            <label>Ten khu san</label>
+            <label>Tên khu sân</label>
             <input
               value={formData.name}
               onChange={(event) => setFormData({ ...formData, name: event.target.value })}
               required
             />
 
-            <label>Mo ta ngan</label>
+            <label>Mô tả ngắn</label>
             <textarea
               rows="4"
               value={formData.description}
               onChange={(event) =>
                 setFormData({ ...formData, description: event.target.value })
               }
-              placeholder="Mo ta diem noi bat, dich vu, gio mo cua..."
+              placeholder="Mô tả điểm nổi bật, dịch vụ, giờ mở cửa..."
             />
 
-            <label>Dia chi</label>
+            <label>Địa chỉ</label>
             <input
               value={formData.address}
               onChange={(event) => setFormData({ ...formData, address: event.target.value })}
               required
             />
 
-            <label>Quan / Huyen</label>
+            <label>Quận / Huyện</label>
             <input
               value={formData.district}
               onChange={(event) => setFormData({ ...formData, district: event.target.value })}
-              placeholder="Vi du: Quan 10, Thu Duc"
+              placeholder="Ví dụ: Quận 10, Thủ Đức"
             />
 
-            <label>Thanh pho</label>
+            <label>Thành phố</label>
             <input
               value={formData.city}
               onChange={(event) => setFormData({ ...formData, city: event.target.value })}
@@ -216,7 +216,7 @@ const ManageStadiums = () => {
             />
 
             <button type="submit" className="primary-button">
-              {isEditing ? 'Luu thay doi' : 'Tao khu san'}
+              {isEditing ? 'Lưu thay đổi' : 'Tạo khu sân'}
             </button>
           </form>
         </article>
@@ -225,7 +225,7 @@ const ManageStadiums = () => {
           <div className="card-head">
             <div>
               <span className="mini-kicker">Portfolio</span>
-              <h2>Danh sach khu san</h2>
+              <h2>Danh sách khu sân</h2>
             </div>
           </div>
 
@@ -240,19 +240,19 @@ const ManageStadiums = () => {
                         {stadium.status || 'active'}
                       </span>
                     </div>
-                    <p>{stadium.description || 'Chua co mo ta cho khu san nay.'}</p>
+                    <p>{stadium.description || 'Chưa có mô tả cho khu sân này.'}</p>
                     <span>
                       {formatLocationParts(
                         stadium.location?.address || stadium.address,
                         stadium.location?.district,
                         stadium.location?.city
-                      ) || 'Chua co dia chi'}
+                      ) || 'Chưa có địa chỉ'}
                     </span>
                   </div>
 
                   <div className="stadium-actions">
                     <button type="button" onClick={() => handleEdit(stadium)}>
-                      Sua
+                      Sửa
                     </button>
                     <button
                       type="button"
@@ -264,13 +264,13 @@ const ManageStadiums = () => {
                       Hashtag
                     </button>
                     <button type="button" className="danger" onClick={() => handleDelete(stadium.id)}>
-                      Xoa
+                      Xóa
                     </button>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="empty-state">Chua co du lieu khu san de hien thi.</div>
+              <div className="empty-state">Chưa có dữ liệu khu sân để hiển thị.</div>
             )}
           </div>
         </article>

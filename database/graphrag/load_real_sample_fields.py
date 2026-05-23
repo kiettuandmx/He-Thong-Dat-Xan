@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    neo4j_uri: str = "neo4j://127.0.0.1:7687"
+    neo4j_uri: str = "bolt://127.0.0.1:7687"
     neo4j_username: str = "neo4j"
     neo4j_password: str = ""
 
@@ -21,6 +21,13 @@ def load_rows() -> list[dict]:
     path = Path(__file__).with_name("real_sample_fields.json")
     with path.open("r", encoding="utf-8") as file:
         return json.load(file)
+
+
+def normalize_local_neo4j_uri(uri: str) -> str:
+    if uri.startswith("neo4j://127.0.0.1") or uri.startswith("neo4j://localhost"):
+        return uri.replace("neo4j://", "bolt://", 1)
+
+    return uri
 
 
 def upsert_field(tx, row: dict) -> None:
@@ -60,7 +67,7 @@ def main() -> None:
     settings = Settings()
     rows = load_rows()
     driver = GraphDatabase.driver(
-        settings.neo4j_uri,
+        normalize_local_neo4j_uri(settings.neo4j_uri),
         auth=(settings.neo4j_username, settings.neo4j_password),
     )
     try:

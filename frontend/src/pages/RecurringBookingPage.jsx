@@ -17,7 +17,7 @@ const formatCurrency = (value) => Number(value || 0).toLocaleString('vi-VN');
 
 const defaultFieldState = {
   id: null,
-  name: 'San chua duoc chon',
+  name: 'Sân chưa được chọn',
   price_per_hour: 0,
 };
 
@@ -84,7 +84,7 @@ const RecurringBookingPage = () => {
 
   const handlePreview = async () => {
     if (!field.id) {
-      setError('Hay chon san truoc khi tao chuoi dat san dinh ky.');
+      setError('Hãy chọn sân trước khi tạo chuỗi đặt sân định kỳ.');
       return;
     }
 
@@ -95,10 +95,10 @@ const RecurringBookingPage = () => {
     try {
       const response = await previewRecurringBooking(requestPayload);
       setPreview(response.data?.data || null);
-      setMessage('Da tao ban xem truoc cho chuoi dat san.');
+      setMessage('Đã tạo bản xem trước cho chuỗi đặt sân.');
     } catch (requestError) {
       setPreview(requestError.response?.data?.data || null);
-      setError(requestError.response?.data?.message || 'Khong the xem truoc chuoi dat san.');
+      setError(requestError.response?.data?.message || 'Không thể xem trước chuỗi đặt sân.');
     } finally {
       setLoading(false);
     }
@@ -113,8 +113,8 @@ const RecurringBookingPage = () => {
       const response = await createRecurringBooking(requestPayload);
       setMessage(
         response.data?.data?.approval_status === 'approved'
-          ? 'Chuoi dat san dinh ky da duoc tao va duyet tu dong.'
-          : 'Yeu cau dat san dinh ky da duoc gui cho chu san duyet.'
+          ? 'Chuỗi đặt sân định kỳ đã được tạo và duyệt tự động.'
+          : 'Yêu cầu đặt sân định kỳ đã được gửi cho chủ sân duyệt.'
       );
       const latest = await getMyRecurringBookings();
       setSeriesRows(latest.data?.data || []);
@@ -122,7 +122,7 @@ const RecurringBookingPage = () => {
       setReplacementSelections([]);
     } catch (requestError) {
       setPreview(requestError.response?.data?.data || null);
-      setError(requestError.response?.data?.message || 'Khong the tao chuoi dat san.');
+      setError(requestError.response?.data?.message || 'Không thể tạo chuỗi đặt sân.');
     } finally {
       setLoading(false);
     }
@@ -146,10 +146,10 @@ const RecurringBookingPage = () => {
       <section className="detail-hero">
         <div>
           <p className="eyebrow mb-2">Recurring booking</p>
-          <h1 className="display-title mb-3">Dat san dinh ky</h1>
+          <h1 className="display-title mb-3">Đặt sân định kỳ</h1>
           <p className="detail-subtitle mb-0">
-            Tao chuoi dat san theo tuan hoac theo thang, dat coc mot lan cho ca chuoi va de owner
-            duyet khi muc coc duoi 50%.
+            Tạo chuỗi đặt sân theo tuần hoặc theo tháng, đặt cọc một lần cho cả chuỗi và để owner
+            duyệt khi mức cọc dưới 50%.
           </p>
         </div>
       </section>
@@ -160,18 +160,18 @@ const RecurringBookingPage = () => {
             <div>
               <h2 className="h4 fw-bold mb-1">{field.name}</h2>
               <p className="text-muted mb-0">
-                Gia co ban: {formatCurrency(field.price_per_hour)}d / khung gio
+                Giá cơ bản: {formatCurrency(field.price_per_hour)}đ / khung giờ
               </p>
             </div>
             <button type="button" className="secondary-button" onClick={() => navigate(-1)}>
-              Quay lai
+              Quay lại
             </button>
           </div>
 
           <div className="row g-3">
             <div className="col-md-6">
               <label className="filter-label" htmlFor="recurrenceType">
-                Hinh thuc lap
+                Hình thức lặp
               </label>
               <select
                 id="recurrenceType"
@@ -181,14 +181,14 @@ const RecurringBookingPage = () => {
                   setForm((current) => ({ ...current, recurrence_type: event.target.value }))
                 }
               >
-                <option value="weekly">Theo tuan</option>
-                <option value="monthly">Theo thang</option>
+                <option value="weekly">Theo tuần</option>
+                <option value="monthly">Theo tháng</option>
               </select>
             </div>
 
             <div className="col-md-6">
               <label className="filter-label" htmlFor="depositAmount">
-                Tien coc
+                Tiền cọc
               </label>
               <input
                 id="depositAmount"
@@ -204,7 +204,7 @@ const RecurringBookingPage = () => {
 
             <div className="col-md-6">
               <label className="filter-label" htmlFor="startDate">
-                Ngay bat dau
+                Ngày bắt đầu
               </label>
               <input
                 id="startDate"
@@ -219,7 +219,7 @@ const RecurringBookingPage = () => {
 
             <div className="col-md-6">
               <label className="filter-label" htmlFor="endDate">
-                Ngay ket thuc
+                Ngày kết thúc
               </label>
               <input
                 id="endDate"
@@ -234,7 +234,7 @@ const RecurringBookingPage = () => {
 
             <div className="col-md-6">
               <label className="filter-label" htmlFor="occurrenceCount">
-                So buoi
+                Số buổi
               </label>
               <input
                 id="occurrenceCount"
@@ -251,7 +251,7 @@ const RecurringBookingPage = () => {
 
             <div className="col-md-3">
               <label className="filter-label" htmlFor="startTime">
-                Gio bat dau
+                Giờ bắt đầu
               </label>
               <input
                 id="startTime"
@@ -266,7 +266,7 @@ const RecurringBookingPage = () => {
 
             <div className="col-md-3">
               <label className="filter-label" htmlFor="endTime">
-                Gio ket thuc
+                Giờ kết thúc
               </label>
               <input
                 id="endTime"
@@ -282,11 +282,11 @@ const RecurringBookingPage = () => {
 
           <div className="d-flex flex-wrap gap-3 mt-4">
             <button type="button" className="primary-button" disabled={loading} onClick={handlePreview}>
-              Xem truoc chuoi dat
+              Xem trước chuỗi đặt
             </button>
             {preview && (
               <button type="button" className="secondary-button" disabled={loading} onClick={handleCreate}>
-                Gui yeu cau dat dinh ky
+                Gửi yêu cầu đặt định kỳ
               </button>
             )}
           </div>
@@ -296,29 +296,29 @@ const RecurringBookingPage = () => {
         </article>
 
         <aside className="detail-panel detail-panel--sticky">
-          <h2 className="h5 fw-bold mb-3">Tom tat chuoi dat</h2>
+          <h2 className="h5 fw-bold mb-3">Tóm tắt chuỗi đặt</h2>
           {preview ? (
             <div className="recurring-summary-card">
               <div className="d-flex justify-content-between mb-2">
-                <span className="text-muted">So buoi</span>
+                <span className="text-muted">Số buổi</span>
                 <strong>{preview.occurrenceCount}</strong>
               </div>
               <div className="d-flex justify-content-between mb-2">
-                <span className="text-muted">Tong gia tri</span>
+                <span className="text-muted">Tổng giá trị</span>
                 <strong>{formatCurrency(preview.totalEstimatedAmount)}d</strong>
               </div>
               <div className="d-flex justify-content-between mb-2">
-                <span className="text-muted">Tien coc</span>
+                <span className="text-muted">Tiền cọc</span>
                 <strong>{formatCurrency(preview.depositAmount)}d</strong>
               </div>
               <div className="d-flex justify-content-between">
-                <span className="text-muted">Ket qua</span>
-                <strong>{preview.approvalStatus === 'approved' ? 'Tu dong duyet' : 'Cho owner duyet'}</strong>
+                <span className="text-muted">Kết quả</span>
+                <strong>{preview.approvalStatus === 'approved' ? 'Tự động duyệt' : 'Chờ owner duyệt'}</strong>
               </div>
             </div>
           ) : (
             <div className="account-empty-state text-start">
-              Ban xem truoc de kiem tra tong tien, so buoi va cac khung gio bi trung.
+              Bạn xem trước để kiểm tra tổng tiền, số buổi và các khung giờ bị trùng.
             </div>
           )}
         </aside>
@@ -326,7 +326,7 @@ const RecurringBookingPage = () => {
 
       {preview?.hasConflicts && (
         <section className="detail-panel mt-4">
-          <h2 className="h5 fw-bold mb-3">Khung gio de xuat thay the</h2>
+          <h2 className="h5 fw-bold mb-3">Khung giờ đề xuất thay thế</h2>
           <div className="row g-3">
             {preview.conflicts.map((conflict) => (
               <div key={conflict.requestedSlot.scheduledDate} className="col-12">
@@ -354,25 +354,25 @@ const RecurringBookingPage = () => {
       )}
 
       <section className="detail-panel mt-4">
-        <h2 className="h5 fw-bold mb-3">Chuoi dat cua toi</h2>
+        <h2 className="h5 fw-bold mb-3">Chuỗi đặt của tôi</h2>
         {seriesRows.length > 0 ? (
           <div className="row g-3">
             {seriesRows.map((series) => (
               <div key={series.id} className="col-lg-6">
                 <div className="recurring-series-card">
                   <div className="d-flex justify-content-between gap-3 mb-2">
-                    <strong>{series.field?.name || 'Chuoi dat san'}</strong>
+                    <strong>{series.field?.name || 'Chuỗi đặt sân'}</strong>
                     <span className="badge text-bg-light">{series.approval_status}</span>
                   </div>
                   <div className="small text-muted">
-                    Coc {formatCurrency(series.deposit_amount)}d / Tong {formatCurrency(series.total_estimated_amount)}d
+                    Cọc {formatCurrency(series.deposit_amount)}đ / Tổng {formatCurrency(series.total_estimated_amount)}đ
                   </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="account-empty-state text-start">Ban chua co chuoi dat san dinh ky nao.</div>
+          <div className="account-empty-state text-start">Bạn chưa có chuỗi đặt sân định kỳ nào.</div>
         )}
       </section>
     </div>
