@@ -36,21 +36,21 @@ const Login = () => {
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #f0f7f4 0%, #ffffff 100%)',
-        padding: '20px',
+        padding: '16px',
       }}
     >
       <div
         className="card border-0 shadow-lg overflow-hidden"
         style={{
-          maxWidth: '950px',
+          maxWidth: '760px',
           width: '100%',
-          borderRadius: '30px',
+          borderRadius: '22px',
           background: '#ffffff',
         }}
       >
         <div className="row g-0">
           <div
-            className="col-lg-5 d-none d-lg-flex flex-column justify-content-center align-items-center text-white p-5"
+            className="col-lg-5 d-none d-lg-flex flex-column justify-content-center align-items-center text-white p-4"
             style={{
               background:
                 'linear-gradient(rgba(25, 135, 84, 0.8), rgba(20, 92, 50, 0.9)), url("https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=800&q=80")',
@@ -60,24 +60,24 @@ const Login = () => {
           >
             <h1
               className="fw-bold mb-3"
-              style={{ letterSpacing: '2px', fontSize: '3rem' }}
+              style={{ letterSpacing: '1px', fontSize: '2.25rem' }}
             >
               S.BOOK
             </h1>
             <div
               className="bg-white rounded-pill mb-4"
-              style={{ width: '50px', height: '4px' }}
+              style={{ width: '40px', height: '3px' }}
             ></div>
-            <p className="text-center fs-5 opacity-90">
+            <p className="text-center opacity-90 mb-0" style={{ fontSize: '1.1rem', lineHeight: 1.55 }}>
               Sẵn sàng ra sân? <br /> Đăng nhập để tiếp tục đam mê.
             </p>
           </div>
 
-          <div className="col-lg-7 p-4 p-md-5 d-flex flex-column justify-content-center">
-            <div className="text-center text-lg-start mb-4">
+          <div className="col-lg-7 p-4 d-flex flex-column justify-content-center">
+            <div className="text-center text-lg-start mb-3">
               <h2
                 className="fw-bold mb-1"
-                style={{ color: '#198754' }}
+                style={{ color: '#198754', fontSize: '2.35rem' }}
               >
                 ĐĂNG NHẬP
               </h2>
@@ -93,7 +93,7 @@ const Login = () => {
                   className="form-control border-0 bg-light px-4"
                   id="floatingEmail"
                   placeholder="name@example.com"
-                  style={{ height: '60px' }}
+                  style={{ height: '50px' }}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
@@ -108,7 +108,7 @@ const Login = () => {
                   className="form-control border-0 bg-light px-4"
                   id="floatingPassword"
                   placeholder="Mật khẩu"
-                  style={{ height: '60px' }}
+                  style={{ height: '50px' }}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
@@ -117,7 +117,7 @@ const Login = () => {
                 </label>
               </div>
 
-              <div className="d-flex justify-content-between align-items-center mb-4 px-2">
+              <div className="d-flex justify-content-between align-items-center mb-3 px-1">
                 <div className="form-check">
                   <input
                     className="form-check-input"
@@ -142,20 +142,20 @@ const Login = () => {
 
               <button
                 type="submit"
-                className="btn btn-success w-100 fw-bold py-3 shadow-lg transition-all"
+                className="btn btn-success w-100 fw-bold py-2 shadow-lg transition-all"
                 style={{
-                  borderRadius: '15px',
+                  borderRadius: '12px',
                   background:
                     'linear-gradient(135deg, #198754 0%, #145c32 100%)',
                   border: 'none',
-                  fontSize: '1.1rem',
+                  fontSize: '1rem',
                 }}
               >
                 ĐĂNG NHẬP
               </button>
             </form>
 
-            <div className="text-center mt-5">
+            <div className="text-center mt-4">
               <span className="small text-muted">Chưa có tài khoản? </span>
               <button
                 onClick={() => navigate('/register')}
