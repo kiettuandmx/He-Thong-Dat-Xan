@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logoImage from '../../image/Logo.png';
 
 const publicLinks = [
   { to: '/', label: 'Trang chủ' },
   { to: '/football', label: 'Bóng đá' },
   { to: '/badminton', label: 'Cầu lông' },
   { to: '/pickleball', label: 'Pickleball' },
-  { to: '/smart-chat', label: 'Trợ lý sân' },
 ];
 
 const ownerLinks = [
@@ -70,10 +70,7 @@ const MainLayout = () => {
       <header className="main-header">
         <div className="main-header__inner">
           <Link className="brand-mark" to="/">
-            <span className="brand-mark__badge">
-              <i className="bi bi-lightning-charge-fill"></i>
-            </span>
-            <span>Sân Việt</span>
+            <img className="brand-mark__image" src={logoImage} alt="S-Book" />
           </Link>
 
           <nav className="main-nav" aria-label="Điều hướng chính">

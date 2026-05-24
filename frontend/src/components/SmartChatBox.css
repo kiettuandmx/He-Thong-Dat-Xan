@@ -79,14 +79,11 @@
 }
 
 .smart-chat-copy__hint-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #ffd54d 0%, #ffbf1f 100%);
-  color: #1d2a18;
-  font-weight: 900;
+  display: block;
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .smart-chat-fab {
@@ -108,13 +105,13 @@
   display: inline-flex;
   align-items: center;
   gap: 0.75rem;
-  min-height: 64px;
-  padding: 0.8rem 1rem 0.8rem 0.78rem;
+  min-height: 78px;
+  padding: 0.9rem 1.2rem 0.9rem 0.95rem;
   border: 0;
   border-radius: 999px;
   background: linear-gradient(135deg, #ffd54d 0%, #ffbf1f 100%);
   color: #1a2214;
-  box-shadow: 0 24px 40px rgba(37, 44, 23, 0.2);
+  box-shadow: 0 26px 44px rgba(37, 44, 23, 0.24);
   transition: transform 180ms ease, box-shadow 180ms ease;
 }
 
@@ -124,28 +121,26 @@
 }
 
 .smart-chat-fab__icon {
-  display: inline-grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 999px;
-  background: #1f2c18;
-  color: #ffe684;
-  font-weight: 900;
+  display: block;
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 8px 14px rgba(24, 48, 19, 0.18));
 }
 
 .smart-chat-fab__label {
-  font-size: 0.95rem;
-  font-weight: 800;
+  font-size: 1.2rem;
+  font-weight: 900;
   white-space: nowrap;
 }
 
 .smart-chat-widget {
   display: flex;
   flex-direction: column;
-  width: clamp(300px, 21vw, 340px);
+  width: clamp(360px, 25vw, 408px);
   max-width: calc(100vw - 32px);
-  height: min(476px, calc(100vh - 104px));
+  height: min(620px, calc(100vh - 104px));
   max-height: calc(100vh - 48px);
   overflow: hidden;
   border-radius: 20px;
@@ -172,16 +167,11 @@
 
 .smart-chat-widget__logo,
 .chat-message__avatar {
-  display: inline-grid;
-  place-items: center;
+  display: block;
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #ffe472 0%, #ffc400 100%);
-  color: #253120;
-  font-weight: 900;
-  font-size: 0.82rem;
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
 }
 
 .smart-chat-widget__title {
@@ -233,7 +223,7 @@
 }
 
 .chat-message__content {
-  max-width: min(88%, 244px);
+  max-width: min(88%, 296px);
 }
 
 .chat-message__bubble {
@@ -523,11 +513,16 @@
   .chat-message__content {
     max-width: 88%;
   }
+
+  .smart-chat-fab__icon {
+    width: 38px;
+    height: 38px;
+  }
 }
 
 @media (max-height: 860px) {
   .smart-chat-widget {
-    height: min(425px, calc(100vh - 88px));
+    height: min(560px, calc(100vh - 88px));
   }
 }
 

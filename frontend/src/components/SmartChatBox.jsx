@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { streamAiChat } from '../services/aiChatApi';
 import RecommendedFieldCard from './RecommendedFieldCard';
+import logoImage from '../../image/Logo.png';
 import './SmartChatBox.css';
 
 const SmartChatBox = () => {
@@ -116,9 +117,9 @@ const SmartChatBox = () => {
         <div className="smart-chat-widget surface-card">
           <header className="smart-chat-widget__header">
             <div className="smart-chat-widget__brand">
-              <span className="smart-chat-widget__logo">S</span>
+              <img className="smart-chat-widget__logo" src={logoImage} alt="S-Book" />
               <div>
-                <h2 className="smart-chat-widget__title">Sân Việt</h2>
+                <h2 className="smart-chat-widget__title">S-Book</h2>
                 <p className="smart-chat-widget__subtitle">Trợ lý tư vấn sân theo thời gian thực</p>
               </div>
             </div>
@@ -139,7 +140,9 @@ const SmartChatBox = () => {
                 key={entry.id}
                 className={`chat-message chat-message--${entry.role} ${entry.status === 'streaming' ? 'chat-message--streaming' : ''}`}
               >
-                {entry.role === 'assistant' ? <span className="chat-message__avatar">S</span> : null}
+                {entry.role === 'assistant' ? (
+                  <img className="chat-message__avatar" src={logoImage} alt="S-Book" />
+                ) : null}
                 <div className="chat-message__content">
                   <div className="chat-message__bubble">
                     {entry.status === 'streaming' && !entry.text ? <TypingDots /> : null}
@@ -188,7 +191,7 @@ const SmartChatBox = () => {
           aria-label="Mở trợ lý Sân Việt"
           onClick={() => setIsOpen(true)}
         >
-          <span className="smart-chat-fab__icon">S</span>
+          <img className="smart-chat-fab__icon" src={logoImage} alt="S-Book" />
           <span className="smart-chat-fab__label">Trợ lý AI</span>
         </button>
       )}

@@ -1,3 +1,5 @@
+import logoImage from '../../image/Logo.png';
+
 const SmartChatPage = () => (
   <section className="smart-chat-page">
     <div className="smart-chat-layout">
@@ -24,7 +26,7 @@ const SmartChatPage = () => (
         </div>
 
         <div className="smart-chat-copy__hint">
-          <span className="smart-chat-copy__hint-icon">S</span>
+          <img className="smart-chat-copy__hint-icon" src={logoImage} alt="S-Book" />
           <div>
             Bong bóng chat hiện ở góc phải dưới trên toàn bộ website. Bấm vào đó để mở khung trợ lý.
           </div>

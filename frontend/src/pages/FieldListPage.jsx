@@ -8,9 +8,9 @@ import { formatLocationParts } from '../utils/locationHelpers';
 const SPORT_CONTENT = {
   '/': {
     eyebrow: 'Nền tảng đặt sân dành cho cộng đồng thể thao',
-    title: 'Đặt sân theo phong cách thể thao hiện đại',
+    title: 'S.BOOK',
     description:
-      'Khám phá sân phù hợp quanh bạn với hình ảnh rõ ràng, thông tin gọn và bộ lọc dễ dùng.',
+      'Khám phá sân phù hợp quanh bạn với hành ảnh rõ ràng.',
   },
   '/football': {
     eyebrow: 'Khám phá sân bóng đá',
@@ -74,21 +74,6 @@ const FieldListPage = ({ detailBasePath = '/field' }) => {
         </div>
       </section>
 
-      <section className="listing-context-bar">
-        <div>
-          <strong>{fields.length} sân phù hợp</strong>
-          <div className="text-muted mt-1">Bạn có thể lọc theo môn, giá và khu vực.</div>
-        </div>
-        <div className="d-flex align-items-center gap-3">
-          <div className="text-muted">
-            Hình ảnh rõ ràng, thông tin gọn và thao tác đặt sân mạch lạc.
-          </div>
-          <Link className="btn btn-success" to="/smart-chat">
-            Nho tro ly tu van san
-          </Link>
-        </div>
-      </section>
-
       <div className="listing-layout">
         <FilterSidebar
           defaultKeyword=""
@@ -120,7 +105,7 @@ const FieldListPage = ({ detailBasePath = '/field' }) => {
                   : 'https://images.unsplash.com/photo-1529900903110-33d74d1dfaff?q=80&w=800';
 
                 const locationLabel = field.stadium?.location
-                    ? formatLocationParts(
+                  ? formatLocationParts(
                       field.stadium.location.address,
                       field.stadium.location.district,
                       field.stadium.location.city
