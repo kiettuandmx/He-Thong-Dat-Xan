@@ -138,7 +138,7 @@ const ManageStadiums = () => {
     <div className="stadium-workspace">
       <section className="workspace-hero">
         <div>
-          <span className="workspace-tag">Owner Studio</span>
+          <span className="workspace-tag">Không gian chủ sân</span>
           <h1>Quản lý khu sân bằng một không gian gọn, đẹp và dễ vận hành.</h1>
           <p>
             Thêm khu mới, sửa thông tin, gắn hashtag và theo dõi trạng thái ngay trên
@@ -166,7 +166,7 @@ const ManageStadiums = () => {
         <article className="workspace-card workspace-form-card">
           <div className="card-head">
             <div>
-              <span className="mini-kicker">{isEditing ? 'Edit mode' : 'Create mode'}</span>
+              <span className="mini-kicker">{isEditing ? 'Chế độ chỉnh sửa' : 'Chế độ tạo mới'}</span>
               <h2>{isEditing ? 'Cập nhật khu sân' : 'Thêm khu sân mới'}</h2>
             </div>
             {isEditing && (
@@ -224,7 +224,7 @@ const ManageStadiums = () => {
         <article className="workspace-card">
           <div className="card-head">
             <div>
-              <span className="mini-kicker">Portfolio</span>
+              <span className="mini-kicker">Danh mục khu sân</span>
               <h2>Danh sách khu sân</h2>
             </div>
           </div>
@@ -285,25 +285,26 @@ const ManageStadiums = () => {
 
       <style>{`
         .stadium-workspace {
-          --ink: #17324d;
-          --muted: #617286;
-          --gold: #d28a32;
-          --mint: #1e8b77;
+          --ink: #1e3124;
+          --muted: #5f7265;
+          --gold: #c98a2e;
+          --mint: #2f8f4e;
           --paper: rgba(255, 255, 255, 0.9);
-          --line: rgba(23, 50, 77, 0.1);
+          --line: rgba(47, 143, 78, 0.12);
           padding: 28px;
           min-height: 100vh;
           background:
-            radial-gradient(circle at top left, rgba(243, 190, 106, 0.24), transparent 28%),
-            linear-gradient(180deg, #f7f1e8 0%, #f7fafc 45%, #eef6fb 100%);
+            radial-gradient(circle at top left, rgba(201, 138, 46, 0.18), transparent 28%),
+            radial-gradient(circle at top right, rgba(47, 143, 78, 0.12), transparent 28%),
+            linear-gradient(180deg, #f7fbf7 0%, #f8fbf7 45%, #eef7f0 100%);
           color: var(--ink);
-          font-family: 'Poppins', 'Segoe UI', sans-serif;
+          font-family: var(--font-family-base);
         }
 
         .workspace-hero,
         .workspace-card {
           border: 1px solid var(--line);
-          box-shadow: 0 20px 48px rgba(20, 43, 70, 0.09);
+          box-shadow: 0 20px 48px rgba(31, 52, 37, 0.08);
         }
 
         .workspace-hero {
@@ -322,8 +323,8 @@ const ManageStadiums = () => {
           display: inline-flex;
           padding: 7px 12px;
           border-radius: 999px;
-          background: rgba(210, 138, 50, 0.14);
-          color: #ad6515;
+          background: rgba(47, 143, 78, 0.12);
+          color: var(--mint);
           text-transform: uppercase;
           letter-spacing: 0.08em;
           font-size: 0.78rem;
@@ -353,7 +354,7 @@ const ManageStadiums = () => {
         .workspace-summary div {
           padding: 18px;
           border-radius: 22px;
-          background: linear-gradient(135deg, #17324d, #244f74);
+          background: linear-gradient(135deg, #2f8f4e, #4aa866);
           color: #fff;
         }
 
@@ -404,15 +405,15 @@ const ManageStadiums = () => {
 
         .ghost-button {
           padding: 11px 14px;
-          background: rgba(23, 50, 77, 0.08);
+          background: rgba(47, 143, 78, 0.08);
           color: var(--ink);
         }
 
         .primary-button {
           padding: 14px 18px;
-          background: linear-gradient(135deg, #17324d, #2f6895);
+          background: linear-gradient(135deg, #2f8f4e, #4aa866);
           color: #fff;
-          box-shadow: 0 16px 30px rgba(23, 50, 77, 0.18);
+          box-shadow: 0 16px 30px rgba(47, 143, 78, 0.2);
         }
 
         .workspace-form {
@@ -429,7 +430,7 @@ const ManageStadiums = () => {
         .workspace-form input,
         .workspace-form textarea {
           width: 100%;
-          border: 1px solid rgba(23, 50, 77, 0.12);
+          border: 1px solid rgba(47, 143, 78, 0.12);
           border-radius: 18px;
           background: rgba(255, 255, 255, 0.95);
           padding: 14px 16px;
@@ -452,8 +453,8 @@ const ManageStadiums = () => {
           gap: 18px;
           padding: 18px;
           border-radius: 24px;
-          background: rgba(249, 251, 255, 0.95);
-          border: 1px solid rgba(23, 50, 77, 0.08);
+          background: rgba(248, 252, 248, 0.96);
+          border: 1px solid rgba(47, 143, 78, 0.08);
         }
 
         .stadium-copy h3 {
@@ -486,7 +487,7 @@ const ManageStadiums = () => {
 
         .stadium-actions button {
           padding: 10px 14px;
-          background: rgba(23, 50, 77, 0.08);
+          background: rgba(47, 143, 78, 0.08);
           color: var(--ink);
         }
 

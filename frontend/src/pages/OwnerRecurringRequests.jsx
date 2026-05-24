@@ -43,7 +43,7 @@ const OwnerRecurringRequests = () => {
     <div className="detail-page recurring-page">
       <section className="detail-hero">
         <div>
-          <p className="eyebrow mb-2">Owner review</p>
+          <p className="eyebrow mb-2">Chủ sân duyệt</p>
           <h1 className="display-title mb-3">Yêu cầu đặt sân định kỳ</h1>
           <p className="detail-subtitle mb-0">
             Xem các chuỗi đặt định kỳ đang chờ duyệt và ra quyết định nhanh cho từng khách hàng.

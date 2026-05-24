@@ -16,6 +16,30 @@ const statusBadgeMap = {
   cancelled: 'text-bg-secondary',
 };
 
+const bookingStatusLabelMap = {
+  pending: 'Chờ xử lý',
+  confirmed: 'Đã duyệt',
+  rejected: 'Đã từ chối',
+  refunded: 'Đã hoàn tiền',
+  cancelled: 'Đã hủy',
+  completed: 'Hoàn tất',
+};
+
+const paymentStatusLabelMap = {
+  paid: 'Đã thanh toán',
+  partially_paid: 'Thanh toán một phần',
+  unpaid: 'Chưa thanh toán',
+  refunded: 'Đã hoàn tiền',
+  failed: 'Thất bại',
+};
+
+const paymentTypeLabelMap = {
+  wallet: 'Ví',
+  momo: 'MoMo',
+  cash: 'Tiền mặt',
+  bank_transfer: 'Chuyển khoản',
+};
+
 const AdminBookingManagement = () => {
   const [bookings, setBookings] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -168,12 +192,12 @@ const AdminBookingManagement = () => {
                   <td>
                     <div className="fw-semibold">{Number(booking.amount_paid || 0).toLocaleString()}đ</div>
                     <div className="small text-muted">
-                      {booking.payment_type || 'N/A'} / {booking.payment_status || 'N/A'}
+                      {paymentTypeLabelMap[booking.payment_type] || booking.payment_type || 'N/A'} / {paymentStatusLabelMap[booking.payment_status] || booking.payment_status || 'N/A'}
                     </div>
                   </td>
                   <td>
                     <span className={`badge ${statusBadgeMap[booking.status] || 'text-bg-secondary'}`}>
-                      {booking.status || 'unknown'}
+                      {bookingStatusLabelMap[booking.status] || booking.status || 'unknown'}
                     </span>
                   </td>
                   <td className="text-end">

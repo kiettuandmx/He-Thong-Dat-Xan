@@ -389,7 +389,7 @@ Expected: PASS.
 
 ```bash
 git add frontend/src/pages/PaymentHistory.jsx frontend/src/App.css frontend/src/test/owner-payment-history.test.jsx
-git commit -m "feat: redesign owner finance workspace"
+git commit -m "feat: redesign owner Không gian làm việc tài chính"
 ```
 
 ### Task 5: Redesign `OwnerReviews` thành quality management screen

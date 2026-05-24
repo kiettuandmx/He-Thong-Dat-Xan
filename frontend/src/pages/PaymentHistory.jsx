@@ -17,6 +17,22 @@ const transactionLabelMap = {
   payment: { label: 'Thanh toán', className: 'is-payment' },
 };
 
+const transactionStatusLabelMap = {
+  paid: 'Đã thanh toán',
+  partially_paid: 'Thanh toán một phần',
+  unpaid: 'Chưa thanh toán',
+  refunded: 'Đã hoàn tiền',
+  pending: 'Chờ xử lý',
+  confirmed: 'Đã xác nhận',
+  rejected: 'Đã từ chối',
+  cancelled: 'Đã hủy',
+  completed: 'Hoàn tất',
+  failed: 'Thất bại',
+};
+
+const getTransactionStatusLabel = (status) =>
+  transactionStatusLabelMap[status] || status || '--';
+
 const PaymentHistory = () => {
   const savedUser = JSON.parse(localStorage.getItem('user') || 'null');
   const role = Number(savedUser?.user?.role_id || savedUser?.user?.role);
@@ -315,7 +331,7 @@ const PaymentHistory = () => {
                             </div>
                           </td>
                         )}
-                        <td>{transaction.status || '--'}</td>
+                        <td>{getTransactionStatusLabel(transaction.status)}</td>
                         <td
                           className={`text-end fw-semibold ${
                             transaction.type === 'refund' ? 'text-danger' : 'text-success'
@@ -357,7 +373,7 @@ const PaymentHistory = () => {
       <section className="owner-hero-panel">
         <div className="owner-hero-layout">
           <div>
-            <p className="eyebrow">Finance Workspace</p>
+            <p className="eyebrow">Không gian làm việc tài chính</p>
             <h1>Lịch sử thanh toán chủ sân</h1>
             <p className="mb-0">
               Theo dõi dòng tiền, các khoản hoàn tiền và doanh thu thực nhận theo từng giai đoạn

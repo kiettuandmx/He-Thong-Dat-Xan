@@ -166,7 +166,7 @@ const NotificationComponent = () => {
               justifyContent: 'center',
               position: 'relative',
               borderBottom: '1px solid #f0f0f0',
-              fontFamily: "'Inter', 'Roboto', Arial, sans-serif",
+              fontFamily: 'var(--font-family-base)',
             }}
           >
             <span>Thông báo</span>
@@ -178,7 +178,7 @@ const NotificationComponent = () => {
                   position: 'absolute',
                   right: '16px',
                   fontWeight: '500',
-                  fontFamily: "'Inter', 'Roboto', Arial, sans-serif",
+                  fontFamily: 'var(--font-family-base)',
                 }}
               >
                 {unreadCount} mới

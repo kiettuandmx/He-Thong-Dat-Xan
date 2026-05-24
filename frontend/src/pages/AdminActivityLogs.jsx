@@ -91,7 +91,7 @@ const AdminActivityLogs = () => {
     <div className="activity-page">
       <section className="activity-hero">
         <div>
-          <span className="eyebrow">Audit Trail</span>
+          <span className="eyebrow">Nhật ký hệ thống</span>
           <h2>Nhật ký hoạt động toàn hệ thống</h2>
           <p>
             Tra cuu chi tiet tung thay doi, loc theo doi tuong, hanh dong va moc thoi gian
@@ -110,19 +110,19 @@ const AdminActivityLogs = () => {
       <section className="filter-shell">
         <form className="filter-grid" onSubmit={handleApplyFilters}>
           <div className="field-group">
-            <label>Admin ID</label>
+            <label>ID quản trị viên</label>
             <input type="text" className="form-control" name="admin_id" value={filters.admin_id} onChange={handleFilterChange} />
           </div>
           <div className="field-group">
-            <label>Action</label>
+            <label>Hành động</label>
             <input type="text" className="form-control" name="action" value={filters.action} onChange={handleFilterChange} placeholder="VD: COMPLAINT_RESOLVED" />
           </div>
           <div className="field-group">
-            <label>Target Type</label>
+            <label>Loại đối tượng</label>
             <input type="text" className="form-control" name="target_type" value={filters.target_type} onChange={handleFilterChange} placeholder="booking / field / stadium" />
           </div>
           <div className="field-group">
-            <label>Target ID</label>
+            <label>ID đối tượng</label>
             <input type="text" className="form-control" name="target_id" value={filters.target_id} onChange={handleFilterChange} />
           </div>
           <div className="field-group">
@@ -150,7 +150,7 @@ const AdminActivityLogs = () => {
         <div className="log-table-wrap">
           <div className="table-toolbar">
             <div>
-              <h4>Bang ghi audit</h4>
+              <h4>Bản ghi nhật ký</h4>
               <p>Chon mot dong de xem before/after data day du.</p>
             </div>
             <span className="muted-note">Trang {pagination.page}/{pagination.totalPages}</span>
@@ -221,7 +221,7 @@ const AdminActivityLogs = () => {
           <div className="log-modal" onClick={(event) => event.stopPropagation()}>
             <div className="modal-head">
               <div>
-                <span className="eyebrow">Log detail</span>
+                <span className="eyebrow">Chi tiết nhật ký</span>
                 <h4>Chi tiet log #{selectedLog.id}</h4>
                 <p>{new Date(selectedLog.createdAt).toLocaleString('vi-VN')} · {selectedLog.action}</p>
               </div>
@@ -243,11 +243,11 @@ const AdminActivityLogs = () => {
 
             <div className="json-grid">
               <div className="json-card">
-                <label>Before Data</label>
+                <label>Dữ liệu trước</label>
                 <pre>{prettyJson(selectedLog.before_data)}</pre>
               </div>
               <div className="json-card">
-                <label>After Data</label>
+                <label>Dữ liệu sau</label>
                 <pre>{prettyJson(selectedLog.after_data)}</pre>
               </div>
             </div>

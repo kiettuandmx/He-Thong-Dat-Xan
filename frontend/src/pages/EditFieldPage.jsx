@@ -249,12 +249,10 @@ const EditFieldPage = () => {
       </div>
 
       <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap');
-
       .edit-field-wrapper {
         background: radial-gradient(circle at top right, #e0e7ff, #f8fafc);
         min-height: 100vh;
-        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-family: var(--font-family-base);
       }
 
       .form-card {

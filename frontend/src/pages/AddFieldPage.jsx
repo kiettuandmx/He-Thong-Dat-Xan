@@ -171,12 +171,10 @@ const AddFieldPage = () => {
       </div>
 
       <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap');
-
       .add-field-wrapper {
         background-color: #f0f4f8;
         min-height: 100vh;
-        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-family: var(--font-family-base);
       }
 
       .form-card {

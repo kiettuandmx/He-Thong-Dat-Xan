@@ -145,7 +145,7 @@ const RecurringBookingPage = () => {
     <div className="detail-page recurring-page">
       <section className="detail-hero">
         <div>
-          <p className="eyebrow mb-2">Recurring booking</p>
+          <p className="eyebrow mb-2">Đặt sân định kỳ</p>
           <h1 className="display-title mb-3">Đặt sân định kỳ</h1>
           <p className="detail-subtitle mb-0">
             Tạo chuỗi đặt sân theo tuần hoặc theo tháng, đặt cọc một lần cho cả chuỗi và để owner

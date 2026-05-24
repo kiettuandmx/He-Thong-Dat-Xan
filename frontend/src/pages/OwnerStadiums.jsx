@@ -153,7 +153,7 @@ const OwnerStadiums = () => {
     <div className="fields-studio">
       <section className="fields-hero">
         <div>
-          <span className="fields-tag">Field Studio</span>
+          <span className="fields-tag">Không gian quản lý sân</span>
           <h1>Quản lý sân lẻ theo từng khu theo một bố cục rõ ràng và hiện đại.</h1>
           <p>
             Chủ sân có thể tạo sân mới, cập nhật giá, thay ảnh và theo dõi trạng thái
@@ -181,7 +181,7 @@ const OwnerStadiums = () => {
         <article className="fields-card field-form-card">
           <div className="fields-card-head">
             <div>
-              <span className="fields-kicker">{isEditing ? 'Edit field' : 'New field'}</span>
+              <span className="fields-kicker">{isEditing ? 'Chỉnh sửa sân' : 'Tạo sân mới'}</span>
               <h2>{isEditing ? 'Cập nhật sân lẻ' : 'Đăng ký sân lẻ mới'}</h2>
             </div>
             {isEditing && (
@@ -257,7 +257,7 @@ const OwnerStadiums = () => {
               <article key={stadium.id} className="fields-card group-card">
                 <div className="group-head">
                   <div>
-                    <span className="fields-kicker">Stadium</span>
+                    <span className="fields-kicker">Khu sân</span>
                     <h2>{stadium.name}</h2>
                   </div>
                   <span className="group-count">{stadium.childFields.length} sân</span>
@@ -326,26 +326,26 @@ const OwnerStadiums = () => {
 
       <style>{`
         .fields-studio {
-          --ink: #172f4a;
-          --muted: #66778d;
+          --ink: #1e3124;
+          --muted: #617065;
           --paper: rgba(255, 255, 255, 0.9);
-          --line: rgba(23, 47, 74, 0.1);
-          --teal: #10796a;
-          --amber: #c87f28;
+          --line: rgba(47, 143, 78, 0.12);
+          --teal: #2f8f4e;
+          --amber: #c98a2e;
           padding: 28px;
           min-height: 100vh;
           background:
-            radial-gradient(circle at top right, rgba(44, 128, 120, 0.16), transparent 28%),
-            radial-gradient(circle at top left, rgba(235, 179, 94, 0.2), transparent 24%),
-            linear-gradient(180deg, #f4efe5 0%, #f8fbff 48%, #eef6f9 100%);
+            radial-gradient(circle at top right, rgba(47, 143, 78, 0.14), transparent 28%),
+            radial-gradient(circle at top left, rgba(201, 138, 46, 0.16), transparent 24%),
+            linear-gradient(180deg, #f7fbf7 0%, #f8fbf7 48%, #eef7f0 100%);
           color: var(--ink);
-          font-family: 'Poppins', 'Segoe UI', sans-serif;
+          font-family: var(--font-family-base);
         }
 
         .fields-hero,
         .fields-card {
           border: 1px solid var(--line);
-          box-shadow: 0 20px 48px rgba(22, 48, 73, 0.09);
+          box-shadow: 0 20px 48px rgba(31, 52, 37, 0.08);
         }
 
         .fields-hero {
@@ -394,7 +394,7 @@ const OwnerStadiums = () => {
         .fields-hero-summary div {
           padding: 18px;
           border-radius: 22px;
-          background: linear-gradient(135deg, #17324d, #24556f);
+          background: linear-gradient(135deg, #2f8f4e, #4aa866);
           color: #fff;
         }
 
@@ -448,15 +448,15 @@ const OwnerStadiums = () => {
 
         .field-ghost-button {
           padding: 11px 14px;
-          background: rgba(23, 47, 74, 0.08);
+          background: rgba(47, 143, 78, 0.08);
           color: var(--ink);
         }
 
         .field-primary-button {
           padding: 14px 18px;
-          background: linear-gradient(135deg, #17324d, #2f7c73);
+          background: linear-gradient(135deg, #2f8f4e, #4aa866);
           color: #fff;
-          box-shadow: 0 16px 30px rgba(23, 50, 77, 0.18);
+          box-shadow: 0 16px 30px rgba(47, 143, 78, 0.2);
         }
 
         .field-form {
@@ -473,7 +473,7 @@ const OwnerStadiums = () => {
         .field-form input,
         .field-form select {
           width: 100%;
-          border: 1px solid rgba(23, 47, 74, 0.12);
+          border: 1px solid rgba(47, 143, 78, 0.12);
           border-radius: 18px;
           background: rgba(255, 255, 255, 0.95);
           padding: 14px 16px;
@@ -491,7 +491,7 @@ const OwnerStadiums = () => {
           justify-content: center;
           padding: 10px 14px;
           border-radius: 16px;
-          background: rgba(23, 47, 74, 0.08);
+          background: rgba(47, 143, 78, 0.08);
           color: var(--ink);
           font-weight: 700;
         }
@@ -507,8 +507,8 @@ const OwnerStadiums = () => {
           gap: 14px;
           padding: 14px;
           border-radius: 22px;
-          background: rgba(249, 251, 255, 0.96);
-          border: 1px solid rgba(23, 47, 74, 0.08);
+          background: rgba(248, 252, 248, 0.96);
+          border: 1px solid rgba(47, 143, 78, 0.08);
         }
 
         .field-item-card img {

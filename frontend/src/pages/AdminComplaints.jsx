@@ -159,7 +159,7 @@ const AdminComplaints = () => {
     <div className="admin-complaints-page">
       <section className="hero-panel">
         <div>
-          <span className="eyebrow">Dispute Center</span>
+          <span className="eyebrow">Trung tâm khiếu nại</span>
           <h2>Xử lý khiếu nại và đối soát hoạt động</h2>
           <p>
             Theo dõi tranh chấp theo thời gian thực, xem log liên quan và ra quyết định
@@ -245,7 +245,7 @@ const AdminComplaints = () => {
               <div className="detail-card detail-hero">
                 <div className="detail-head">
                   <div>
-                    <span className="eyebrow">Complaint #{selected.id}</span>
+                    <span className="eyebrow">Khiếu nại #{selected.id}</span>
                     <h4>{selected.user?.name || 'Người gửi khiếu nại'}</h4>
                     <p>{formatDateTime(selected.createdAt)}</p>
                   </div>
@@ -258,15 +258,15 @@ const AdminComplaints = () => {
 
                 <div className="detail-metrics">
                   <div>
-                    <span>User</span>
+                    <span>Người dùng</span>
                     <strong>{selected.user?.name || 'N/A'}</strong>
                   </div>
                   <div>
-                    <span>Booking</span>
+                    <span>Đơn đặt</span>
                     <strong>#{selected.booking_id || 'N/A'}</strong>
                   </div>
                   <div>
-                    <span>Field</span>
+                    <span>Sân</span>
                     <strong>{selected.field?.name || selected.booking?.field?.name || 'N/A'}</strong>
                   </div>
                   <div>

@@ -121,7 +121,7 @@ const AdminOwnerStadiums = () => {
           <div className="bg-white border rounded-4 shadow-sm p-4">
             <div className="d-flex justify-content-between align-items-start mb-4">
               <div>
-                <span className="badge text-bg-success rounded-pill px-3 py-2 mb-2">Admin Stadium Desk</span>
+                <span className="badge text-bg-success rounded-pill px-3 py-2 mb-2">Bàn quản lý khu sân</span>
                 <h3 className="fw-bold mb-1">{editingId ? 'Cập nhật khu sân' : 'Tạo khu sân mới'}</h3>
                 <p className="text-muted mb-0">Admin có thể tạo và phân công khu sân cho owner.</p>
               </div>
