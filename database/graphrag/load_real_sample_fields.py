@@ -41,6 +41,8 @@ def upsert_field(tx, row: dict) -> None:
         SET ft.label = $field_type_label
         MERGE (pb:PriceBand {slug: $price_band_slug})
         SET pb.label = $price_band_label
+        MERGE (tp:TimePreference {slug: $time_preference_slug})
+        SET tp.label = $time_preference_label
         MERGE (f:Field {field_id: $field_id})
         SET f.name = $field_name,
             f.price_per_hour = $price_per_hour
@@ -48,6 +50,7 @@ def upsert_field(tx, row: dict) -> None:
         MERGE (f)-[:BELONGS_TO]->(s)
         MERGE (f)-[:HAS_TYPE]->(ft)
         MERGE (f)-[:FITS_PRICE_BAND]->(pb)
+        MERGE (f)-[:MATCHES_TIME_PREFERENCE]->(tp)
         """,
         area_slug=row["area_slug"],
         area_name=row["area_name"],
@@ -57,6 +60,8 @@ def upsert_field(tx, row: dict) -> None:
         field_type_label=row["field_type_label"],
         price_band_slug=row["price_band_slug"],
         price_band_label=row["price_band_label"],
+        time_preference_slug=row["time_preference_slug"],
+        time_preference_label=row["time_preference_label"],
         field_id=row["field_id"],
         field_name=row["name"],
         price_per_hour=row["price_per_hour"],

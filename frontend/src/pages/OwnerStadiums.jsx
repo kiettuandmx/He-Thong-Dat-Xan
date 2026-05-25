@@ -293,6 +293,18 @@ const OwnerStadiums = () => {
                           <div className="field-item-actions">
                             <button
                               type="button"
+                              onClick={() => navigate(`/owner/fields/${field.id}/menu`)}
+                            >
+                              Quản lý menu
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/owner/fields/${field.id}/food-orders`)}
+                            >
+                              Đơn món
+                            </button>
+                            <button
+                              type="button"
                               onClick={() =>
                                 navigate(`/owner/edit-field/${field.id}`)
                               }

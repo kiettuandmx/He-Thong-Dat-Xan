@@ -16,3 +16,23 @@ def test_parse_user_query_extracts_binh_thanh_and_lowest_price():
 
     assert result.area == "binh_thanh"
     assert result.price_sort == "lowest"
+    assert result.price_band is None
+
+
+def test_parse_user_query_understands_accents_slang_and_night_time():
+    result = parse_user_query(
+        "toi tim san b\u00f3ng \u0111\u00e1 \u1edf qu\u1eadn 10 "
+        "\u0111\u1ec3 \u0111\u00e1 banh \u0111\u00eam cho 10 ng\u01b0\u1eddi"
+    )
+
+    assert result.area == "quan_10"
+    assert result.group_size == 10
+    assert result.time_preference == "evening"
+    assert result.field_type == "football"
+
+
+def test_parse_user_query_extracts_roofed_amenity():
+    result = parse_user_query("toi can tim san bong da co mai che")
+
+    assert result.field_type == "football"
+    assert result.amenities == ["mai_che"]

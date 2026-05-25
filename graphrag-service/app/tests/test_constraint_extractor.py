@@ -18,7 +18,7 @@ def test_constraint_extractor_prefers_llm_output_and_normalizes_values():
         "toi muon da toi nay 10 nguoi gia hop ly gan quan 7",
         FakeOpenRouterClient(
             extracted_constraints={
-                "area": "Quận 7",
+                "area": "Qu\u1eadn 7",
                 "group_size": 10,
                 "price_band": "Gia vua phai",
                 "time_preference": "toi nay",
@@ -44,3 +44,36 @@ def test_constraint_extractor_falls_back_to_rule_parser_when_llm_fails():
 
     assert result.area == "binh_thanh"
     assert result.price_sort == "lowest"
+    assert result.price_band is None
+
+
+def test_constraint_extractor_normalizes_accented_llm_values():
+    result = extract_recommendation_constraints(
+        "t\u00f4i t\u00ecm s\u00e2n b\u00f3ng \u0111\u00e1 \u1edf qu\u1eadn 10 \u0111\u1ec3 \u0111\u00e1 banh \u0111\u00eam",
+        FakeOpenRouterClient(
+            extracted_constraints={
+                "area": "Qu\u1eadn 10",
+                "time_preference": "bu\u1ed5i \u0111\u00eam",
+                "field_type": "b\u00f3ng \u0111\u00e1",
+            }
+        ),
+    )
+
+    assert result.area == "quan_10"
+    assert result.time_preference == "evening"
+    assert result.field_type == "football"
+
+
+def test_constraint_extractor_normalizes_roofed_amenity():
+    result = extract_recommendation_constraints(
+        "toi can tim san bong da co mai che",
+        FakeOpenRouterClient(
+            extracted_constraints={
+                "field_type": "bong da",
+                "amenities": ["m\u00e1i che"],
+            }
+        ),
+    )
+
+    assert result.field_type == "football"
+    assert result.amenities == ["mai_che"]

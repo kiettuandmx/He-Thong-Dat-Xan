@@ -53,3 +53,20 @@ def test_stream_recommendation_raises_when_api_key_is_missing():
                 }
             )
         )
+
+
+def test_build_prompt_includes_no_match_mode_and_available_suggestions():
+    prompt = OpenRouterClient._build_prompt(
+        {
+            "response_mode": "no_match",
+            "constraints": {"field_type": "football", "area": "binh_thanh"},
+            "candidate_fields": [],
+            "available_suggestions": [
+                {"field_id": 2, "name": "San Bong Da 6A", "reasons": ["Gan khu vuc Binh Thanh"]},
+            ],
+        }
+    )
+
+    assert "Response mode: no_match" in prompt
+    assert "Available suggestions" in prompt
+    assert "San Bong Da 6A" in prompt

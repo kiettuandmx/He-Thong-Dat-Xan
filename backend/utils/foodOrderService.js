@@ -9,6 +9,13 @@ const { applyWalletTransaction } = require('./walletService');
 const { WALLET_TRANSACTION_TYPES } = require('./walletTypes');
 
 const toAmount = (value) => Number(value || 0);
+const FOOD_ORDER_SOURCE = {
+  BOOKING_CHECKOUT: 'booking_checkout',
+  POST_BOOKING: 'post_booking',
+};
+const FOOD_ORDER_FULFILLMENT = {
+  PICKUP_AT_FIELD: 'pickup_at_field',
+};
 
 const normalizeTimeValue = (value) => {
   if (!value) return '00:00:00';
@@ -67,6 +74,45 @@ const normalizeMenuItems = (menuItems, requestedItems) => {
   }));
 };
 
+const resolveFoodOrderPaymentStatus = (paymentMethod) => {
+  const normalized = String(paymentMethod || '').trim().toLowerCase();
+  if (['wallet', 'vnpay', 'momo'].includes(normalized)) {
+    return FOOD_ORDER_PAYMENT_STATUS.PAID;
+  }
+  return FOOD_ORDER_PAYMENT_STATUS.UNPAID;
+};
+
+async function resolveBookingAndMenuItems(db, { bookingId, userId, role, items, transaction }) {
+  const booking = await db.Booking.findByPk(bookingId, {
+    include: {
+      model: db.Field,
+      as: 'field',
+      include: { model: db.Stadium, as: 'stadium' },
+    },
+    transaction,
+  });
+  ensureBookingOwnership(booking, userId, role);
+  assertBookingOrderWindow({
+    bookingDate: booking.booking_date,
+    endTime: booking.end_time,
+  });
+
+  const menuItems = await db.MenuItem.findAll({
+    where: {
+      field_id: booking.field_id,
+      id: { [Op.in]: items.map((item) => Number(item.menu_item_id || item.menuItemId)) },
+      is_available: true,
+    },
+    transaction,
+  });
+
+  if (menuItems.length !== items.length) {
+    throw new Error('MENU_ITEM_UNAVAILABLE');
+  }
+
+  return { booking, menuItems };
+}
+
 const ensureBookingOwnership = (booking, userId, role) => {
   if (!booking) throw new Error('BOOKING_NOT_FOUND');
   if (Number(role) === 3) return;
@@ -109,35 +155,16 @@ async function createFoodOrderForBooking(db, { bookingId, userId, role, items, p
   const transaction = await db.sequelize.transaction();
 
   try {
-    const booking = await db.Booking.findByPk(bookingId, {
-      include: {
-        model: db.Field,
-        as: 'field',
-        include: { model: db.Stadium, as: 'stadium' },
-      },
+    const { booking, menuItems } = await resolveBookingAndMenuItems(db, {
+      bookingId,
+      userId,
+      role,
+      items,
       transaction,
     });
-    ensureBookingOwnership(booking, userId, role);
-    assertBookingOrderWindow({
-      bookingDate: booking.booking_date,
-      endTime: booking.end_time,
-    });
-
-    const menuItems = await db.MenuItem.findAll({
-      where: {
-        field_id: booking.field_id,
-        id: { [Op.in]: items.map((item) => Number(item.menu_item_id || item.menuItemId)) },
-        is_available: true,
-      },
-      transaction,
-    });
-
-    if (menuItems.length !== items.length) {
-      throw new Error('MENU_ITEM_UNAVAILABLE');
-    }
 
     const totals = buildFoodOrderTotal(normalizeMenuItems(menuItems, items));
-    const isWalletPayment = String(paymentMethod || '').toLowerCase() === 'wallet';
+    const normalizedPaymentMethod = 'counter';
 
     const foodOrder = await db.FoodOrder.create(
       {
@@ -146,30 +173,14 @@ async function createFoodOrderForBooking(db, { bookingId, userId, role, items, p
         field_id: booking.field_id,
         status: FOOD_ORDER_STATUS.PENDING,
         total_amount: totals.totalAmount,
-        payment_method: paymentMethod || null,
-        payment_status: isWalletPayment
-          ? FOOD_ORDER_PAYMENT_STATUS.PAID
-          : FOOD_ORDER_PAYMENT_STATUS.UNPAID,
+        payment_method: normalizedPaymentMethod,
+        payment_status: FOOD_ORDER_PAYMENT_STATUS.UNPAID,
+        order_source: FOOD_ORDER_SOURCE.POST_BOOKING,
+        fulfillment_method: FOOD_ORDER_FULFILLMENT.PICKUP_AT_FIELD,
         ordered_at: new Date(),
       },
       { transaction }
     );
-
-    if (isWalletPayment) {
-      await applyWalletTransaction(
-        db,
-        {
-          userId: booking.user_id,
-          amount: totals.totalAmount,
-          type: WALLET_TRANSACTION_TYPES.BOOKING_PAYMENT,
-          bookingId: booking.id,
-          description: `Thanh toan order mon #${foodOrder.id} bang vi`,
-          referenceType: 'food_order',
-          referenceId: foodOrder.id,
-        },
-        transaction
-      );
-    }
 
     for (const item of totals.items) {
       // eslint-disable-next-line no-await-in-loop
@@ -207,6 +218,56 @@ async function createFoodOrderForBooking(db, { bookingId, userId, role, items, p
     }
     throw error;
   }
+}
+
+async function createCheckoutFoodOrder(db, { bookingId, userId, role, items, paymentMethod, transaction }) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return null;
+  }
+
+  const { booking, menuItems } = await resolveBookingAndMenuItems(db, {
+    bookingId,
+    userId,
+    role,
+    items,
+    transaction,
+  });
+
+  const totals = buildFoodOrderTotal(normalizeMenuItems(menuItems, items));
+  const normalizedPaymentMethod = String(paymentMethod || '').trim().toLowerCase() || 'vnpay';
+  const paymentStatus = resolveFoodOrderPaymentStatus(normalizedPaymentMethod);
+
+  const foodOrder = await db.FoodOrder.create(
+    {
+      booking_id: booking.id,
+      user_id: booking.user_id,
+      field_id: booking.field_id,
+      status: FOOD_ORDER_STATUS.PENDING,
+      total_amount: totals.totalAmount,
+      payment_method: normalizedPaymentMethod,
+      payment_status: paymentStatus,
+      order_source: FOOD_ORDER_SOURCE.BOOKING_CHECKOUT,
+      fulfillment_method: FOOD_ORDER_FULFILLMENT.PICKUP_AT_FIELD,
+      ordered_at: new Date(),
+    },
+    { transaction }
+  );
+
+  for (const item of totals.items) {
+    // eslint-disable-next-line no-await-in-loop
+    await db.FoodOrderItem.create(
+      {
+        food_order_id: foodOrder.id,
+        menu_item_id: item.menuItemId,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        line_total: item.lineTotal,
+      },
+      { transaction }
+    );
+  }
+
+  return { foodOrder, totalAmount: totals.totalAmount };
 }
 
 async function listFoodOrdersForBooking(db, { bookingId, userId, role }) {
@@ -261,11 +322,14 @@ async function updateFoodOrderStatusByOwner(db, { foodOrderId, ownerId, role, st
 }
 
 module.exports = {
+  FOOD_ORDER_SOURCE,
+  FOOD_ORDER_FULFILLMENT,
   buildFoodOrderTotal,
   assertBookingOrderWindow,
   advanceFoodOrderStatus,
   createMenuItem,
   listFieldMenu,
+  createCheckoutFoodOrder,
   createFoodOrderForBooking,
   listFoodOrdersForBooking,
   updateFoodOrderStatusByOwner,

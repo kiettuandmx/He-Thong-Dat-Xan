@@ -2,6 +2,7 @@ from app.schemas import RecommendationConstraints
 from app.services.query_parser import KNOWN_AREAS, parse_user_query
 from app.services.recommendation_rules import (
     infer_field_type_from_group_size,
+    normalize_amenities,
     normalize_price_band,
     normalize_price_sort,
     normalize_sport_type,
@@ -67,11 +68,7 @@ def _normalize_group_size(value: object, fallback: int | None) -> int | None:
 
 
 def _normalize_amenities(value: object) -> list[str]:
-    if isinstance(value, list):
-        return [item.strip().lower() for item in value if isinstance(item, str) and item.strip()]
-    if isinstance(value, str) and value.strip():
-        return [value.strip().lower()]
-    return []
+    return normalize_amenities(value)
 
 
 def _as_text(value: object) -> str | None:

@@ -31,6 +31,13 @@ def prepare_chat_turn(request, repository, llm_client):
     }
 
 
+def _find_available_suggestions(repository, constraints) -> list[dict]:
+    suggest_method = getattr(repository, "suggest_available_fields", None)
+    if callable(suggest_method):
+        return suggest_method(constraints.model_dump())
+    return []
+
+
 def generate_chat_response(request, repository, llm_client):
     turn = prepare_chat_turn(
         request=request,
@@ -44,6 +51,19 @@ def generate_chat_response(request, repository, llm_client):
             "recommendations": [],
             "constraints": turn["constraints"],
         }
+
+    if not turn["payload"]["candidate_fields"]:
+        suggestions = _find_available_suggestions(repository, turn["constraints"])
+        payload = {
+            "response_mode": "no_match",
+            "message": request.message,
+            "constraints": turn["constraints"].model_dump(),
+            "candidate_fields": [],
+            "available_suggestions": suggestions,
+        }
+        llm_result = llm_client.generate_recommendation(payload)
+        llm_result["constraints"] = turn["constraints"]
+        return llm_result
 
     llm_result = llm_client.generate_recommendation(turn["payload"])
     llm_result["constraints"] = turn["constraints"]

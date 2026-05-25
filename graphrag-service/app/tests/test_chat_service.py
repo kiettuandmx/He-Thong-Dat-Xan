@@ -1,6 +1,7 @@
 from app.schemas import ChatRequest, RecommendationConstraints
 from app.services.chat_service import generate_chat_response
 from app.services.context_builder import build_chat_context
+from app.services.text_normalizer import slugify_vietnamese
 
 
 class FakeRepository:
@@ -21,11 +22,31 @@ class FakeRepository:
 class FakeOpenRouterClient:
     def __init__(self, scope_result=None):
         self.scope_result = scope_result or {"status": "in_scope", "reply": ""}
+        self.last_payload = None
 
     def classify_scope(self, message):
         return self.scope_result
 
     def generate_recommendation(self, payload):
+        self.last_payload = payload
+        if payload.get("response_mode") == "no_match":
+            suggestions = payload.get("available_suggestions", [])
+            names = ", ".join(field["name"] for field in suggestions)
+            constraints = payload.get("constraints", {})
+            parts = ["Minh chua co du lieu khop exact"]
+            if constraints.get("field_type") == "football":
+                parts.append("cho san bong da")
+            if constraints.get("group_size"):
+                parts.append(f"cho {constraints['group_size']} nguoi")
+            if constraints.get("area"):
+                parts.append(f"o {constraints['area'].replace('_', ' ')}")
+            answer = " ".join(parts) + "."
+            if names:
+                answer += f" Hien dang co: {names}."
+            return {
+                "answer": answer,
+                "recommendations": suggestions,
+            }
         return {
             "answer": "Toi goi y San 7 Phu My A vi gan Quan 7, hop nhom 10 nguoi va co muc gia tam trung.",
             "recommendations": payload["candidate_fields"],
@@ -146,6 +167,30 @@ class FailingRepository:
         return []
 
 
+class NoMatchWithSuggestionsRepository:
+    last_constraints = None
+
+    def find_candidate_fields(self, constraints):
+        self.last_constraints = constraints
+        return []
+
+    def suggest_available_fields(self, constraints):
+        return [
+            {
+                "field_id": 1,
+                "name": "San Bong Da",
+                "field_type_label": "Football",
+                "reasons": ["Gan khu vuc Quan 10", "Phu hop loai san Football", "Muc gia Gia vua phai"],
+            },
+            {
+                "field_id": 10,
+                "name": "San Camp Nou",
+                "field_type_label": "Football",
+                "reasons": ["Gan khu vuc Quan 10", "Phu hop loai san Football", "Muc gia Gia cao"],
+            },
+        ]
+
+
 def test_generate_chat_response_returns_ai_scope_reply_when_needs_clarification():
     request = ChatRequest(message="san quan 10")
 
@@ -169,13 +214,13 @@ def test_generate_chat_response_passes_through_ai_clarification_reply():
             should_fail=True,
             scope_result={
                 "status": "needs_clarification",
-                "reply": "Bạn muốn sân bóng đá hay cầu lông ở Quận 10 để mình lọc chính xác hơn?",
+                "reply": "Ban muon san bong da hay cau long o Quan 10 de minh loc chinh xac hon?",
             },
         ),
     )
 
-    assert "Quận 10" in result["answer"]
-    assert "bóng đá hay cầu lông" in result["answer"]
+    assert "Quan 10" in result["answer"]
+    assert "bong da hay cau long" in result["answer"]
     assert result["recommendations"] == []
 
 
@@ -189,6 +234,29 @@ def test_generate_chat_response_returns_no_recommendations_when_repository_has_n
     )
 
     assert result["recommendations"] == []
+    assert "san_bong_da" in slugify_vietnamese(result["answer"])
+    assert "muc_gia" not in slugify_vietnamese(result["answer"])
+
+
+def test_generate_chat_response_no_match_reply_does_not_invent_unspecified_price():
+    request = ChatRequest(message="toi tim san quan 10 de choi bong da 10 nguoi")
+
+    result = generate_chat_response(
+        request=request,
+        repository=FailingRepository(),
+        llm_client=FakeConstraintAwareOpenRouterClient(
+            extracted_constraints={
+                "area": "quan_10",
+                "group_size": 10,
+                "field_type": "football",
+            }
+        ),
+    )
+
+    assert "san_bong_da" in slugify_vietnamese(result["answer"])
+    assert "10_nguoi" in slugify_vietnamese(result["answer"])
+    assert "quan_10" in slugify_vietnamese(result["answer"])
+    assert "gia_phu_hop" not in slugify_vietnamese(result["answer"])
 
 
 def test_generate_chat_response_blocks_out_of_scope_weather_question():
@@ -210,3 +278,81 @@ def test_generate_chat_response_blocks_out_of_scope_weather_question():
     assert "chi ho tro du lieu trong he thong dat san" in result["answer"]
     assert result["recommendations"] == []
     assert repository.last_constraints is None
+
+
+def test_generate_chat_response_no_match_returns_grounded_available_field_suggestions():
+    request = ChatRequest(message="toi muon dat san bong da cho sang ngay mai, gia re, gan thu duc")
+    llm_client = FakeConstraintAwareOpenRouterClient(
+        extracted_constraints={
+            "field_type": "football",
+            "price_band": "low",
+        }
+    )
+
+    result = generate_chat_response(
+        request=request,
+        repository=NoMatchWithSuggestionsRepository(),
+        llm_client=llm_client,
+    )
+
+    assert llm_client.last_payload["response_mode"] == "no_match"
+    assert llm_client.last_payload["available_suggestions"][0]["field_id"] == 1
+    assert "khop exact" in result["answer"]
+    assert "San Bong Da" in result["answer"]
+    assert "San Camp Nou" in result["answer"]
+    assert [item["field_id"] for item in result["recommendations"]] == [1, 10]
+
+
+def test_generate_chat_response_roofed_request_without_data_returns_no_match_instead_of_fake_match():
+    request = ChatRequest(message="toi can tim san bong da co mai che")
+    llm_client = FakeConstraintAwareOpenRouterClient(
+        extracted_constraints={
+            "field_type": "football",
+            "amenities": ["mai che"],
+        }
+    )
+
+    result = generate_chat_response(
+        request=request,
+        repository=NoMatchWithSuggestionsRepository(),
+        llm_client=llm_client,
+    )
+
+    assert llm_client.last_payload["response_mode"] == "no_match"
+    assert llm_client.last_payload["constraints"]["amenities"] == ["mai_che"]
+    assert "San Bong Da" in result["answer"]
+    assert [item["field_id"] for item in result["recommendations"]] == [1, 10]
+
+
+class FootballBinhThanhRepository:
+    last_constraints = None
+
+    def find_candidate_fields(self, constraints):
+        self.last_constraints = constraints
+        if constraints.get("area") == "binh_thanh" and constraints.get("field_type") == "football":
+            return [
+                {
+                    "field_id": 2,
+                    "name": "San Bong Da 6A",
+                    "field_type_label": "Football",
+                    "reasons": ["Gan khu vuc Binh Thanh", "Phu hop loai san Football", "Muc gia Gia vua phai"],
+                }
+            ]
+        return []
+
+
+def test_generate_chat_response_returns_cheapest_available_football_in_binh_thanh():
+    request = ChatRequest(message="san bong da re nhat quan binh thanh")
+    repository = FootballBinhThanhRepository()
+
+    result = generate_chat_response(
+        request=request,
+        repository=repository,
+        llm_client=FakeConstraintAwareOpenRouterClient(should_fail=True),
+    )
+
+    assert repository.last_constraints["area"] == "binh_thanh"
+    assert repository.last_constraints["field_type"] == "football"
+    assert repository.last_constraints["price_sort"] == "lowest"
+    assert repository.last_constraints["price_band"] is None
+    assert result["recommendations"][0]["field_id"] == 2

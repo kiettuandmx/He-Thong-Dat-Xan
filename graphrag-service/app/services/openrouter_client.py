@@ -188,19 +188,24 @@ class OpenRouterClient:
 
     @staticmethod
     def _build_prompt(payload: dict) -> str:
+        response_mode = payload.get("response_mode", "exact_match")
         constraints = payload["constraints"]
+        available_suggestions = payload.get("available_suggestions", [])
         return (
             "Hay tra loi bang tieng Viet tu nhien, am ap, nhu mot nhan vien tu van san dang nhan tin voi khach.\n"
-            "Chi duoc dua tren candidate_fields, khong duoc bo sung du lieu ngoai context.\n"
+            "Chi duoc dua tren du lieu truy xuat trong context, khong duoc bo sung du lieu ngoai context.\n"
             "Khong dung markdown, khong dung **, khong viet JSON, khong dung mau cau mo dau/ket thuc co dinh lap lai moi lan.\n"
+            f"Response mode: {response_mode}\n"
             "Cach tra loi mong muon:\n"
-            "- Neu nguoi dung hoi rat ngan hoac con mo ho, hay van goi y duoc nhung dien dat mem hon, khong can qua khuon.\n"
-            "- Neu co 1-3 lua chon, hay tom tat ngan gon xem phuong an nao hop hon va vi sao.\n"
+            "- Neu response_mode la exact_match, hay tom tat ngan gon xem phuong an nao hop hon va vi sao.\n"
+            "- Neu response_mode la no_match, phai noi ro rang la hien chua co du lieu khop exact voi nhu cau nay.\n"
+            "- Neu response_mode la no_match va co available_suggestions, chi duoc goi y nhung san trong danh sach nay nhu cac lua chon hien dang co de tham khao.\n"
+            "- Khong duoc noi nhu the available_suggestions la match exact. Phai phan biet ro giua khop exact va san hien dang co.\n"
             "- Co the xuong dong de de doc, nhung dung danh so may moc neu khong can thiet.\n"
             "- Neu co trade-off, noi ngan gon theo kieu hoi thoai, vi du san nay gia mem hon, san kia tot hon neu uu tien chat luong.\n"
-            "- Neu khong co candidate_fields, hay noi lich su rang la hien chua tim thay san phu hop tu du lieu hien co va goi y user bo sung them nhu cau.\n"
             f"Constraints da hieu: {constraints}\n"
             f"Candidate fields: {payload['candidate_fields']}"
+            f"\nAvailable suggestions: {available_suggestions}"
         )
 
     @staticmethod
