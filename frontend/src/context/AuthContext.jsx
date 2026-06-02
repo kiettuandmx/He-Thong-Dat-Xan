@@ -20,13 +20,30 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(userData));
     };
 
+    const updateUser = (nextUserData) => {
+        setUser((currentUser) => {
+            const baseUser = currentUser || {};
+            const mergedUser = {
+                ...baseUser,
+                ...nextUserData,
+                user: {
+                    ...(baseUser.user || {}),
+                    ...(nextUserData.user || {}),
+                },
+            };
+
+            localStorage.setItem('user', JSON.stringify(mergedUser));
+            return mergedUser;
+        });
+    };
+
     const logout = () => {
         setUser(null);
         localStorage.removeItem('user');
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, updateUser, logout, loading }}>
             {!loading && children}
         </AuthContext.Provider>
     );

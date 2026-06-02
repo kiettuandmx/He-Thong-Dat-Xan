@@ -19,6 +19,12 @@ def test_parse_user_query_extracts_binh_thanh_and_lowest_price():
     assert result.price_band is None
 
 
+def test_parse_user_query_does_not_treat_toi_pronoun_as_evening():
+    result = parse_user_query("toi muon tim san")
+
+    assert result.time_preference is None
+
+
 def test_parse_user_query_understands_accents_slang_and_night_time():
     result = parse_user_query(
         "toi tim san b\u00f3ng \u0111\u00e1 \u1edf qu\u1eadn 10 "

@@ -50,7 +50,15 @@ def normalize_time_preference(text: str | None) -> str | None:
     if not lowered:
         return None
 
-    if "toi" in lowered or "dem" in lowered or "buoi dem" in lowered or "sau gio lam" in lowered:
+    if (
+        "toi nay" in lowered
+        or "buoi toi" in lowered
+        or "vao toi" in lowered
+        or "ban dem" in lowered
+        or "buoi dem" in lowered
+        or "dem" in lowered
+        or "sau gio lam" in lowered
+    ):
         return "evening"
     if "sang" in lowered:
         return "morning"

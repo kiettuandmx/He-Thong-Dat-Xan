@@ -23,6 +23,10 @@ def test_normalize_time_preference_maps_toi_nay_to_evening():
     assert normalize_time_preference("toi nay") == "evening"
 
 
+def test_normalize_time_preference_does_not_treat_toi_pronoun_as_evening():
+    assert normalize_time_preference("toi muon tim san") is None
+
+
 def test_normalize_price_sort_maps_re_nhat_to_lowest():
     assert normalize_price_sort("san re nhat o binh thanh") == "lowest"
 

@@ -19,6 +19,11 @@ class FakeRepository:
         ]
 
 
+class TrackingRepository(FakeRepository):
+    def __init__(self):
+        self.last_constraints = None
+
+
 class FakeOpenRouterClient:
     def __init__(self, scope_result=None):
         self.scope_result = scope_result or {"status": "in_scope", "reply": ""}
@@ -29,6 +34,11 @@ class FakeOpenRouterClient:
 
     def generate_recommendation(self, payload):
         self.last_payload = payload
+        if payload.get("response_mode") == "needs_clarification":
+            return {
+                "answer": "Ban muon tim san mon gi, o khu vuc nao va khung gio nao de minh loc chinh xac hon?",
+                "recommendations": [],
+            }
         if payload.get("response_mode") == "no_match":
             suggestions = payload.get("available_suggestions", [])
             names = ", ".join(field["name"] for field in suggestions)
@@ -191,6 +201,33 @@ class NoMatchWithSuggestionsRepository:
         ]
 
 
+class NoMatchWithCrossSportSuggestionsRepository:
+    last_constraints = None
+
+    def find_candidate_fields(self, constraints):
+        self.last_constraints = constraints
+        return []
+
+    def suggest_available_fields(self, constraints):
+        if constraints.get("field_type") == "football":
+            return []
+
+        return [
+            {
+                "field_id": 3,
+                "name": "San Cau Long Pro",
+                "field_type_label": "Badminton",
+                "reasons": ["Gan khu vuc Quan 10", "Phu hop loai san Badminton", "Muc gia Gia re"],
+            },
+            {
+                "field_id": 4,
+                "name": "San Pickleball Hot",
+                "field_type_label": "Pickleball",
+                "reasons": ["Gan khu vuc Binh Thanh", "Phu hop loai san Pickleball", "Muc gia Gia re"],
+            },
+        ]
+
+
 def test_generate_chat_response_returns_ai_scope_reply_when_needs_clarification():
     request = ChatRequest(message="san quan 10")
 
@@ -202,6 +239,23 @@ def test_generate_chat_response_returns_ai_scope_reply_when_needs_clarification(
 
     assert "San 7 Phu My A" in result["answer"]
     assert result["recommendations"][0]["field_id"] == 1
+
+
+def test_generate_chat_response_asks_ai_for_clarification_when_request_has_no_constraints():
+    request = ChatRequest(message="toi muon tim san")
+    repository = TrackingRepository()
+    llm_client = FakeConstraintAwareOpenRouterClient(extracted_constraints={})
+
+    result = generate_chat_response(
+        request=request,
+        repository=repository,
+        llm_client=llm_client,
+    )
+
+    assert repository.last_constraints is None
+    assert llm_client.last_payload["response_mode"] == "needs_clarification"
+    assert result["recommendations"] == []
+    assert "mon gi" in result["answer"]
 
 
 def test_generate_chat_response_passes_through_ai_clarification_reply():
@@ -322,6 +376,29 @@ def test_generate_chat_response_roofed_request_without_data_returns_no_match_ins
     assert llm_client.last_payload["constraints"]["amenities"] == ["mai_che"]
     assert "San Bong Da" in result["answer"]
     assert [item["field_id"] for item in result["recommendations"]] == [1, 10]
+
+
+def test_generate_chat_response_no_match_with_explicit_football_does_not_jump_to_other_sports():
+    request = ChatRequest(message="toi can san bong da o quan 10")
+    llm_client = FakeConstraintAwareOpenRouterClient(
+        extracted_constraints={
+            "area": "quan_10",
+            "field_type": "football",
+        }
+    )
+
+    result = generate_chat_response(
+        request=request,
+        repository=NoMatchWithCrossSportSuggestionsRepository(),
+        llm_client=llm_client,
+    )
+
+    assert llm_client.last_payload["response_mode"] == "no_match"
+    assert llm_client.last_payload["constraints"]["field_type"] == "football"
+    assert llm_client.last_payload["available_suggestions"] == []
+    assert result["recommendations"] == []
+    assert "San Cau Long Pro" not in result["answer"]
+    assert "San Pickleball Hot" not in result["answer"]
 
 
 class FootballBinhThanhRepository:

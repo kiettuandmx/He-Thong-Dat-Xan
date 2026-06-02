@@ -100,12 +100,14 @@ const SmartChatBox = () => {
         },
         onError: (errorPayload) => {
           setMessages((prev) => prev.filter((item) => item.id !== assistantMessageId));
-          setError(errorPayload?.message || 'Không thể nhận phản hồi từ AI. Vui lòng thử lại sau.');
+          console.error('Smart chat stream error:', errorPayload);
+          setError(mapChatErrorMessage(errorPayload?.message));
         },
       });
-    } catch {
+    } catch (requestError) {
       setMessages((prev) => prev.filter((item) => item.id !== assistantMessageId));
-      setError('Không thể nhận phản hồi từ AI. Vui lòng thử lại sau.');
+      console.error('Smart chat request failed:', requestError);
+      setError(mapChatErrorMessage(requestError?.message));
     } finally {
       setLoading(false);
     }
@@ -209,6 +211,32 @@ const TypingDots = () => (
 
 function createMessageId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function mapChatErrorMessage(message) {
+  const normalized = String(message || '').toLowerCase();
+
+  if (!normalized) {
+    return 'Không thể nhận phản hồi từ AI. Vui lòng thử lại sau.';
+  }
+
+  if (
+    normalized.includes('fetch failed') ||
+    normalized.includes('ai service unavailable') ||
+    normalized.includes('econnrefused')
+  ) {
+    return 'Chưa kết nối được dịch vụ AI. Hãy kiểm tra backend hoặc graphrag-service.';
+  }
+
+  if (normalized.includes('openrouter')) {
+    return 'Dịch vụ AI đang gặp lỗi khi tạo phản hồi. Vui lòng kiểm tra cấu hình OpenRouter rồi thử lại.';
+  }
+
+  if (normalized.includes('message is required')) {
+    return 'Tin nhắn đang bị thiếu nội dung. Hãy nhập lại rồi thử tiếp.';
+  }
+
+  return message;
 }
 
 export default SmartChatBox;

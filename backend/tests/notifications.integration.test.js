@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('http');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
 process.env.NODE_ENV = 'development';
 process.env.SKIP_AUTO_SYNC = 'true';
@@ -150,14 +151,60 @@ test('notification api returns routing metadata for personalized notifications',
   });
 
   assert.equal(response.status, 200);
-  assert.ok(Array.isArray(response.body));
+  assert.ok(Array.isArray(response.body.items));
+  assert.equal(typeof response.body.unreadCount, 'number');
 
-  const notificationFromApi = response.body.find((item) => item.id === notification.id);
+  const notificationFromApi = response.body.items.find((item) => item.id === notification.id);
   assert.ok(notificationFromApi);
   assert.equal(notificationFromApi.target_route, '/history');
   assert.equal(notificationFromApi.target_type, 'booking');
   assert.equal(notificationFromApi.target_id, '101');
   assert.equal(notificationFromApi.type, 'booking_pending');
+});
+
+test('notification api limits visible items and reports unread count separately', async () => {
+  const suffix = Date.now();
+
+  const freshUser = await db.User.create({
+    name: `Notification Limit User ${suffix}`,
+    email: `notification-limit-${suffix}@example.com`,
+    password: 'secret',
+    phone: '0900000103',
+    role_id: 1,
+  });
+  createdIds.users.push(freshUser.id);
+
+  const freshToken = jwt.sign(
+    { id: freshUser.id, role: freshUser.role_id },
+    process.env.JWT_SECRET || 'secret_key',
+    { expiresIn: '1d' }
+  );
+
+  const createdNotifications = [];
+  for (let index = 0; index < 25; index += 1) {
+    const notification = await db.Notification.create({
+      user_id: freshUser.id,
+      content: `Thong bao ${index}`,
+      is_read: index >= 7,
+      type: 'booking_pending',
+      target_type: 'booking',
+      target_id: String(index),
+      createdAt: new Date(Date.now() + index * 1000),
+      updatedAt: new Date(Date.now() + index * 1000),
+    });
+    createdNotifications.push(notification.id);
+  }
+  createdIds.notifications.push(...createdNotifications);
+
+  const response = await api('/api/bookings/notifications?limit=20', {
+    method: 'GET',
+    headers: authHeader(freshToken),
+  });
+
+  assert.equal(response.status, 200);
+  assert.ok(Array.isArray(response.body.items));
+  assert.equal(response.body.items.length, 20);
+  assert.equal(response.body.unreadCount, 7);
 });
 
 test('admin global notification creates user-specific notification records', async () => {
@@ -183,4 +230,35 @@ test('admin global notification creates user-specific notification records', asy
   assert.ok(createdNotifications.every((item) => item.user_id != null));
   assert.ok(createdNotifications.some((item) => item.user_id === playerUser.id));
   assert.ok(createdNotifications.some((item) => item.user_id === adminUser.id));
+});
+
+test('login does not create notification records anymore', async () => {
+  const suffix = Date.now();
+  const password = 'secret123';
+  const passwordHash = bcrypt.hashSync(password, 10);
+
+  const loginUser = await db.User.create({
+    name: `No Login Notification ${suffix}`,
+    email: `no-login-notification-${suffix}@example.com`,
+    password: passwordHash,
+    phone: '0900000104',
+    role_id: 1,
+  });
+  createdIds.users.push(loginUser.id);
+
+  const beforeCount = await db.Notification.count({ where: { user_id: loginUser.id } });
+
+  const response = await api('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: loginUser.email,
+      password,
+    }),
+  });
+
+  assert.equal(response.status, 200);
+
+  const afterCount = await db.Notification.count({ where: { user_id: loginUser.id } });
+  assert.equal(afterCount, beforeCount);
 });

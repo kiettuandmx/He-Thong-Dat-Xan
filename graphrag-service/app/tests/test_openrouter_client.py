@@ -70,3 +70,53 @@ def test_build_prompt_includes_no_match_mode_and_available_suggestions():
     assert "Response mode: no_match" in prompt
     assert "Available suggestions" in prompt
     assert "San Bong Da 6A" in prompt
+
+
+def test_build_prompt_exact_match_requires_mentioning_all_candidate_fields():
+    prompt = OpenRouterClient._build_prompt(
+        {
+            "response_mode": "exact_match",
+            "constraints": {"field_type": "football"},
+            "candidate_fields": [
+                {"field_id": 1, "name": "San Bong Da", "reasons": ["Gan khu vuc Quan 10"]},
+                {"field_id": 2, "name": "San Bong Da 6A", "reasons": ["Gan khu vuc Binh Thanh"]},
+                {"field_id": 3, "name": "San Camp Nou", "reasons": ["Gan khu vuc Quan 10"]},
+            ],
+            "available_suggestions": [],
+        }
+    )
+
+    assert "phai nhac du tat ca cac san trong Candidate fields" in prompt
+    assert "Khong duoc bo sot san nao" in prompt
+    assert "San Bong Da" in prompt
+    assert "San Bong Da 6A" in prompt
+    assert "San Camp Nou" in prompt
+
+
+def test_generate_recommendation_returns_available_suggestions_for_no_match(monkeypatch):
+    class DummyResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"choices": [{"message": {"content": "Khong co san khop exact."}}]}
+
+    def fake_post(*args, **kwargs):
+        return DummyResponse()
+
+    monkeypatch.setattr("app.services.openrouter_client.httpx.post", fake_post)
+
+    client = OpenRouterClient(api_key="test-key", model="test-model")
+    payload = {
+        "response_mode": "no_match",
+        "constraints": {"field_type": "football"},
+        "candidate_fields": [],
+        "available_suggestions": [
+            {"field_id": 2, "name": "San Bong Da 6A", "reasons": ["Gan khu vuc Binh Thanh"]},
+        ],
+    }
+
+    result = client.generate_recommendation(payload)
+
+    assert result["answer"] == "Khong co san khop exact."
+    assert result["recommendations"] == payload["available_suggestions"]

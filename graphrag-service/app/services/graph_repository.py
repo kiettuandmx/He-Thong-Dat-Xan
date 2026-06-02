@@ -40,7 +40,7 @@ class GraphRepository:
           CASE WHEN $price_sort = 'lowest' THEN coalesce(f.price_per_hour, 0) END ASC,
           CASE WHEN $price_sort = 'highest' THEN coalesce(f.price_per_hour, 0) END DESC,
           f.field_id ASC
-        LIMIT 3
+        LIMIT 5
         """
 
         with self.driver.session() as session:
@@ -60,13 +60,11 @@ class GraphRepository:
         exact_area = constraints.get("area")
 
         if exact_field_type:
-            same_type = self._run_suggestion_query(
+            return self._run_suggestion_query(
                 constraints=constraints,
                 exact_field_type=exact_field_type,
                 exact_area=None,
             )
-            if same_type:
-                return same_type
 
         if exact_area:
             same_area = self._run_suggestion_query(
@@ -121,7 +119,7 @@ class GraphRepository:
           CASE WHEN $price_sort = 'lowest' THEN coalesce(f.price_per_hour, 0) END ASC,
           CASE WHEN $price_sort = 'highest' THEN coalesce(f.price_per_hour, 0) END DESC,
           f.field_id ASC
-        LIMIT 3
+        LIMIT 5
         """
 
         with self.driver.session() as session:

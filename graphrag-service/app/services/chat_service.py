@@ -22,6 +22,19 @@ def prepare_chat_turn(request, repository, llm_client):
             "constraints": constraints,
         }
 
+    if not _has_actionable_constraints(constraints):
+        return {
+            "mode": "clarification",
+            "constraints": constraints,
+            "payload": {
+                "response_mode": "needs_clarification",
+                "message": request.message,
+                "constraints": constraints.model_dump(),
+                "candidate_fields": [],
+                "available_suggestions": [],
+            },
+        }
+
     candidate_fields = repository.find_candidate_fields(constraints.model_dump())
     payload = build_chat_context(constraints=constraints, candidate_fields=candidate_fields)
     return {
@@ -38,6 +51,20 @@ def _find_available_suggestions(repository, constraints) -> list[dict]:
     return []
 
 
+def _has_actionable_constraints(constraints) -> bool:
+    return any(
+        [
+            constraints.area,
+            constraints.group_size,
+            constraints.price_band,
+            constraints.price_sort,
+            constraints.time_preference,
+            constraints.field_type,
+            constraints.amenities,
+        ]
+    )
+
+
 def generate_chat_response(request, repository, llm_client):
     turn = prepare_chat_turn(
         request=request,
@@ -51,6 +78,12 @@ def generate_chat_response(request, repository, llm_client):
             "recommendations": [],
             "constraints": turn["constraints"],
         }
+
+    if turn["mode"] == "clarification":
+        llm_result = llm_client.generate_recommendation(turn["payload"])
+        llm_result["constraints"] = turn["constraints"]
+        llm_result["recommendations"] = []
+        return llm_result
 
     if not turn["payload"]["candidate_fields"]:
         suggestions = _find_available_suggestions(repository, turn["constraints"])

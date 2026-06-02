@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Swal from 'sweetalert2';
@@ -16,41 +16,48 @@ const PaymentPage = () => {
     const [bookingData, setBookingData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [timeLeft, setTimeLeft] = useState(null); // Thời gian còn lại (giây)
+    const hasShownSuccessModalRef = useRef(false);
 
     // Lấy thông tin từ state (nếu có) để hiện nhanh
     const { amount: stateAmount, description: stateDescription } = location.state || {};
 
-    useEffect(() => {
-        const fetchBookingDetails = async () => {
-            try {
-                const authData = JSON.parse(localStorage.getItem('user'));
-                const res = await axios.get(`http://localhost:5000/api/bookings/${bookingId}`, {
-                    headers: { Authorization: `Bearer ${authData?.token}` }
-                });
-                
-                const data = res.data.data;
-                setBookingData(data);
+    const fetchBookingDetails = useCallback(async () => {
+        try {
+            const authData = JSON.parse(localStorage.getItem('user'));
+            const res = await axios.get(`http://localhost:5000/api/bookings/${bookingId}`, {
+                headers: { Authorization: `Bearer ${authData?.token}` }
+            });
+            
+            const data = res.data.data;
+            setBookingData(data);
 
-                // Tính toán thời gian giữ chỗ còn lại
-                if (data.hold_until && data.status === 'pending' && data.payment_status === 'unpaid') {
-                    const holdTime = new Date(data.hold_until).getTime();
-                    const now = new Date().getTime();
-                    const diff = Math.floor((holdTime - now) / 1000);
-                    
-                    if (diff > 0) {
-                        setTimeLeft(diff);
-                    } else {
-                        setTimeLeft(0);
-                    }
+            // Tính toán thời gian giữ chỗ còn lại
+            if (data.hold_until && data.status === 'pending' && data.payment_status === 'unpaid') {
+                const holdTime = new Date(data.hold_until).getTime();
+                const now = new Date().getTime();
+                const diff = Math.floor((holdTime - now) / 1000);
+                
+                if (diff > 0) {
+                    setTimeLeft(diff);
+                } else {
+                    setTimeLeft(0);
                 }
-            } catch (error) {
-                console.error("Lỗi fetch đơn hàng:", error);
-            } finally {
-                setLoading(false);
+            } else {
+                setTimeLeft(null);
             }
-        };
-        fetchBookingDetails();
+
+            return data;
+        } catch (error) {
+            console.error("Lỗi fetch đơn hàng:", error);
+            throw error;
+        } finally {
+            setLoading(false);
+        }
     }, [bookingId]);
+
+    useEffect(() => {
+        fetchBookingDetails().catch(() => {});
+    }, [fetchBookingDetails]);
 
     // Timer effect
     useEffect(() => {
@@ -69,6 +76,53 @@ const PaymentPage = () => {
         return () => clearInterval(timerId);
     }, [timeLeft, navigate]);
 
+    const isConfirmedByBank = useMemo(() => {
+        return (
+            bookingData?.status === 'confirmed' &&
+            ['partially_paid', 'paid'].includes(bookingData?.payment_status)
+        );
+    }, [bookingData]);
+
+    useEffect(() => {
+        if (!bookingData || isConfirmedByBank) {
+            return undefined;
+        }
+
+        const stopStatuses = ['cancelled', 'expired', 'refunded', 'rejected'];
+        if (stopStatuses.includes(bookingData.status)) {
+            return undefined;
+        }
+
+        const intervalId = setInterval(() => {
+            fetchBookingDetails().catch(() => {});
+        }, 5000);
+
+        return () => clearInterval(intervalId);
+    }, [bookingData, fetchBookingDetails, isConfirmedByBank]);
+
+    useEffect(() => {
+        if (!isConfirmedByBank || hasShownSuccessModalRef.current) {
+            return;
+        }
+
+        hasShownSuccessModalRef.current = true;
+
+        Swal.fire({
+            title: 'Thanh toán thành công',
+            text:
+                bookingData?.payment_status === 'partially_paid'
+                    ? 'Hệ thống đã xác nhận thanh toán cọc 50%. Nhấn OK để xem lịch sử đặt sân.'
+                    : 'Hệ thống đã xác nhận thanh toán thành công. Nhấn OK để xem lịch sử đặt sân.',
+            icon: 'success',
+            confirmButtonText: 'OK',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            confirmButtonColor: '#198754',
+        }).then(() => {
+            navigate(getHistoryPathByRole(getStoredAuthData()));
+        });
+    }, [bookingData?.payment_status, isConfirmedByBank, navigate]);
+
     // Format thời gian hiển thị (MM:SS)
     const formatTime = (seconds) => {
         if (seconds === null) return "--:--";
@@ -79,37 +133,18 @@ const PaymentPage = () => {
 
     // Ưu tiên dữ liệu từ Database, nếu chưa có thì dùng từ state
     const amount = bookingData?.amount_paid || stateAmount || 0;
-    const description = stateDescription || `Thanh toan san ${bookingData?.field?.name || ''}`;
+    const paymentReference = bookingData?.payment_reference || stateDescription || `BK${bookingId}`;
     
     // Thông tin ngân hàng của chủ sân
     const ownerBank = bookingData?.field?.stadium?.owner;
-    const BANK_ID = ownerBank?.bank_name || "MB"; 
-    const ACCOUNT_NO = ownerBank?.bank_account || "0901234567";
-    const ACCOUNT_NAME = ownerBank?.name || "VO DUONG HONG LAM";
+    const BANK_ID = ownerBank?.bank_name ? String(ownerBank.bank_name).trim() : '';
+    const ACCOUNT_NO = ownerBank?.bank_account ? String(ownerBank.bank_account).trim() : '';
+    const ACCOUNT_NAME = ownerBank?.name ? String(ownerBank.name).trim() : '';
+    const hasOwnerBankAccount = Boolean(BANK_ID && ACCOUNT_NO && ACCOUNT_NAME);
     
-    const qrUrl = `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-compact.png?amount=${amount}&addInfo=${encodeURIComponent(description + " ID " + bookingId)}&accountName=${encodeURIComponent(ACCOUNT_NAME)}`;
-
-    const handleConfirm = async () => {
-        try {
-            const authData = JSON.parse(localStorage.getItem('user'));
-            const token = authData?.token;
-
-            // Gọi API cập nhật trạng thái đã thanh toán
-            await axios.put(`http://localhost:5000/api/bookings/update-payment/${bookingId}`, 
-                { 
-                    payment_status: 'paid',
-                    payment_method: 'VNPay/Chuyển khoản' 
-                },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-
-            Swal.fire("Thành công", "Xác nhận thanh toán thành công! Vui lòng chờ chủ sân duyệt.", "success")
-            .then(() => navigate(getHistoryPathByRole(getStoredAuthData())));
-        } catch (error) {
-            console.error("Lỗi xác nhận:", error);
-            Swal.fire("Lỗi", "Có lỗi xảy ra khi xác nhận thanh toán.", "error");
-        }
-    };
+    const qrUrl = hasOwnerBankAccount
+        ? `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-compact.png?amount=${amount}&addInfo=${encodeURIComponent(paymentReference)}&accountName=${encodeURIComponent(ACCOUNT_NAME)}`
+        : null;
 
     const handlePayLater = () => {
         Swal.fire({
@@ -151,6 +186,12 @@ const PaymentPage = () => {
 
     if (loading) return <div className="text-center mt-5">Đang tải thông tin thanh toán...</div>;
 
+    const paymentStatusMessage = isConfirmedByBank
+        ? bookingData?.payment_status === 'partially_paid'
+            ? 'Hệ thống đã xác nhận thanh toán cọc 50% thành công.'
+            : 'Hệ thống đã xác nhận thanh toán thành công.'
+        : 'Hệ thống sẽ tự động xác nhận sau khi ngân hàng ghi nhận đúng giao dịch.';
+
     return (
         <div className="container mt-5">
             <div className="row justify-content-center">
@@ -160,8 +201,22 @@ const PaymentPage = () => {
                         <p className="text-muted small mb-3">Đơn hàng #{bookingId}</p>
                         <div className="alert alert-info py-2 small mb-3">
                             <i className="bi bi-info-circle me-2"></i>
-                            Sử dụng <strong>App Ngân hàng</strong> hoặc <strong>MoMo</strong> để quét mã VietQR này.
+                            Sử dụng <strong>App Ngân hàng</strong> để quét mã VietQR này. Hệ thống sẽ tự động xác nhận sau khi ngân hàng ghi nhận đúng giao dịch.
                         </div>
+
+                        {!hasOwnerBankAccount && (
+                            <div className="alert alert-warning py-2 small mb-3">
+                                <i className="bi bi-exclamation-triangle me-2"></i>
+                                Chủ sân này chưa cập nhật thông tin tài khoản nhận tiền. Vui lòng liên hệ chủ sân hoặc chọn sân khác.
+                            </div>
+                        )}
+
+                        {isConfirmedByBank && (
+                            <div className="alert alert-success py-2 small mb-3">
+                                <i className="bi bi-check-circle me-2"></i>
+                                {paymentStatusMessage}
+                            </div>
+                        )}
 
                         {/* ĐỒNG HỒ ĐẾM NGƯỢC */}
                         {timeLeft !== null && (
@@ -171,28 +226,55 @@ const PaymentPage = () => {
                             </div>
                         )}
                         
-                        <div className="bg-light p-3 rounded-4 mb-3">
-                            <img src={qrUrl} alt="QR Code" className="img-fluid" style={{ maxHeight: '300px' }} />
-                        </div>
+                        {hasOwnerBankAccount && (
+                            <div className="bg-light p-3 rounded-4 mb-3">
+                                <img src={qrUrl} alt="QR Code" className="img-fluid" style={{ maxHeight: '300px' }} />
+                            </div>
+                        )}
 
                         <div className="text-start mb-4">
+                            <div className="d-flex justify-content-between mb-2 small">
+                                <span>Ngân hàng nhận:</span>
+                                <span className={hasOwnerBankAccount ? 'text-dark' : 'text-danger'}>
+                                    {hasOwnerBankAccount ? BANK_ID : 'Chưa cấu hình'}
+                                </span>
+                            </div>
+                            <div className="d-flex justify-content-between mb-2 small">
+                                <span>Số tài khoản:</span>
+                                <span className={hasOwnerBankAccount ? 'text-dark' : 'text-danger'}>
+                                    {hasOwnerBankAccount ? ACCOUNT_NO : 'Chưa cấu hình'}
+                                </span>
+                            </div>
+                            <div className="d-flex justify-content-between mb-2 small">
+                                <span>Chủ tài khoản:</span>
+                                <span className={hasOwnerBankAccount ? 'text-dark' : 'text-danger'}>
+                                    {hasOwnerBankAccount ? ACCOUNT_NAME : 'Chưa cấu hình'}
+                                </span>
+                            </div>
                             <div className="d-flex justify-content-between mb-2">
                                 <span>Số tiền:</span>
                                 <span className="fw-bold text-danger">{Number(amount).toLocaleString()}đ</span>
                             </div>
-                            <div className="d-flex justify-content-between small">
+                            <div className="d-flex justify-content-between mb-2 small">
                                 <span>Nội dung:</span>
-                                <span className="text-primary">{description} ID {bookingId}</span>
+                                <span className="text-primary">{paymentReference}</span>
+                            </div>
+                            <div className={`small ${isConfirmedByBank ? 'text-success' : 'text-muted'}`}>
+                                {paymentStatusMessage}
                             </div>
                         </div>
 
-                        <button className="btn btn-success w-100 rounded-pill py-2 mb-2" onClick={handleConfirm}>
-                            Tôi đã chuyển khoản thành công
-                        </button>
+                        {!isConfirmedByBank && hasOwnerBankAccount && (
+                            <button className="btn btn-outline-primary w-100 rounded-pill py-2 mb-2" type="button" disabled>
+                                Đang chờ ngân hàng xác nhận giao dịch
+                            </button>
+                        )}
                         
-                        <button className="btn btn-outline-secondary w-100 rounded-pill py-2" onClick={handlePayLater}>
-                            Thanh toán sau
-                        </button>
+                        {!isConfirmedByBank && hasOwnerBankAccount && (
+                            <button className="btn btn-outline-secondary w-100 rounded-pill py-2" onClick={handlePayLater}>
+                                Thanh toán sau
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>

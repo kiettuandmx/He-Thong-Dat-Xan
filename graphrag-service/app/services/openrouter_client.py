@@ -122,9 +122,12 @@ class OpenRouterClient:
             response.raise_for_status()
             data = response.json()
             answer = self._sanitize_answer(data["choices"][0]["message"]["content"])
+            recommendations = payload["candidate_fields"]
+            if payload.get("response_mode") == "no_match":
+                recommendations = payload.get("available_suggestions", [])
             return {
                 "answer": answer,
-                "recommendations": payload["candidate_fields"],
+                "recommendations": recommendations,
             }
         except Exception as error:
             raise RuntimeError("OpenRouter recommendation request failed") from error
@@ -197,10 +200,15 @@ class OpenRouterClient:
             "Khong dung markdown, khong dung **, khong viet JSON, khong dung mau cau mo dau/ket thuc co dinh lap lai moi lan.\n"
             f"Response mode: {response_mode}\n"
             "Cach tra loi mong muon:\n"
-            "- Neu response_mode la exact_match, hay tom tat ngan gon xem phuong an nao hop hon va vi sao.\n"
+            "- Neu response_mode la exact_match, phai nhac du tat ca cac san trong Candidate fields.\n"
+            "- Khong duoc bo sot san nao trong Candidate fields, du ban muon tom tat ngan gon.\n"
+            "- Neu Candidate fields co 3 san thi phan tra loi phai de cap du ca 3 san, va neu co 5 san thi phai de cap du ca 5 san.\n"
+            "- Co the nhan manh san nao noi bat hon, nhung khong duoc noi theo kieu chi co 2 san phu hop neu context dang co nhieu hon.\n"
             "- Neu response_mode la no_match, phai noi ro rang la hien chua co du lieu khop exact voi nhu cau nay.\n"
             "- Neu response_mode la no_match va co available_suggestions, chi duoc goi y nhung san trong danh sach nay nhu cac lua chon hien dang co de tham khao.\n"
             "- Khong duoc noi nhu the available_suggestions la match exact. Phai phan biet ro giua khop exact va san hien dang co.\n"
+            "- Neu response_mode la needs_clarification, khong duoc goi y san nao. Hay hoi them mon the thao, khu vuc, khung gio hoac so nguoi de loc chinh xac hon.\n"
+            "- Khong duoc tu suy dien mon the thao, khu vuc, khung gio hoac muc gia neu nguoi dung chua noi ro.\n"
             "- Co the xuong dong de de doc, nhung dung danh so may moc neu khong can thiet.\n"
             "- Neu co trade-off, noi ngan gon theo kieu hoi thoai, vi du san nay gia mem hon, san kia tot hon neu uu tien chat luong.\n"
             f"Constraints da hieu: {constraints}\n"

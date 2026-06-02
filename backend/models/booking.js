@@ -20,6 +20,12 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'booking_id',
         as: 'foodOrders',
       });
+      if (models.BookingPaymentReceipt) {
+        Booking.hasMany(models.BookingPaymentReceipt, {
+          foreignKey: 'booking_id',
+          as: 'paymentReceipts',
+        });
+      }
     }
   }
 
@@ -51,6 +57,11 @@ module.exports = (sequelize, DataTypes) => {
     payment_method: {
       type: DataTypes.STRING(50),
       defaultValue: 'cash'
+    },
+    payment_reference: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+      unique: true,
     },
     payment_recorded_at: {
       type: DataTypes.DATE,

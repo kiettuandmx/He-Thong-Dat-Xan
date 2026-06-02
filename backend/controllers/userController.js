@@ -2,7 +2,7 @@ const { User } = require('../models');
 
 const updateProfile = async (req, res) => {
     try {
-        const { full_name, phone } = req.body;
+        const { full_name, phone, bank_name, bank_account } = req.body;
         const { id } = req.params;
         const isAdmin = Number(req.user?.role) === 3;
 
@@ -18,6 +18,9 @@ const updateProfile = async (req, res) => {
         // Cập nhật thông tin (Chỉ cho phép cập nhật tên và sđt, không cập nhật email/role/password ở đây)
         user.name = full_name || user.name;
         user.phone = phone || user.phone;
+        user.bank_name = bank_name !== undefined ? String(bank_name || '').trim() : user.bank_name;
+        user.bank_account =
+            bank_account !== undefined ? String(bank_account || '').trim() : user.bank_account;
         await user.save();
 
         res.json({ success: true, message: "Cập nhật thành công", user: {
@@ -25,6 +28,8 @@ const updateProfile = async (req, res) => {
             name: user.name,
             email: user.email,
             phone: user.phone,
+            bank_name: user.bank_name,
+            bank_account: user.bank_account,
             role: user.role_id
         }});
     } catch (error) {

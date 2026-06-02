@@ -6,7 +6,7 @@ export async function streamAiChat(message, handlers = {}) {
   });
 
   if (!response.ok || !response.body) {
-    throw new Error('AI service unavailable');
+    throw new Error(await readErrorMessage(response));
   }
 
   const reader = response.body.getReader();
@@ -45,6 +45,15 @@ export async function streamAiChat(message, handlers = {}) {
   }
 
   return finalPayload;
+}
+
+async function readErrorMessage(response) {
+  try {
+    const payload = await response.json();
+    return payload?.error || payload?.detail || 'AI service unavailable';
+  } catch {
+    return 'AI service unavailable';
+  }
 }
 
 function consumeSseBuffer(buffer) {

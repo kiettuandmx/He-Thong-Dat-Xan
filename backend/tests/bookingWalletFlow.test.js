@@ -195,6 +195,78 @@ test('createBooking marks wallet-paid booking as paid without redirect flow', as
   );
 });
 
+test('createBooking assigns a payment reference for direct transfer bookings', async () => {
+  const createdBookings = [];
+
+  await withBookingControllerMocks(
+    {
+      Booking: {
+        findOne: async () => null,
+        create: async (payload) => {
+          const created = {
+            id: 120,
+            ...payload,
+            async update(nextPayload) {
+              Object.assign(this, nextPayload);
+              return this;
+            },
+          };
+          createdBookings.push(created);
+          return created;
+        },
+      },
+      Field: {
+        findByPk: async () => ({
+          id: 3,
+          price_per_hour: 200000,
+          stadium: { owner_id: 44 },
+        }),
+      },
+      Stadium: {},
+      User: {},
+      Coupon: { findOne: async () => null },
+      Wallet: {},
+      WalletTransaction: { create: async () => ({}) },
+      Sequelize: { Op: { notIn: Symbol('notIn') } },
+      sequelize: {
+        transaction: async () => ({
+          LOCK: { UPDATE: 'UPDATE' },
+          finished: false,
+          commit: async function commit() { this.finished = 'commit'; },
+          rollback: async function rollback() { this.finished = 'rollback'; },
+        }),
+      },
+    },
+    async (controller) => {
+      const response = createResponseRecorder();
+
+      await controller.createBooking(
+        {
+          body: {
+            field_id: 3,
+            stadium_id: 5,
+            booking_date: '2026-05-20',
+            start_time: '18:00',
+            end_time: '19:00',
+            payment_type: 'deposit',
+            payment_method: 'bank_transfer',
+          },
+          headers: {},
+          ip: '127.0.0.1',
+          user: { id: 7, role_id: 1 },
+        },
+        response
+      );
+
+      assert.equal(response.statusCode, 201);
+      assert.equal(response.payload.data.payment_reference, 'BK120');
+      assert.equal(createdBookings[0].payment_reference, 'BK120');
+      assert.equal(response.payload.data.payment_status, 'unpaid');
+      assert.equal(response.payload.data.status, 'pending');
+    }
+  );
+});
+
 test('refundBooking credits money back into wallet for refunded bookings', async () => {
   const walletTransactions = [];
   const booking = {

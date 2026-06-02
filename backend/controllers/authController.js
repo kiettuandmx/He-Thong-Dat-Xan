@@ -4,32 +4,9 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const { Op } = require('sequelize');
 const db = require('../models'); 
-const { getIO, userSockets } = require('../socket');
 // Thay vì dùng { User }, ta lấy trực tiếp từ đối tượng db
 // Lưu ý: Kiểm tra xem trong DB/Model bạn đặt tên là 'User' hay 'user'
 const UserModel = db.User || db.user; 
-
-const createNotification = async (user_id, content) => {
-    try {
-        const noti = await db.Notification.create({
-            user_id,
-            content,
-            is_read: false
-        });
-
-        // realtime
-        const io = getIO();
-        const socketId = userSockets[user_id];
-
-        if (socketId) {
-            io.to(socketId).emit('newNotification', noti);
-        }
-
-        return noti;
-    } catch (error) {
-        console.error('Lỗi tạo notification:', error);
-    }
-};
 
 exports.register = async (req, res) => {
     try {
@@ -62,12 +39,6 @@ exports.login = async (req, res) => {
             { id: user.id, role: user.role_id }, // Thường Sequelize mặc định là .id, nếu bạn đặt là .user_id thì giữ nguyên
             process.env.JWT_SECRET || 'secret_key', // Thêm dự phòng nếu chưa có file .env
             { expiresIn: '1d' }
-        );
-
-        // 🔔 Tạo thông báo đăng nhập thành công
-        await createNotification(
-            user.id,
-            "Bạn vừa đăng nhập thành công vào hệ thống!"
         );
 
         res.json({

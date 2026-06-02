@@ -65,6 +65,8 @@ const normalizePaymentMethod = (value) => String(value || '').trim().toLowerCase
 const shouldPreserveProcessedBookingStatus = (status) =>
     ['confirmed', 'refunded', 'rejected', 'cancelled'].includes(status);
 
+const buildBookingPaymentReference = (bookingId) => `BK${bookingId}`;
+
 const createNotification = async (userIdOrPayload, content) => {
     if (typeof userIdOrPayload === 'object' && userIdOrPayload !== null) {
         return createNotificationRecord(userIdOrPayload);
@@ -1010,6 +1012,15 @@ exports.createBooking = async (req, res) => {
             discount_amount: discountAmount,
         }, { transaction });
 
+        if (!isWalletPayment) {
+            const paymentReference = buildBookingPaymentReference(newBooking.id);
+            if (typeof newBooking.update === 'function') {
+                await newBooking.update({ payment_reference: paymentReference }, { transaction });
+            } else {
+                newBooking.payment_reference = paymentReference;
+            }
+        }
+
         if (isWalletPayment) {
             await applyWalletTransaction(
                 db,
@@ -1200,12 +1211,26 @@ exports.getStadiumAnalytics = async (req, res) => {
 //Hàm thông báo
 exports.getNotifications = async (req, res) => {
     try {
-        const notifications = await db.Notification.findAll({
-            where: { user_id: req.user.id },
-            order: [['createdAt', 'DESC']]
-        });
+        const requestedLimit = Number.parseInt(req.query.limit, 10);
+        const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
+            ? Math.min(requestedLimit, 50)
+            : 20;
 
-        res.json(notifications);
+        const [notifications, unreadCount] = await Promise.all([
+            db.Notification.findAll({
+                where: { user_id: req.user.id },
+                order: [['createdAt', 'DESC']],
+                limit,
+            }),
+            db.Notification.count({
+                where: { user_id: req.user.id, is_read: false },
+            }),
+        ]);
+
+        res.json({
+            items: notifications,
+            unreadCount,
+        });
 
     } catch (error) {
         res.status(500).json({ message: error.message });

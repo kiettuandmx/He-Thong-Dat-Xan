@@ -78,20 +78,35 @@ def chat_stream(request: ChatRequest) -> StreamingResponse:
             )
             return
 
-        try:
-            answer_parts = []
-            for chunk in llm_client.stream_recommendation(turn["payload"]):
-                if not chunk:
-                    continue
-                answer_parts.append(chunk)
-                yield _sse_event("token", {"content": chunk})
+        if turn["mode"] == "clarification":
+            try:
+                result = llm_client.generate_recommendation(turn["payload"])
+                answer = (result.get("answer") or "").strip()
+                if answer:
+                    yield _sse_event("token", {"content": answer})
+                yield _sse_event(
+                    "done",
+                    {
+                        "answer": answer,
+                        "recommendations": [],
+                        "constraints": turn["constraints"].model_dump(),
+                    },
+                )
+            except RuntimeError as error:
+                yield _sse_event("error", {"message": str(error)})
+            return
 
-            answer = "".join(answer_parts).strip()
+        try:
+            result = llm_client.generate_recommendation(turn["payload"])
+            answer = (result.get("answer") or "").strip()
+            if answer:
+                yield _sse_event("token", {"content": answer})
             yield _sse_event(
                 "done",
                 {
                     "answer": answer,
-                    "recommendations": turn["payload"]["candidate_fields"],
+                    "recommendations": result.get("recommendations")
+                    or turn["payload"]["candidate_fields"],
                     "constraints": turn["constraints"].model_dump(),
                 },
             )
