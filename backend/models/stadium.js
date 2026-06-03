@@ -14,6 +14,13 @@ module.exports = (sequelize, DataTypes) => {
         as: 'fields',
       });
 
+      if (models.MenuItem) {
+        Stadium.hasMany(models.MenuItem, {
+          foreignKey: 'stadium_id',
+          as: 'menuItems',
+        });
+      }
+
       Stadium.belongsTo(models.User, {
         foreignKey: 'owner_id',
         as: 'owner',

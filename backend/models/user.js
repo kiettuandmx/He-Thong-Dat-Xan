@@ -45,6 +45,13 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "user_id",
         as: "foodOrders",
       });
+
+      if (models.MenuItem) {
+        User.hasMany(models.MenuItem, {
+          foreignKey: "owner_id",
+          as: "menuItems",
+        });
+      }
     }
   }
   User.init({

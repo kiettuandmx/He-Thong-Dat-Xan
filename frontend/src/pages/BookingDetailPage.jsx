@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import FoodOrderPicker from '../components/FoodOrderPicker';
-import { getFieldMenu } from '../services/menuService';
+import { getStadiumMenu } from '../services/menuService';
 import { createFoodOrder, getFoodOrdersForBooking } from '../services/foodOrderService';
 
 const getAuthHeaders = () => {
@@ -12,10 +12,12 @@ const getAuthHeaders = () => {
 
 const BookingDetailPage = () => {
   const { bookingId } = useParams();
+  const navigate = useNavigate();
   const [booking, setBooking] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
   const [foodOrders, setFoodOrders] = useState([]);
   const [selections, setSelections] = useState({});
+  const [paymentMethod, setPaymentMethod] = useState('wallet');
 
   const loadAll = async () => {
     const bookingResponse = await axios.get(`http://localhost:5000/api/bookings/${bookingId}`, {
@@ -25,7 +27,7 @@ const BookingDetailPage = () => {
     setBooking(bookingData);
 
     const [menuResponse, orderResponse] = await Promise.all([
-      getFieldMenu(bookingData.field_id),
+      getStadiumMenu(bookingData.stadium_id || bookingData.field?.stadium_id),
       getFoodOrdersForBooking(bookingId),
     ]);
 
@@ -44,6 +46,16 @@ const BookingDetailPage = () => {
     }));
   };
 
+  const isFoodOrderingAvailable = useMemo(() => {
+    if (!booking?.booking_date || !booking?.end_time) {
+      return false;
+    }
+
+    const now = new Date();
+    const end = new Date(`${booking.booking_date}T${booking.end_time}`);
+    return now <= end;
+  }, [booking]);
+
   const handleCreateOrder = async () => {
     const items = Object.entries(selections)
       .filter(([, quantity]) => quantity > 0)
@@ -56,9 +68,19 @@ const BookingDetailPage = () => {
 
     await createFoodOrder(bookingId, {
       items,
-      payment_method: 'wallet',
+      payment_method: paymentMethod,
     });
     setSelections({});
+    const response = await getFoodOrdersForBooking(bookingId);
+    const rows = response.data?.data || [];
+    setFoodOrders(rows);
+    const latestOrder = rows[0];
+
+    if (paymentMethod === 'bank_transfer' && latestOrder?.payment_reference) {
+      navigate(`/food-order-payment/${latestOrder.id}`);
+      return;
+    }
+
     await loadAll();
   };
 
@@ -76,17 +98,44 @@ const BookingDetailPage = () => {
         </div>
       </section>
 
-      <section className="detail-panel">
-        <FoodOrderPicker
-          items={menuItems}
-          onDecrease={(itemId) => updateQuantity(itemId, -1)}
-          onIncrease={(itemId) => updateQuantity(itemId, 1)}
-          selections={selections}
-        />
-        <button className="primary-button mt-4" onClick={handleCreateOrder} type="button">
-          Gọi thêm món
-        </button>
-      </section>
+      {isFoodOrderingAvailable ? (
+        <section className="detail-panel">
+          <div className="mb-3 text-muted small">
+            Bạn có thể đặt thêm món trước và trong giờ chơi. Sau khi hết giờ, hệ thống sẽ tự khóa tính năng này.
+          </div>
+          <FoodOrderPicker
+            items={menuItems}
+            onDecrease={(itemId) => updateQuantity(itemId, -1)}
+            onIncrease={(itemId) => updateQuantity(itemId, 1)}
+            selections={selections}
+          />
+          <div className="d-flex gap-2 mt-3 flex-wrap">
+            <button
+              className={`secondary-button ${paymentMethod === 'wallet' ? 'active' : ''}`}
+              onClick={() => setPaymentMethod('wallet')}
+              type="button"
+            >
+              Thanh toán ví
+            </button>
+            <button
+              className={`secondary-button ${paymentMethod === 'bank_transfer' ? 'active' : ''}`}
+              onClick={() => setPaymentMethod('bank_transfer')}
+              type="button"
+            >
+              Chuyển khoản
+            </button>
+          </div>
+          <button className="primary-button mt-4" onClick={handleCreateOrder} type="button">
+            Gọi thêm món
+          </button>
+        </section>
+      ) : (
+        <section className="detail-panel">
+          <div className="listing-state-card">
+            Khung giờ của booking này đã kết thúc nên bạn không thể đặt thêm đồ ăn hoặc nước uống nữa.
+          </div>
+        </section>
+      )}
 
       <section className="detail-panel">
         <h2 className="h5 fw-bold mb-3">Lịch sử order món</h2>
@@ -97,6 +146,9 @@ const BookingDetailPage = () => {
                 <strong>Order #{order.id}</strong>
                 <div className="small text-muted">Trạng thái: {order.status}</div>
                 <div className="small text-muted">Thanh toán: {order.payment_status}</div>
+                {order.payment_reference && (
+                  <div className="small text-muted">Mã thanh toán: {order.payment_reference}</div>
+                )}
               </div>
             </div>
           ))}

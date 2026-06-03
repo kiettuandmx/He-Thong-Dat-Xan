@@ -16,6 +16,7 @@ const FOOD_ORDER_SOURCE = {
 const FOOD_ORDER_FULFILLMENT = {
   PICKUP_AT_FIELD: 'pickup_at_field',
 };
+const FOOD_ORDER_TRANSFER_METHODS = new Set(['bank_transfer', 'sepay']);
 
 const normalizeTimeValue = (value) => {
   if (!value) return '00:00:00';
@@ -76,11 +77,15 @@ const normalizeMenuItems = (menuItems, requestedItems) => {
 
 const resolveFoodOrderPaymentStatus = (paymentMethod) => {
   const normalized = String(paymentMethod || '').trim().toLowerCase();
-  if (['wallet', 'vnpay', 'momo'].includes(normalized)) {
-    return FOOD_ORDER_PAYMENT_STATUS.PAID;
+  if (['wallet', 'vnpay', 'momo', 'sepay', 'bank_transfer'].includes(normalized)) {
+    return normalized === 'wallet'
+      ? FOOD_ORDER_PAYMENT_STATUS.PAID
+      : FOOD_ORDER_PAYMENT_STATUS.UNPAID;
   }
   return FOOD_ORDER_PAYMENT_STATUS.UNPAID;
 };
+
+const buildFoodOrderPaymentReference = (bookingId, foodOrderId) => `FO${bookingId}-${foodOrderId}`;
 
 async function resolveBookingAndMenuItems(db, { bookingId, userId, role, items, transaction }) {
   const booking = await db.Booking.findByPk(bookingId, {
@@ -99,7 +104,7 @@ async function resolveBookingAndMenuItems(db, { bookingId, userId, role, items, 
 
   const menuItems = await db.MenuItem.findAll({
     where: {
-      field_id: booking.field_id,
+      stadium_id: booking.field.stadium_id,
       id: { [Op.in]: items.map((item) => Number(item.menu_item_id || item.menuItemId)) },
       is_available: true,
     },
@@ -129,14 +134,50 @@ const ensureFieldOwnerAccess = (field, ownerId, role) => {
   }
 };
 
-async function createMenuItem(db, { fieldId, ownerId, role, name, price, image, isAvailable }) {
+const ensureStadiumOwnerAccess = (stadium, ownerId, role) => {
+  if (!stadium) throw new Error('STADIUM_NOT_FOUND');
+  if (Number(role) === 3) return;
+  if (Number(stadium.owner_id) !== Number(ownerId)) {
+    throw new Error('FORBIDDEN_FOOD_ORDER_ACCESS');
+  }
+};
+
+const ensureMenuItemOwnerAccess = (menuItem, ownerId, role) => {
+  if (!menuItem) throw new Error('MENU_ITEM_NOT_FOUND');
+  if (Number(role) === 3) return;
+  const resolvedOwnerId = menuItem.stadium?.owner_id ?? menuItem.owner_id;
+  if (Number(resolvedOwnerId) !== Number(ownerId)) {
+    throw new Error('FORBIDDEN_FOOD_ORDER_ACCESS');
+  }
+};
+
+async function resolveFieldWithOwner(db, fieldId, transaction) {
   const field = await db.Field.findByPk(fieldId, {
     include: { model: db.Stadium, as: 'stadium' },
+    transaction,
   });
-  ensureFieldOwnerAccess(field, ownerId, role);
+
+  if (!field) {
+    throw new Error('FIELD_NOT_FOUND');
+  }
+
+  return field;
+}
+
+async function resolveStadiumWithOwner(db, stadiumId, transaction) {
+  const stadium = await db.Stadium.findByPk(stadiumId, { transaction });
+  if (!stadium) {
+    throw new Error('STADIUM_NOT_FOUND');
+  }
+  return stadium;
+}
+
+async function createMenuItem(db, { stadiumId, ownerId, role, name, price, image, isAvailable }) {
+  const stadium = await resolveStadiumWithOwner(db, stadiumId);
+  ensureStadiumOwnerAccess(stadium, ownerId, role);
 
   return db.MenuItem.create({
-    field_id: fieldId,
+    stadium_id: stadium.id,
     name,
     price,
     image: image || null,
@@ -144,11 +185,50 @@ async function createMenuItem(db, { fieldId, ownerId, role, name, price, image, 
   });
 }
 
-async function listFieldMenu(db, fieldId) {
+async function listStadiumMenu(db, stadiumId) {
+  const stadium = await resolveStadiumWithOwner(db, stadiumId);
+
   return db.MenuItem.findAll({
-    where: { field_id: fieldId },
+    where: { stadium_id: stadium.id },
     order: [['createdAt', 'DESC']],
   });
+}
+
+async function updateMenuItemByOwner(
+  db,
+  { menuItemId, ownerId, role, name, price, image, isAvailable }
+) {
+  const menuItem = await db.MenuItem.findByPk(menuItemId, {
+    include: [{ model: db.Stadium, as: 'stadium' }],
+  });
+  ensureMenuItemOwnerAccess(menuItem, ownerId, role);
+
+  return menuItem.update({
+    name: name ?? menuItem.name,
+    price: price ?? menuItem.price,
+    image: image !== undefined ? image : menuItem.image,
+    is_available: isAvailable ?? menuItem.is_available,
+  });
+}
+
+async function setMenuItemAvailabilityByOwner(db, { menuItemId, ownerId, role, isAvailable }) {
+  const menuItem = await db.MenuItem.findByPk(menuItemId, {
+    include: [{ model: db.Stadium, as: 'stadium' }],
+  });
+  ensureMenuItemOwnerAccess(menuItem, ownerId, role);
+
+  return menuItem.update({
+    is_available: Boolean(isAvailable),
+  });
+}
+
+async function deleteMenuItemByOwner(db, { menuItemId, ownerId, role }) {
+  const menuItem = await db.MenuItem.findByPk(menuItemId, {
+    include: [{ model: db.Stadium, as: 'stadium' }],
+  });
+  ensureMenuItemOwnerAccess(menuItem, ownerId, role);
+  await menuItem.destroy();
+  return menuItem;
 }
 
 async function createFoodOrderForBooking(db, { bookingId, userId, role, items, paymentMethod }) {
@@ -162,9 +242,16 @@ async function createFoodOrderForBooking(db, { bookingId, userId, role, items, p
       items,
       transaction,
     });
+    assertBookingOrderWindow({
+      bookingDate: booking.booking_date,
+      endTime: booking.end_time,
+    });
 
     const totals = buildFoodOrderTotal(normalizeMenuItems(menuItems, items));
-    const normalizedPaymentMethod = 'counter';
+    const normalizedPaymentMethod = String(paymentMethod || 'wallet').trim().toLowerCase();
+    const paymentStatus = resolveFoodOrderPaymentStatus(normalizedPaymentMethod);
+    const paymentRecordedAt =
+      paymentStatus === FOOD_ORDER_PAYMENT_STATUS.PAID ? new Date() : null;
 
     const foodOrder = await db.FoodOrder.create(
       {
@@ -174,7 +261,8 @@ async function createFoodOrderForBooking(db, { bookingId, userId, role, items, p
         status: FOOD_ORDER_STATUS.PENDING,
         total_amount: totals.totalAmount,
         payment_method: normalizedPaymentMethod,
-        payment_status: FOOD_ORDER_PAYMENT_STATUS.UNPAID,
+        payment_status: paymentStatus,
+        payment_recorded_at: paymentRecordedAt,
         order_source: FOOD_ORDER_SOURCE.POST_BOOKING,
         fulfillment_method: FOOD_ORDER_FULFILLMENT.PICKUP_AT_FIELD,
         ordered_at: new Date(),
@@ -193,6 +281,30 @@ async function createFoodOrderForBooking(db, { bookingId, userId, role, items, p
           line_total: item.lineTotal,
         },
         { transaction }
+      );
+    }
+
+    if (paymentStatus !== FOOD_ORDER_PAYMENT_STATUS.PAID && FOOD_ORDER_TRANSFER_METHODS.has(normalizedPaymentMethod)) {
+      await foodOrder.update(
+        {
+          payment_reference: buildFoodOrderPaymentReference(booking.id, foodOrder.id),
+        },
+        { transaction }
+      );
+    }
+
+    if (normalizedPaymentMethod === 'wallet') {
+      await applyWalletTransaction(
+        db,
+        {
+          userId: booking.user_id,
+          amount: totals.totalAmount,
+          type: WALLET_TRANSACTION_TYPES.FOOD_ORDER_PAYMENT,
+          description: `Thanh toan order mon #${foodOrder.id} bang vi`,
+          referenceType: 'food_order',
+          referenceId: foodOrder.id,
+        },
+        transaction
       );
     }
 
@@ -245,7 +357,12 @@ async function createCheckoutFoodOrder(db, { bookingId, userId, role, items, pay
       status: FOOD_ORDER_STATUS.PENDING,
       total_amount: totals.totalAmount,
       payment_method: normalizedPaymentMethod,
-      payment_status: paymentStatus,
+      payment_status:
+        paymentStatus === FOOD_ORDER_PAYMENT_STATUS.PAID
+          ? FOOD_ORDER_PAYMENT_STATUS.PAID
+          : FOOD_ORDER_PAYMENT_STATUS.UNPAID,
+      payment_recorded_at:
+        paymentStatus === FOOD_ORDER_PAYMENT_STATUS.PAID ? new Date() : null,
       order_source: FOOD_ORDER_SOURCE.BOOKING_CHECKOUT,
       fulfillment_method: FOOD_ORDER_FULFILLMENT.PICKUP_AT_FIELD,
       ordered_at: new Date(),
@@ -285,6 +402,42 @@ async function listFoodOrdersForBooking(db, { bookingId, userId, role }) {
     ],
     order: [['ordered_at', 'DESC']],
   });
+}
+
+async function getFoodOrderById(db, { foodOrderId, userId, role }) {
+  const foodOrder = await db.FoodOrder.findByPk(foodOrderId, {
+    include: [
+      {
+        model: db.Booking,
+        as: 'booking',
+        include: [
+          {
+            model: db.Field,
+            as: 'field',
+            include: [
+              {
+                model: db.Stadium,
+                as: 'stadium',
+                include: [{ model: db.User, as: 'owner', attributes: ['name', 'bank_name', 'bank_account', 'phone'] }],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        model: db.FoodOrderItem,
+        as: 'items',
+        include: [{ model: db.MenuItem, as: 'menuItem' }],
+      },
+    ],
+  });
+
+  if (!foodOrder) {
+    throw new Error('FOOD_ORDER_NOT_FOUND');
+  }
+
+  ensureBookingOwnership(foodOrder.booking, userId, role);
+  return foodOrder;
 }
 
 async function updateFoodOrderStatusByOwner(db, { foodOrderId, ownerId, role, status }) {
@@ -328,9 +481,13 @@ module.exports = {
   assertBookingOrderWindow,
   advanceFoodOrderStatus,
   createMenuItem,
-  listFieldMenu,
+  listStadiumMenu,
+  updateMenuItemByOwner,
+  setMenuItemAvailabilityByOwner,
+  deleteMenuItemByOwner,
   createCheckoutFoodOrder,
   createFoodOrderForBooking,
+  getFoodOrderById,
   listFoodOrdersForBooking,
   updateFoodOrderStatusByOwner,
 };

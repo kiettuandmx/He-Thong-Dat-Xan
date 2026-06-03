@@ -8,12 +8,20 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'booking_id',
         as: 'booking',
       });
+      BookingPaymentReceipt.belongsTo(models.FoodOrder, {
+        foreignKey: 'food_order_id',
+        as: 'foodOrder',
+      });
     }
   }
 
   BookingPaymentReceipt.init(
     {
       booking_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+      food_order_id: {
         type: DataTypes.INTEGER,
         allowNull: true,
       },

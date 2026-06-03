@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ReviewModal from '../components/ReviewModal';
 import ComplaintModal from '../components/ComplaintModal';
@@ -98,6 +99,16 @@ const ReviewItem = ({ rev, onRefresh, getAuthToken }) => {
     );
 };
 
+const isBookingOrderAllowed = (booking) => {
+    if (!booking?.booking_date || !booking?.end_time) {
+        return false;
+    }
+
+    const now = new Date();
+    const end = new Date(`${booking.booking_date}T${booking.end_time}`);
+    return now <= end;
+};
+
 // --- COMPONENT CHÍNH: LỊCH SỬ ĐẶT SÂN ---
 const BookingHistory = () => {
     const { user } = useAuth();
@@ -176,6 +187,15 @@ const BookingHistory = () => {
     useEffect(() => {
         fetchHistory();
     }, []);
+
+    const bookingsWithWindowState = useMemo(
+        () =>
+            bookings.map((booking) => ({
+                ...booking,
+                isOrderAllowed: isBookingOrderAllowed(booking),
+            })),
+        [bookings]
+    );
 
     const handleApprove = async (bookingId) => {
         try {
@@ -289,8 +309,8 @@ const BookingHistory = () => {
             )}
 
             <div className="row g-3">
-                {bookings.length > 0 ? (
-                    bookings.map(b => (
+                {bookingsWithWindowState.length > 0 ? (
+                    bookingsWithWindowState.map(b => (
                         <div className={`col-12 card border-0 shadow-sm p-3 mb-2 rounded-4 ${b.status === 'cancelled' ? 'opacity-50 bg-light d-none' : ''}`} key={b.id}>
                             <div className="row align-items-center">
                                 <div className="col-md-4">
@@ -363,6 +383,18 @@ const BookingHistory = () => {
                                             <button className="btn btn-sm btn-warning rounded-pill px-3 shadow-sm" onClick={() => { setSelectedBookingId(b.id); setShowModal(true); }}>
                                                 Đánh giá
                                             </button>
+                                        )}
+
+                                        {!isOwner && (
+                                            <div className="mt-2">
+                                                <Link
+                                                    className={`btn btn-sm rounded-pill px-3 ${b.isOrderAllowed ? 'btn-success shadow-sm' : 'btn-outline-primary'}`}
+                                                    to={`/history/${b.id}`}
+                                                >
+                                                    <i className={`bi ${b.isOrderAllowed ? 'bi-cup-straw me-1' : 'bi-eye me-1'}`}></i>
+                                                    {b.isOrderAllowed ? 'Đặt thêm món' : 'Xem chi tiết'}
+                                                </Link>
+                                            </div>
                                         )}
 
                                         {!isOwner && ['confirmed', 'rejected', 'refunded'].includes(b.status) && (

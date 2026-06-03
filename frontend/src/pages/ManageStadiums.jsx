@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import StadiumHashtagModal from '../components/StadiumHashtagModal';
 import { formatLocationParts } from '../utils/locationHelpers';
 
@@ -12,6 +13,7 @@ const getCurrentUserId = () =>
   JSON.parse(localStorage.getItem('user') || '{}')?.user?.id;
 
 const ManageStadiums = () => {
+  const navigate = useNavigate();
   const [stadiums, setStadiums] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState(null);
@@ -251,6 +253,12 @@ const ManageStadiums = () => {
                   </div>
 
                   <div className="stadium-actions">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/owner/stadiums/${stadium.id}/menu`)}
+                    >
+                      Quản lý menu
+                    </button>
                     <button type="button" onClick={() => handleEdit(stadium)}>
                       Sửa
                     </button>

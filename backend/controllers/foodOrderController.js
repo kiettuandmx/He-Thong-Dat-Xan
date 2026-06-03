@@ -1,6 +1,7 @@
 const db = require('../models');
 const {
   createFoodOrderForBooking,
+  getFoodOrderById,
   listFoodOrdersForBooking,
   updateFoodOrderStatusByOwner,
 } = require('../utils/foodOrderService');
@@ -53,6 +54,24 @@ exports.listFoodOrdersForBooking = async (req, res) => {
     });
 
     return res.json({ success: true, data: rows });
+  } catch (error) {
+    const mapped = mapFoodOrderError(error);
+    if (mapped) {
+      return res.status(mapped.status).json({ success: false, message: mapped.message });
+    }
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getFoodOrderById = async (req, res) => {
+  try {
+    const row = await getFoodOrderById(db, {
+      foodOrderId: Number(req.params.id),
+      userId: req.user.id,
+      role: req.user.role,
+    });
+
+    return res.json({ success: true, data: row });
   } catch (error) {
     const mapped = mapFoodOrderError(error);
     if (mapped) {

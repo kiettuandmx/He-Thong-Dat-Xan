@@ -1,3 +1,5 @@
+const { Op } = require('sequelize');
+
 const MATCHED_STATUSES = {
   MATCHED: 'matched',
   MISMATCHED: 'mismatched',
@@ -10,7 +12,7 @@ const MATCHED_STATUSES = {
 const ELIGIBLE_BOOKING_STATUSES = new Set(['pending']);
 const INCOMING_TRANSFER_TYPES = new Set(['in', 'incoming', 'credit']);
 const OUTGOING_TRANSFER_TYPES = new Set(['out', 'outgoing', 'debit']);
-const PAYMENT_REFERENCE_PATTERN = /\bBK\d+\b/i;
+const PAYMENT_REFERENCE_PATTERN = /\b(?:BK\d+|FO\d+(?:-\d+)?)\b/gi;
 
 function toNumber(value) {
   const numericValue = Number(value);
@@ -19,6 +21,10 @@ function toNumber(value) {
 
 function normalizeString(value) {
   return String(value || '').trim();
+}
+
+function normalizeReferenceToken(value) {
+  return normalizeString(value).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
 }
 
 function getPayloadField(payload, fieldNames) {
@@ -95,10 +101,17 @@ function extractPaymentReference(payload) {
     const text = normalizeString(candidate);
     if (!text) continue;
 
-    const match = text.match(PAYMENT_REFERENCE_PATTERN);
-    if (match) {
-      return match[0].toUpperCase();
+    const matches = [...text.matchAll(PAYMENT_REFERENCE_PATTERN)].map((match) => match[0].toUpperCase());
+    if (matches.length === 0) {
+      continue;
     }
+
+    const foodOrderReference = matches.find((match) => /^FO\d+-\d+$/i.test(match));
+    if (foodOrderReference) {
+      return foodOrderReference;
+    }
+
+    return matches[0];
   }
 
   return null;
@@ -107,6 +120,7 @@ function extractPaymentReference(payload) {
 function buildReceiptPayload({
   providerTransactionId,
   bookingId = null,
+  foodOrderId = null,
   paymentReference = null,
   transferAmount,
   transferContent,
@@ -119,6 +133,7 @@ function buildReceiptPayload({
     provider: 'sepay',
     provider_transaction_id: providerTransactionId,
     booking_id: bookingId,
+    food_order_id: foodOrderId,
     payment_reference: paymentReference,
     transfer_amount: transferAmount,
     transfer_content: transferContent,
@@ -127,6 +142,84 @@ function buildReceiptPayload({
     raw_payload: JSON.stringify(payload),
     received_at: receivedAt,
   };
+}
+
+function isBookingReference(reference) {
+  return /^BK\d+$/i.test(normalizeString(reference));
+}
+
+function isFoodOrderReference(reference) {
+  return /^FO\d+(?:-\d+)?$/i.test(normalizeString(reference));
+}
+
+async function findFoodOrderByReference(db, paymentReference, transaction) {
+  if (!paymentReference || !isFoodOrderReference(paymentReference)) {
+    return null;
+  }
+
+  const exactMatch = await db.FoodOrder.findOne({
+    where: { payment_reference: paymentReference },
+    include: [
+      {
+        model: db.Booking,
+        as: 'booking',
+        include: [
+          {
+            model: db.Field,
+            as: 'field',
+            include: [
+              {
+                model: db.Stadium,
+                as: 'stadium',
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    transaction,
+    lock: transaction.LOCK.UPDATE,
+  });
+
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  const normalizedReference = normalizeReferenceToken(paymentReference);
+  const candidates = await db.FoodOrder.findAll({
+    where: {
+      payment_status: 'unpaid',
+      payment_reference: {
+        [Op.like]: 'FO%',
+      },
+    },
+    include: [
+      {
+        model: db.Booking,
+        as: 'booking',
+        include: [
+          {
+            model: db.Field,
+            as: 'field',
+            include: [
+              {
+                model: db.Stadium,
+                as: 'stadium',
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    transaction,
+    lock: transaction.LOCK.UPDATE,
+  });
+
+  return (
+    candidates.find(
+      (candidate) => normalizeReferenceToken(candidate.payment_reference) === normalizedReference
+    ) || null
+  );
 }
 
 function isEligibleBooking(booking, now = new Date()) {
@@ -203,8 +296,9 @@ async function reconcileSePayBookingTransfer({
 
   return db.sequelize.transaction(async (transaction) => {
     let booking = null;
+    let foodOrder = null;
 
-    if (paymentReference) {
+    if (paymentReference && isBookingReference(paymentReference)) {
       booking = await db.Booking.findOne({
         where: { payment_reference: paymentReference },
         include: [
@@ -224,7 +318,11 @@ async function reconcileSePayBookingTransfer({
       });
     }
 
-    if (!booking) {
+    if (paymentReference && isFoodOrderReference(paymentReference)) {
+      foodOrder = await findFoodOrderByReference(db, paymentReference, transaction);
+    }
+
+    if (!booking && !foodOrder) {
       const receipt = await saveReceipt(
         db,
         buildReceiptPayload({
@@ -241,6 +339,94 @@ async function reconcileSePayBookingTransfer({
       );
 
       return { status: 'unmatched', receipt };
+    }
+
+    if (foodOrder) {
+      if (foodOrder.payment_status !== 'unpaid') {
+        const receipt = await saveReceipt(
+          db,
+          buildReceiptPayload({
+            providerTransactionId,
+            foodOrderId: foodOrder.id,
+            paymentReference,
+            transferAmount,
+            transferContent,
+            matchedStatus: MATCHED_STATUSES.INELIGIBLE,
+            matchedReason: `food_order_payment_status_${foodOrder.payment_status}`,
+            payload,
+            receivedAt,
+          }),
+          transaction
+        );
+
+        return { status: 'ineligible', receipt, foodOrder };
+      }
+
+      const expectedAmount = Math.round(toNumber(foodOrder.total_amount));
+      if (transferAmount !== expectedAmount) {
+        const receipt = await saveReceipt(
+          db,
+          buildReceiptPayload({
+            providerTransactionId,
+            foodOrderId: foodOrder.id,
+            paymentReference,
+            transferAmount,
+            transferContent,
+            matchedStatus: MATCHED_STATUSES.MISMATCHED,
+            matchedReason: `expected_${expectedAmount}_received_${transferAmount}`,
+            payload,
+            receivedAt,
+          }),
+          transaction
+        );
+
+        return { status: 'mismatched', receipt, foodOrder };
+      }
+
+      foodOrder.payment_status = 'paid';
+      foodOrder.payment_method = 'sepay';
+      foodOrder.payment_recorded_at = receivedAt;
+      await foodOrder.save({ transaction });
+
+      const receipt = await saveReceipt(
+        db,
+        buildReceiptPayload({
+          providerTransactionId,
+          bookingId: foodOrder.booking_id,
+          foodOrderId: foodOrder.id,
+          paymentReference,
+          transferAmount,
+          transferContent,
+          matchedStatus: MATCHED_STATUSES.MATCHED,
+          matchedReason: null,
+          payload,
+          receivedAt,
+        }),
+        transaction
+      );
+
+      await notify({
+        userId: foodOrder.user_id,
+        content: `He thong da xac nhan thanh toan cho order mon #${foodOrder.id}.`,
+        type: 'food_order_payment_confirmed',
+        targetType: 'food_order',
+        targetId: foodOrder.id,
+        targetRoute: `/history/${foodOrder.booking_id}`,
+      });
+
+      const ownerId = foodOrder.booking?.field?.stadium?.owner_id;
+      if (ownerId) {
+        await notify({
+          userId: ownerId,
+          content: `Order mon #${foodOrder.id} da duoc he thong xac nhan thanh toan SePay.`,
+          type: 'food_order_paid',
+          targetType: 'food_order',
+          targetId: foodOrder.id,
+          targetRoute: `/owner/fields/${foodOrder.field_id}/food-orders`,
+        });
+      }
+
+      return { status: 'confirmed', receipt, foodOrder };
     }
 
     const eligibility = isEligibleBooking(booking, now);
@@ -292,6 +478,22 @@ async function reconcileSePayBookingTransfer({
     booking.hold_until = null;
 
     await booking.save({ transaction });
+
+    await db.FoodOrder.update(
+      {
+        payment_status: 'paid',
+        payment_method: 'sepay',
+        payment_recorded_at: receivedAt,
+      },
+      {
+        where: {
+          booking_id: booking.id,
+          order_source: 'booking_checkout',
+          payment_status: 'unpaid',
+        },
+        transaction,
+      }
+    );
 
     const receipt = await saveReceipt(
       db,
@@ -346,5 +548,6 @@ async function reconcileSePayBookingTransfer({
 module.exports = {
   MATCHED_STATUSES,
   extractPaymentReference,
+  findFoodOrderByReference,
   reconcileSePayBookingTransfer,
 };

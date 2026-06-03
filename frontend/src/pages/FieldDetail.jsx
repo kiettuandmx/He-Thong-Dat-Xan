@@ -11,6 +11,8 @@ import {
   getHistoryPathByRole,
 } from '../utils/authHelpers';
 import { getWalletSummary } from '../services/walletService';
+import { getStadiumMenu } from '../services/menuService';
+import FoodOrderPicker from '../components/FoodOrderPicker';
 
 const TIME_SLOTS = [
   { id: 1, time: '05:00 - 06:00', start: '05:00', end: '06:00' },
@@ -57,6 +59,8 @@ const FieldDetail = () => {
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [couponError, setCouponError] = useState('');
   const [walletBalance, setWalletBalance] = useState(0);
+  const [menuItems, setMenuItems] = useState([]);
+  const [foodSelections, setFoodSelections] = useState({});
 
   const fetchFieldDetail = async () => {
     try {
@@ -78,6 +82,39 @@ const FieldDetail = () => {
   useEffect(() => {
     fetchFieldDetail();
   }, [id]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    const loadMenu = async () => {
+      if (!field?.stadium_id) {
+        setMenuItems([]);
+        return;
+      }
+
+      try {
+        const response = await getStadiumMenu(field.stadium_id);
+        if (!ignore) {
+          setMenuItems(Array.isArray(response.data?.data) ? response.data.data : []);
+        }
+      } catch (requestError) {
+        console.error('Lỗi khi tải menu khu sân:', requestError);
+        if (!ignore) {
+          setMenuItems([]);
+        }
+      }
+    };
+
+    loadMenu();
+
+    return () => {
+      ignore = true;
+    };
+  }, [field?.stadium_id]);
+
+  useEffect(() => {
+    setFoodSelections({});
+  }, [field?.stadium_id, selectedSlot, selectedDate]);
 
   useEffect(() => {
     setCouponCode('');
@@ -183,7 +220,25 @@ const FieldDetail = () => {
   const activeSlot = TIME_SLOTS.find((slot) => slot.id === selectedSlot);
   const basePrice = Number(field?.price_per_hour || 0);
   const discountedPrice = Math.max(basePrice - couponDiscount, 0);
-  const amountToPay = payOption === 'deposit' ? discountedPrice * 0.5 : discountedPrice;
+  const selectedFoodItems = menuItems
+    .map((item) => ({ ...item, quantity: Number(foodSelections[item.id] || 0) }))
+    .filter((item) => item.quantity > 0);
+  const foodSubtotal = selectedFoodItems.reduce(
+    (sum, item) => sum + Number(item.price || 0) * item.quantity,
+    0
+  );
+  const bookingGrandTotal = discountedPrice + foodSubtotal;
+  const amountToPay = payOption === 'deposit' ? bookingGrandTotal * 0.5 : bookingGrandTotal;
+
+  const updateFoodQuantity = (menuItemId, delta) => {
+    setFoodSelections((current) => {
+      const nextQuantity = Math.max(0, Number(current[menuItemId] || 0) + delta);
+      return {
+        ...current,
+        [menuItemId]: nextQuantity,
+      };
+    });
+  };
 
   const isSlotBooked = (slot) => {
     if (!field) return false;
@@ -303,6 +358,10 @@ const FieldDetail = () => {
       payment_method: paymentMethod,
       status: 'pending',
       coupon_code: couponCode || null,
+      food_items: selectedFoodItems.map((item) => ({
+        menu_item_id: item.id,
+        quantity: item.quantity,
+      })),
     };
 
     try {
@@ -466,6 +525,17 @@ const FieldDetail = () => {
             </div>
           </div>
 
+          {menuItems.length > 0 && (
+            <div className="mb-4">
+              <FoodOrderPicker
+                items={menuItems}
+                selections={foodSelections}
+                onDecrease={(itemId) => updateFoodQuantity(itemId, -1)}
+                onIncrease={(itemId) => updateFoodQuantity(itemId, 1)}
+              />
+            </div>
+          )}
+
           <div>
             <h3 className="h5 fw-bold mb-3">Đánh giá từ người chơi</h3>
             {field.reviews?.length ? (
@@ -581,6 +651,14 @@ const FieldDetail = () => {
             <div className="d-flex justify-content-between gap-3 mb-2">
               <span className="text-muted">Khung giờ đã chọn</span>
               <strong>{activeSlot ? activeSlot.time : 'Chưa chọn'}</strong>
+            </div>
+            <div className="d-flex justify-content-between gap-3 mb-3">
+              <span className="text-muted">Tiền sân sau giảm</span>
+              <strong>{activeSlot ? `${discountedPrice.toLocaleString('vi-VN')}đ` : '---'}</strong>
+            </div>
+            <div className="d-flex justify-content-between gap-3 mb-3">
+              <span className="text-muted">Đồ ăn / nước uống</span>
+              <strong>{foodSubtotal > 0 ? `${foodSubtotal.toLocaleString('vi-VN')}đ` : '0đ'}</strong>
             </div>
             <div className="d-flex justify-content-between gap-3 mb-3">
               <span className="text-muted">Cần thanh toán ngay</span>

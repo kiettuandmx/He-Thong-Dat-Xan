@@ -13,6 +13,9 @@ export const createFoodOrder = (bookingId, payload) =>
 export const getFoodOrdersForBooking = (bookingId) =>
   axios.get(`${API_URL}/bookings/${bookingId}/orders`, { headers: getAuthHeaders() });
 
+export const getFoodOrderById = (foodOrderId) =>
+  axios.get(`${API_URL}/orders/${foodOrderId}`, { headers: getAuthHeaders() });
+
 export const updateFoodOrderStatus = (foodOrderId, status) =>
   axios.put(
     `${API_URL}/orders/${foodOrderId}/status`,

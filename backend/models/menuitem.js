@@ -8,6 +8,10 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'field_id',
         as: 'field',
       });
+      MenuItem.belongsTo(models.Stadium, {
+        foreignKey: 'stadium_id',
+        as: 'stadium',
+      });
       MenuItem.hasMany(models.FoodOrderItem, {
         foreignKey: 'menu_item_id',
         as: 'orderItems',
@@ -18,6 +22,7 @@ module.exports = (sequelize, DataTypes) => {
   MenuItem.init(
     {
       field_id: DataTypes.INTEGER,
+      stadium_id: DataTypes.INTEGER,
       name: DataTypes.STRING,
       price: DataTypes.DECIMAL(12, 0),
       image: DataTypes.STRING,

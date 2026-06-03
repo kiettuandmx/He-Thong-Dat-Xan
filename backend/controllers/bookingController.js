@@ -29,6 +29,9 @@ const {
 const {
     WALLET_TRANSACTION_TYPES,
 } = require('../utils/walletTypes');
+const {
+    createCheckoutFoodOrder,
+} = require('../utils/foodOrderService');
 
 const getRequestMeta = (req) => ({
     ipAddress: req.ip || req.headers['x-forwarded-for'] || null,
@@ -894,6 +897,7 @@ exports.createBooking = async (req, res) => {
         const normalizedStartTime = start_time.length === 5 ? `${start_time}:00` : start_time;
         const paymentMethod = normalizePaymentMethod(req.body.payment_method || 'vnpay');
         const isWalletPayment = paymentMethod === 'wallet';
+        const requestedFoodItems = Array.isArray(req.body.food_items) ? req.body.food_items : [];
 
         const field = await Field.findByPk(field_id, {
             include: {
@@ -986,9 +990,10 @@ exports.createBooking = async (req, res) => {
             discountAmount = Math.min(discountAmount, basePrice);
         }
 
-        const totalPrice = Math.max(basePrice - discountAmount, 0);
+        const fieldPrice = Math.max(basePrice - discountAmount, 0);
         const isDeposit = payment_type === 'deposit';
-        const amountPaid = isDeposit ? totalPrice * 0.5 : totalPrice;
+        let totalPrice = fieldPrice;
+        let amountPaid = isDeposit ? totalPrice * 0.5 : totalPrice;
         const holdUntilTime = new Date();
 
         holdUntilTime.setMinutes(holdUntilTime.getMinutes() + 5);
@@ -1011,6 +1016,29 @@ exports.createBooking = async (req, res) => {
             coupon_code: normalizedCouponCode,
             discount_amount: discountAmount,
         }, { transaction });
+
+        if (requestedFoodItems.length > 0) {
+            const checkoutFoodOrder = await createCheckoutFoodOrder(db, {
+                bookingId: newBooking.id,
+                userId: user_id,
+                role: req.user?.role || req.body.role || 1,
+                items: requestedFoodItems,
+                paymentMethod,
+                transaction,
+            });
+
+            if (checkoutFoodOrder?.totalAmount) {
+                totalPrice += Number(checkoutFoodOrder.totalAmount || 0);
+                amountPaid = isDeposit ? totalPrice * 0.5 : totalPrice;
+                await newBooking.update(
+                    {
+                        total_price: totalPrice,
+                        amount_paid: amountPaid,
+                    },
+                    { transaction }
+                );
+            }
+        }
 
         if (!isWalletPayment) {
             const paymentReference = buildBookingPaymentReference(newBooking.id);

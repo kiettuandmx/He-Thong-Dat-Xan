@@ -32,6 +32,8 @@ module.exports = (sequelize, DataTypes) => {
       total_amount: DataTypes.DECIMAL(12, 0),
       payment_method: DataTypes.STRING,
       payment_status: DataTypes.STRING,
+      payment_reference: DataTypes.STRING,
+      payment_recorded_at: DataTypes.DATE,
       order_source: DataTypes.STRING,
       fulfillment_method: DataTypes.STRING,
       ordered_at: DataTypes.DATE,

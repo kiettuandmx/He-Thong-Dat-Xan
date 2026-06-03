@@ -39,5 +39,6 @@ describe('OwnerFoodOrdersPage', () => {
 
     expect(await screen.findByRole('heading', { name: /đơn món theo sân/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /đang chuẩn bị/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /quản lý menu/i })).toBeInTheDocument();
   });
 });

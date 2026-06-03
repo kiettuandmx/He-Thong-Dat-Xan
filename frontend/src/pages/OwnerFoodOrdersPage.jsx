@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { updateFoodOrderStatus } from '../services/foodOrderService';
 
@@ -33,9 +33,17 @@ const OwnerFoodOrdersPage = () => {
   return (
     <div className="detail-page recurring-page">
       <section className="detail-hero">
-        <div>
+        <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+          <div>
           <p className="eyebrow mb-2">Owner food orders</p>
           <h1 className="display-title mb-3">Đơn món theo sân</h1>
+          <p className="detail-subtitle mb-0">
+            Theo dõi các đơn món đã gọi tại sân này hoặc chuyển sang màn quản lý menu chung.
+          </p>
+          </div>
+          <Link className="primary-button text-decoration-none" to={`/owner/fields/${fieldId}/menu`}>
+            Quản lý menu
+          </Link>
         </div>
       </section>
 

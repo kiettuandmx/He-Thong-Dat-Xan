@@ -7,7 +7,20 @@ const getAuthHeaders = () => {
   return stored?.token ? { Authorization: `Bearer ${stored.token}` } : {};
 };
 
-export const getFieldMenu = (fieldId) => axios.get(`${API_URL}/fields/${fieldId}/menu`);
+export const getStadiumMenu = (stadiumId) => axios.get(`${API_URL}/stadiums/${stadiumId}/menu`);
 
-export const createFieldMenuItem = (fieldId, payload) =>
-  axios.post(`${API_URL}/fields/${fieldId}/menu`, payload, { headers: getAuthHeaders() });
+export const createStadiumMenuItem = (stadiumId, payload) =>
+  axios.post(`${API_URL}/stadiums/${stadiumId}/menu`, payload, { headers: getAuthHeaders() });
+
+export const updateMenuItem = (menuItemId, payload) =>
+  axios.put(`${API_URL}/items/${menuItemId}`, payload, { headers: getAuthHeaders() });
+
+export const updateMenuItemAvailability = (menuItemId, isAvailable) =>
+  axios.patch(
+    `${API_URL}/items/${menuItemId}/availability`,
+    { is_available: isAvailable },
+    { headers: getAuthHeaders() }
+  );
+
+export const deleteMenuItem = (menuItemId) =>
+  axios.delete(`${API_URL}/items/${menuItemId}`, { headers: getAuthHeaders() });
