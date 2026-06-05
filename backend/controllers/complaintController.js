@@ -2,6 +2,8 @@ const { Op } = require('sequelize');
 const db = require('../models');
 const { logAdminActivity } = require('../utils/adminActivityLogger');
 const { createNotification: createNotificationRecord } = require('../utils/notificationHelper');
+const { applyWalletTransaction } = require('../utils/walletService');
+const { WALLET_TRANSACTION_TYPES } = require('../utils/walletTypes');
 
 const VALID_STATUSES = ['pending', 'investigating', 'resolved', 'rejected'];
 const VALID_RESOLUTIONS = ['refund_user', 'penalize_owner', 'no_action'];
@@ -344,6 +346,7 @@ exports.resolveComplaint = async (req, res) => {
 
     if (resolution_type === 'refund_user' && complaint.booking) {
       bookingBefore = toPlain(complaint.booking);
+      const refundAmount = Number(complaint.booking.amount_paid || 0);
       await complaint.booking.update(
         {
           status: 'refunded',
@@ -352,6 +355,26 @@ exports.resolveComplaint = async (req, res) => {
         },
         { transaction }
       );
+
+      if (refundAmount > 0) {
+        await applyWalletTransaction(
+          db,
+          {
+            userId: complaint.booking.user_id,
+            amount: refundAmount,
+            type: WALLET_TRANSACTION_TYPES.BOOKING_REFUND,
+            bookingId: complaint.booking.id,
+            description: `Hoàn tiền booking #${complaint.booking.id} sau khi admin xử lý khiếu nại #${complaint.id}`,
+            referenceType: 'complaint_refund',
+            referenceId: complaint.id,
+            metadata: {
+              complaint_id: complaint.id,
+            },
+          },
+          transaction
+        );
+      }
+
       bookingAfter = toPlain(complaint.booking);
     }
 

@@ -6,15 +6,26 @@ import {
   getUserPaymentHistory,
 } from '../services/paymentHistoryService';
 import { formatOwnerCurrency } from '../utils/ownerMetricsHelpers';
+import {
+  formatSignedCurrency,
+  getPaymentHistoryDirection,
+} from '../utils/transactionPresentation';
 
 const formatDate = (value) => {
   if (!value) return '--';
   return new Date(value).toLocaleString('vi-VN');
 };
 
-const transactionLabelMap = {
-  refund: { label: 'Hoàn tiền', className: 'is-refund' },
-  payment: { label: 'Thanh toán', className: 'is-payment' },
+const resolveTransactionLabel = (transaction) => {
+  if (transaction.type === 'refund') {
+    return 'Hoàn tiền';
+  }
+
+  if (transaction.source === 'food_order') {
+    return 'Thanh toán món';
+  }
+
+  return 'Thanh toán';
 };
 
 const transactionStatusLabelMap = {
@@ -311,14 +322,16 @@ const PaymentHistory = () => {
                 </thead>
                 <tbody>
                   {transactions.map((transaction, index) => {
-                    const mappedType = transactionLabelMap[transaction.type] || transactionLabelMap.payment;
+                    const direction = getPaymentHistoryDirection(transaction.type, { ownerMode });
 
                     return (
-                      <tr key={`${transaction.type}-${transaction.bookingId}-${index}`}>
+                      <tr
+                        key={`${transaction.source || 'booking'}-${transaction.type}-${transaction.foodOrderId || transaction.bookingId || index}`}
+                      >
                         <td>{formatDate(transaction.transactionDate)}</td>
                         <td>
-                          <span className={`owner-finance-badge ${mappedType.className}`}>
-                            {mappedType.label}
+                          <span className={`owner-finance-badge is-${direction}`}>
+                            {resolveTransactionLabel(transaction)}
                           </span>
                         </td>
                         <td>{transaction.stadiumName || '--'}</td>
@@ -332,12 +345,10 @@ const PaymentHistory = () => {
                           </td>
                         )}
                         <td>{getTransactionStatusLabel(transaction.status)}</td>
-                        <td
-                          className={`text-end fw-semibold ${
-                            transaction.type === 'refund' ? 'text-danger' : 'text-success'
-                          }`}
-                        >
-                          {formatOwnerCurrency(transaction.amount)}
+                        <td className="text-end">
+                          <span className={`transaction-amount is-${direction}`}>
+                            {formatSignedCurrency(transaction.amount, direction)}
+                          </span>
                         </td>
                       </tr>
                     );

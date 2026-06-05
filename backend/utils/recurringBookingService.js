@@ -62,11 +62,14 @@ const normalizeTimeValue = (value) => {
 
 const normalizeTimeLabel = (value) => String(normalizeTimeValue(value) || '').slice(0, 5);
 
-const buildOccurrenceRow = (date, startTime, endTime, recurrenceType) => ({
+const buildOccurrenceRow = (date, startTime, endTime, recurrenceType, sequenceNumber = null) => ({
   recurrenceType,
+  sequenceNumber,
   scheduledDate: formatDateOnly(date),
   startTime: normalizeTimeValue(startTime),
   endTime: normalizeTimeValue(endTime),
+  isException: false,
+  isSkipped: false,
 });
 
 function validateDepositAmount({ totalEstimatedAmount, depositAmount }) {
@@ -97,11 +100,38 @@ function resolveApprovalStatus({ totalEstimatedAmount, depositAmount }) {
     : SERIES_APPROVAL_STATUS.PENDING_OWNER_REVIEW;
 }
 
-function buildWeeklyOccurrences({ startDate, endDate, occurrenceCount, weekday, startTime, endTime }) {
+const normalizeOccurrenceOverride = (override = {}) => ({
+  sequenceNumber: Number(override.sequenceNumber ?? override.sequence_number),
+  scheduledDate: override.scheduledDate ?? override.scheduled_date ?? null,
+  startTime: override.startTime ?? override.start_time ?? null,
+  endTime: override.endTime ?? override.end_time ?? null,
+  isSkipped: Boolean(override.isSkipped ?? override.is_skipped),
+});
+
+const mapOccurrenceOverrides = (occurrenceOverrides = []) =>
+  new Map(
+    occurrenceOverrides
+      .map(normalizeOccurrenceOverride)
+      .filter((override) => Number.isInteger(override.sequenceNumber) && override.sequenceNumber > 0)
+      .map((override) => [override.sequenceNumber, override])
+  );
+
+function buildWeeklyOccurrences({
+  startDate,
+  endDate,
+  occurrenceCount,
+  weekday,
+  repeatIntervalWeeks,
+  startTime,
+  endTime,
+  occurrenceOverrides = [],
+}) {
   const results = [];
   let cursor = parseDateOnly(startDate);
   const targetWeekday = Number(weekday || normalizeWeekday(cursor));
+  const intervalWeeks = Math.max(Number(repeatIntervalWeeks || 1), 1);
   const endBoundary = endDate ? parseDateOnly(endDate) : null;
+  const overridesBySequence = mapOccurrenceOverrides(occurrenceOverrides);
 
   while (normalizeWeekday(cursor) !== targetWeekday) {
     cursor = addDays(cursor, 1);
@@ -110,10 +140,37 @@ function buildWeeklyOccurrences({ startDate, endDate, occurrenceCount, weekday, 
   while (true) {
     if (endBoundary && cursor > endBoundary) break;
 
-    results.push(buildOccurrenceRow(cursor, startTime, endTime, RECURRING_TYPES.WEEKLY));
+    const sequenceNumber = results.length + 1;
+    const baseOccurrence = buildOccurrenceRow(
+      cursor,
+      startTime,
+      endTime,
+      RECURRING_TYPES.WEEKLY,
+      sequenceNumber
+    );
+    const override = overridesBySequence.get(sequenceNumber);
+
+    if (!override) {
+      results.push(baseOccurrence);
+    } else {
+      const nextOccurrence = {
+        ...baseOccurrence,
+        scheduledDate: override.scheduledDate || baseOccurrence.scheduledDate,
+        startTime: normalizeTimeValue(override.startTime || baseOccurrence.startTime),
+        endTime: normalizeTimeValue(override.endTime || baseOccurrence.endTime),
+        isSkipped: override.isSkipped,
+      };
+      const dateChanged = nextOccurrence.scheduledDate !== baseOccurrence.scheduledDate;
+      const timeChanged =
+        normalizeTimeValue(nextOccurrence.startTime) !== normalizeTimeValue(baseOccurrence.startTime) ||
+        normalizeTimeValue(nextOccurrence.endTime) !== normalizeTimeValue(baseOccurrence.endTime);
+      nextOccurrence.isException = !nextOccurrence.isSkipped && (dateChanged || timeChanged);
+      results.push(nextOccurrence);
+    }
+
     if (occurrenceCount && results.length >= Number(occurrenceCount)) break;
 
-    cursor = addDays(cursor, 7);
+    cursor = addDays(cursor, 7 * intervalWeeks);
   }
 
   return results;
@@ -127,7 +184,9 @@ function buildMonthlyOccurrences({ startDate, endDate, occurrenceCount, startTim
   while (true) {
     if (endBoundary && cursor > endBoundary) break;
 
-    results.push(buildOccurrenceRow(cursor, startTime, endTime, RECURRING_TYPES.MONTHLY));
+    results.push(
+      buildOccurrenceRow(cursor, startTime, endTime, RECURRING_TYPES.MONTHLY, results.length + 1)
+    );
     if (occurrenceCount && results.length >= Number(occurrenceCount)) break;
 
     cursor = addMonths(cursor, 1);
@@ -141,8 +200,11 @@ const buildOccurrences = ({
   startDate,
   endDate,
   occurrenceCount,
+  weekday,
+  repeatIntervalWeeks,
   startTime,
   endTime,
+  occurrenceOverrides,
 }) => {
   if (recurrenceType === RECURRING_TYPES.MONTHLY) {
     return buildMonthlyOccurrences({
@@ -158,9 +220,11 @@ const buildOccurrences = ({
     startDate,
     endDate,
     occurrenceCount,
-    weekday: normalizeWeekday(parseDateOnly(startDate)),
+    weekday: Number(weekday || normalizeWeekday(parseDateOnly(startDate))),
+    repeatIntervalWeeks,
     startTime,
     endTime,
+    occurrenceOverrides,
   });
 };
 
@@ -196,17 +260,25 @@ const getPaymentStatusSummary = ({ depositAmount, totalEstimatedAmount }) => {
 const allocateDepositAcrossOccurrences = (occurrences, depositAmount, unitPrice) => {
   let remainingDeposit = toAmount(depositAmount);
   const allocations = [];
+  const payableOccurrencesCount = occurrences.filter((occurrence) => !occurrence.isSkipped).length;
+  let allocatedCount = 0;
 
   occurrences.forEach((occurrence, index) => {
+    if (occurrence.isSkipped) {
+      allocations.push({ ...occurrence, amountPaid: 0, remainingAmount: 0 });
+      return;
+    }
+
     if (remainingDeposit <= 0) {
       allocations.push({ ...occurrence, amountPaid: 0, remainingAmount: unitPrice });
       return;
     }
 
-    const remainingCount = occurrences.length - index;
+    allocatedCount += 1;
+    const remainingCount = payableOccurrencesCount - allocatedCount + 1;
     const proportionalShare = Math.floor(remainingDeposit / remainingCount);
     const applied = Math.min(
-      index === occurrences.length - 1 ? remainingDeposit : Math.max(proportionalShare, 0),
+      allocatedCount === payableOccurrencesCount ? remainingDeposit : Math.max(proportionalShare, 0),
       unitPrice
     );
 
@@ -388,10 +460,25 @@ const validateSeriesRequestPayload = (payload) => {
   if (![RECURRING_TYPES.WEEKLY, RECURRING_TYPES.MONTHLY].includes(payload.recurrenceType)) {
     throw new Error('INVALID_RECURRING_REQUEST');
   }
+
+  if (
+    payload.recurrenceType === RECURRING_TYPES.WEEKLY &&
+    (!payload.weekday || Number(payload.weekday) < 1 || Number(payload.weekday) > 7)
+  ) {
+    throw new Error('INVALID_RECURRING_REQUEST');
+  }
+
+  if (
+    payload.repeatIntervalWeeks != null &&
+    (!Number.isFinite(Number(payload.repeatIntervalWeeks)) || Number(payload.repeatIntervalWeeks) < 1)
+  ) {
+    throw new Error('INVALID_RECURRING_REQUEST');
+  }
 };
 
 const computeSeriesSummary = ({ occurrences, depositAmount, unitPrice }) => {
-  const totalEstimatedAmount = occurrences.length * toAmount(unitPrice);
+  const totalEstimatedAmount =
+    occurrences.filter((occurrence) => !occurrence.isSkipped).length * toAmount(unitPrice);
   const depositValidation = validateDepositAmount({
     totalEstimatedAmount,
     depositAmount,
@@ -418,8 +505,11 @@ async function previewRecurringBooking(db, payload, transaction) {
     startDate: payload.startDate,
     endDate: payload.endDate,
     occurrenceCount: payload.occurrenceCount,
+    weekday: payload.weekday,
+    repeatIntervalWeeks: payload.repeatIntervalWeeks,
     startTime: payload.startTime,
     endTime: payload.endTime,
+    occurrenceOverrides: payload.occurrenceOverrides || [],
   });
   const occurrences = applyReplacementSelections(baseOccurrences, payload.replacementSelections);
 
@@ -429,6 +519,10 @@ async function previewRecurringBooking(db, payload, transaction) {
 
   const conflicts = [];
   for (const occurrence of occurrences) {
+    if (occurrence.isSkipped) {
+      // eslint-disable-next-line no-continue
+      continue;
+    }
     // eslint-disable-next-line no-await-in-loop
     const conflict = await findOccurrenceConflict(db, occurrence, payload.fieldId, transaction);
     if (conflict) {
@@ -476,7 +570,9 @@ const buildSeriesRowPayload = ({ payload, userId, field, preview }) => ({
   start_date: payload.startDate,
   end_date: payload.endDate || null,
   occurrence_count: payload.occurrenceCount || preview.occurrenceCount,
-  preferred_day_of_week: normalizeWeekday(parseDateOnly(payload.startDate)),
+  preferred_day_of_week: Number(payload.weekday || normalizeWeekday(parseDateOnly(payload.startDate))),
+  weekday: Number(payload.weekday || normalizeWeekday(parseDateOnly(payload.startDate))),
+  repeat_interval_weeks: Number(payload.repeatIntervalWeeks || 1),
   preferred_start_time: normalizeTimeValue(payload.startTime),
   preferred_end_time: normalizeTimeValue(payload.endTime),
   total_estimated_amount: preview.totalEstimatedAmount,
@@ -543,6 +639,44 @@ async function createRecurringBookingSeries(db, payload) {
 
     const createdItems = [];
     for (const occurrence of allocatedOccurrences) {
+      if (occurrence.isSkipped) {
+        // eslint-disable-next-line no-await-in-loop
+        const skippedItem = await db.RecurringBookingItem.create(
+          {
+            series_id: series.id,
+            booking_id: null,
+            scheduled_date: occurrence.scheduledDate,
+            start_time: normalizeTimeValue(occurrence.startTime),
+            end_time: normalizeTimeValue(occurrence.endTime),
+            base_price: Number(field.price_per_hour || 0),
+            amount_paid: 0,
+            remaining_amount: 0,
+            payment_due_date: null,
+            item_status: RECURRING_ITEM_STATUS.CANCELLED,
+            is_exception: false,
+            is_skipped: true,
+            sequence_number: occurrence.sequenceNumber,
+            was_rescheduled: false,
+            original_date_time: null,
+          },
+          { transaction }
+        );
+
+        createdItems.push({
+          id: skippedItem.id,
+          booking_id: null,
+          scheduled_date: skippedItem.scheduled_date,
+          remaining_amount: skippedItem.remaining_amount,
+          payment_due_date: skippedItem.payment_due_date,
+          item_status: skippedItem.item_status,
+          is_exception: skippedItem.is_exception,
+          is_skipped: skippedItem.is_skipped,
+          sequence_number: skippedItem.sequence_number,
+        });
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
       // eslint-disable-next-line no-await-in-loop
       const booking = await db.Booking.create(
         buildBookingPayload({
@@ -572,6 +706,9 @@ async function createRecurringBookingSeries(db, payload) {
             preview.approvalStatus === SERIES_APPROVAL_STATUS.APPROVED
               ? RECURRING_ITEM_STATUS.CONFIRMED
               : RECURRING_ITEM_STATUS.PENDING,
+          is_exception: Boolean(occurrence.isException),
+          is_skipped: false,
+          sequence_number: occurrence.sequenceNumber,
           was_rescheduled: Boolean(occurrence.wasRescheduled),
           original_date_time: occurrence.originalDateTime,
         },
@@ -585,6 +722,9 @@ async function createRecurringBookingSeries(db, payload) {
         remaining_amount: item.remaining_amount,
         payment_due_date: item.payment_due_date,
         item_status: item.item_status,
+        is_exception: item.is_exception,
+        is_skipped: item.is_skipped,
+        sequence_number: item.sequence_number,
       });
     }
 

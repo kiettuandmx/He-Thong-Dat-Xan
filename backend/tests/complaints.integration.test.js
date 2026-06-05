@@ -178,6 +178,11 @@ test.after(async () => {
     await db.Booking.destroy({ where: { id: createdIds.bookings } });
   }
 
+  if (createdIds.users.length) {
+    await db.WalletTransaction.destroy({ where: { user_id: createdIds.users } });
+    await db.Wallet.destroy({ where: { user_id: createdIds.users } });
+  }
+
   if (createdIds.fields.length) {
     await db.Field.destroy({ where: { id: createdIds.fields } });
   }
@@ -268,4 +273,37 @@ test('admin can read complaint list and see the created complaint', async () => 
   assert.equal(response.body.success, true);
   assert.ok(Array.isArray(response.body.data));
   assert.ok(response.body.data.some((item) => item.id === complaintId));
+});
+
+test('admin refunding a complaint credits the customer wallet', async () => {
+  const response = await api(`/api/complaints/admin/${complaintId}/resolve`, {
+    method: 'POST',
+    headers: authHeader(adminToken),
+    body: JSON.stringify({
+      resolution_type: 'refund_user',
+      resolution_note: 'Admin test refund from complaint',
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+
+  const updatedBooking = await db.Booking.findByPk(bookingId);
+  assert.equal(updatedBooking.status, 'refunded');
+
+  const wallet = await db.Wallet.findOne({ where: { user_id: playerUser.id } });
+  assert.ok(wallet);
+  assert.equal(Number(wallet.balance), 250000);
+
+  const walletTransaction = await db.WalletTransaction.findOne({
+    where: {
+      user_id: playerUser.id,
+      booking_id: bookingId,
+      reference_type: 'complaint_refund',
+      reference_id: complaintId,
+    },
+  });
+  assert.ok(walletTransaction);
+  assert.equal(walletTransaction.type, 'BOOKING_REFUND');
+  assert.equal(Number(walletTransaction.amount), 250000);
 });

@@ -31,6 +31,33 @@ function createBooking(overrides = {}) {
   };
 }
 
+function createFoodOrder(overrides = {}) {
+  return {
+    id: 501,
+    booking_id: 101,
+    user_id: 88,
+    total_amount: 35000,
+    payment_method: 'bank_transfer',
+    payment_status: 'paid',
+    payment_recorded_at: new Date('2026-05-12T08:15:00.000Z'),
+    ordered_at: new Date('2026-05-12T08:00:00.000Z'),
+    order_source: 'post_booking',
+    field: {
+      name: 'San 1',
+      stadium: { name: 'San ABC' },
+    },
+    user: {
+      name: 'Nguyen Van A',
+      phone: '0912345678',
+    },
+    booking: createBooking({
+      refunded_at: null,
+      status: 'confirmed',
+    }),
+    ...overrides,
+  };
+}
+
 function createResponseRecorder() {
   return {
     statusCode: 200,
@@ -110,6 +137,30 @@ test('buildPaymentHistoryTransactions creates payment and refund rows', () => {
   assert.equal(transactions[1].status, 'paid');
 });
 
+test('buildPaymentHistoryTransactions includes post-booking food order payments', () => {
+  const transactions = buildPaymentHistoryTransactions(
+    [createBooking({ refunded_at: null })],
+    [createFoodOrder()],
+  );
+
+  assert.equal(transactions.length, 2);
+  assert.equal(transactions[0].source, 'food_order');
+  assert.equal(transactions[0].foodOrderId, 501);
+  assert.equal(transactions[0].type, 'payment');
+  assert.equal(transactions[0].amount, 35000);
+  assert.equal(transactions[0].status, 'paid');
+});
+
+test('buildPaymentHistoryTransactions ignores checkout food orders to avoid double counting', () => {
+  const transactions = buildPaymentHistoryTransactions(
+    [createBooking({ refunded_at: null })],
+    [createFoodOrder({ order_source: 'booking_checkout' })],
+  );
+
+  assert.equal(transactions.length, 1);
+  assert.equal(transactions[0].source, 'booking');
+});
+
 test('payment transaction prefers payment_recorded_at over createdAt', () => {
   const paymentTransaction = buildPaymentHistoryTransactions([
     createBooking({
@@ -178,6 +229,78 @@ test('paginateTransactions slices transactions by page and limit', () => {
   assert.deepEqual(page, [{ bookingId: 3 }]);
 });
 
+test('getUserPaymentHistory returns post-booking food order payments', async () => {
+  await withControllerMocks(
+    {
+      Booking: {
+        findAll: async () => [],
+      },
+      FoodOrder: {
+        findAll: async () => [createFoodOrder()],
+      },
+      Field: {},
+      Stadium: {},
+      User: {},
+      sequelize: {},
+      Sequelize: { Op: {} },
+    },
+    async (controller) => {
+      const response = createResponseRecorder();
+
+      await controller.getUserPaymentHistory(
+        {
+          user: { id: 88 },
+          query: { month: '05', year: '2026', page: 1, limit: 10 },
+        },
+        response,
+      );
+
+      assert.equal(response.statusCode, 200);
+      assert.equal(response.payload.success, true);
+      assert.equal(response.payload.transactions.length, 1);
+      assert.equal(response.payload.transactions[0].source, 'food_order');
+      assert.equal(response.payload.transactions[0].foodOrderId, 501);
+    },
+  );
+});
+
+test('getOwnerPaymentHistory returns post-booking food order payments for owner stadiums', async () => {
+  await withControllerMocks(
+    {
+      Booking: {
+        findAll: async () => [],
+      },
+      FoodOrder: {
+        findAll: async () => [createFoodOrder()],
+      },
+      Field: {},
+      Stadium: {
+        findAll: async () => [{ id: 33 }],
+      },
+      User: {},
+      sequelize: {},
+      Sequelize: { Op: {} },
+    },
+    async (controller) => {
+      const response = createResponseRecorder();
+
+      await controller.getOwnerPaymentHistory(
+        {
+          user: { id: 12 },
+          query: { month: '05', year: '2026', page: 1, limit: 10 },
+        },
+        response,
+      );
+
+      assert.equal(response.statusCode, 200);
+      assert.equal(response.payload.success, true);
+      assert.equal(response.payload.transactions.length, 1);
+      assert.equal(response.payload.transactions[0].source, 'food_order');
+      assert.equal(response.payload.transactions[0].foodOrderId, 501);
+    },
+  );
+});
+
 test('getUserPaymentHistory returns only the authenticated user summary', async () => {
   const bookings = [
     createBooking({
@@ -190,6 +313,7 @@ test('getUserPaymentHistory returns only the authenticated user summary', async 
   await withControllerMocks(
     {
       Booking: { findAll: async () => bookings },
+      FoodOrder: { findAll: async () => [] },
       Field: {},
       Stadium: {},
       User: {},
@@ -227,6 +351,7 @@ test('getOwnerPaymentHistory returns owner summary and customer fields', async (
   await withControllerMocks(
     {
       Booking: { findAll: async () => bookings },
+      FoodOrder: { findAll: async () => [] },
       Field: {},
       Stadium: { findAll: async () => [{ id: 9 }] },
       User: {},

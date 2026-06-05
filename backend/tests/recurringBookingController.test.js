@@ -51,7 +51,8 @@ async function withRecurringControllerMocks(serviceExports, runAssertion) {
 test('previewRecurringBooking responds with preview payload from service', async () => {
   await withRecurringControllerMocks(
     {
-      previewRecurringBooking: async () => ({
+      previewRecurringBooking: async (db, payload) => ({
+        requestedPayload: payload,
         hasConflicts: true,
         conflicts: [{ requestedSlot: { scheduledDate: '2026-05-20' }, suggestions: [] }],
       }),
@@ -61,7 +62,20 @@ test('previewRecurringBooking responds with preview payload from service', async
 
       await controller.previewRecurringBooking(
         {
-          body: { field_id: 3 },
+          body: {
+            field_id: 3,
+            recurrence_type: 'weekly',
+            start_date: '2026-06-01',
+            occurrence_count: 4,
+            start_time: '18:00',
+            end_time: '19:00',
+            deposit_amount: 300000,
+            weekday: 3,
+            repeat_interval_weeks: 2,
+            occurrence_overrides: [
+              { sequence_number: 2, scheduled_date: '2026-06-17', is_skipped: false },
+            ],
+          },
           user: { id: 7, role: 1 },
         },
         response
@@ -70,6 +84,17 @@ test('previewRecurringBooking responds with preview payload from service', async
       assert.equal(response.statusCode, 200);
       assert.equal(response.payload.success, true);
       assert.equal(response.payload.data.hasConflicts, true);
+      assert.equal(response.payload.data.requestedPayload.weekday, 3);
+      assert.equal(response.payload.data.requestedPayload.repeatIntervalWeeks, 2);
+      assert.deepEqual(response.payload.data.requestedPayload.occurrenceOverrides, [
+        {
+          sequenceNumber: 2,
+          scheduledDate: '2026-06-17',
+          startTime: null,
+          endTime: null,
+          isSkipped: false,
+        },
+      ]);
     }
   );
 });
@@ -77,9 +102,10 @@ test('previewRecurringBooking responds with preview payload from service', async
 test('createRecurringBooking returns 201 with created series payload', async () => {
   await withRecurringControllerMocks(
     {
-      createRecurringBookingSeries: async () => ({
+      createRecurringBookingSeries: async (db, payload) => ({
         id: 55,
         approval_status: 'approved',
+        requestedPayload: payload,
       }),
     },
     async (controller) => {
@@ -87,7 +113,27 @@ test('createRecurringBooking returns 201 with created series payload', async () 
 
       await controller.createRecurringBooking(
         {
-          body: { field_id: 3 },
+          body: {
+            field_id: 3,
+            recurrence_type: 'weekly',
+            start_date: '2026-06-01',
+            occurrence_count: 4,
+            start_time: '18:00',
+            end_time: '19:00',
+            deposit_amount: 300000,
+            weekday: 3,
+            repeat_interval_weeks: 2,
+            occurrence_overrides: [
+              { sequence_number: 2, is_skipped: true },
+              {
+                sequence_number: 3,
+                scheduled_date: '2026-06-24',
+                start_time: '19:00',
+                end_time: '20:00',
+                is_skipped: false,
+              },
+            ],
+          },
           user: { id: 7, role: 1 },
         },
         response
@@ -96,6 +142,24 @@ test('createRecurringBooking returns 201 with created series payload', async () 
       assert.equal(response.statusCode, 201);
       assert.equal(response.payload.success, true);
       assert.equal(response.payload.data.id, 55);
+      assert.equal(response.payload.data.requestedPayload.weekday, 3);
+      assert.equal(response.payload.data.requestedPayload.repeatIntervalWeeks, 2);
+      assert.deepEqual(response.payload.data.requestedPayload.occurrenceOverrides, [
+        {
+          sequenceNumber: 2,
+          scheduledDate: null,
+          startTime: null,
+          endTime: null,
+          isSkipped: true,
+        },
+        {
+          sequenceNumber: 3,
+          scheduledDate: '2026-06-24',
+          startTime: '19:00',
+          endTime: '20:00',
+          isSkipped: false,
+        },
+      ]);
     }
   );
 });

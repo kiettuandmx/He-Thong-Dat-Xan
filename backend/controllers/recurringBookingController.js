@@ -16,10 +16,23 @@ const mapRequestPayload = (req) => ({
   startDate: req.body.start_date,
   endDate: req.body.end_date || null,
   occurrenceCount: req.body.occurrence_count ? Number(req.body.occurrence_count) : null,
+  weekday: req.body.weekday ? Number(req.body.weekday) : null,
+  repeatIntervalWeeks: req.body.repeat_interval_weeks
+    ? Number(req.body.repeat_interval_weeks)
+    : 1,
   startTime: req.body.start_time,
   endTime: req.body.end_time,
   depositAmount: Number(req.body.deposit_amount),
   paymentMethod: req.body.payment_method || 'wallet',
+  occurrenceOverrides: Array.isArray(req.body.occurrence_overrides)
+    ? req.body.occurrence_overrides.map((override) => ({
+        sequenceNumber: Number(override.sequence_number ?? override.sequenceNumber),
+        scheduledDate: override.scheduled_date ?? override.scheduledDate ?? null,
+        startTime: override.start_time ?? override.startTime ?? null,
+        endTime: override.end_time ?? override.endTime ?? null,
+        isSkipped: Boolean(override.is_skipped ?? override.isSkipped),
+      }))
+    : [],
   replacementSelections: Array.isArray(req.body.replacement_selections)
     ? req.body.replacement_selections
     : [],

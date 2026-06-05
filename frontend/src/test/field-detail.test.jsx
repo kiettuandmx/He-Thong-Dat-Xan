@@ -53,6 +53,16 @@ vi.mock('../services/walletService', () => ({
   }),
 }));
 
+vi.mock('../services/recurringBookingService', () => ({
+  previewRecurringBooking: vi.fn(),
+  createRecurringBooking: vi.fn(),
+  getMyRecurringBookings: vi.fn().mockResolvedValue({
+    data: {
+      data: [],
+    },
+  }),
+}));
+
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
@@ -71,7 +81,7 @@ describe('Trang chi tiết sân', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByRole('heading', { name: /sân bảy phúc/i })).toBeInTheDocument();
+    expect((await screen.findAllByRole('heading', { name: /sân bảy phúc/i })).length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { name: /lịch đặt sân/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /xác nhận đặt sân/i })).toBeInTheDocument();
   });
@@ -86,5 +96,16 @@ describe('Trang chi tiết sân', () => {
     expect(await screen.findByRole('button', { name: /vnpay/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /momo/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /ví/i })).toBeInTheDocument();
+  });
+
+  it('shows recurring booking section directly on the field detail page', async () => {
+    render(
+      <MemoryRouter>
+        <FieldDetail />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole('heading', { name: /đặt sân định kỳ nhiều tuần/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /xem trước chuỗi đặt/i })).toBeInTheDocument();
   });
 });

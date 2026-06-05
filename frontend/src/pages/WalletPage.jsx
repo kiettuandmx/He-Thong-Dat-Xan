@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import AccountPageHeader from '../components/AccountPageHeader';
 import { getWalletSummary, topUpWallet, withdrawWallet } from '../services/walletService';
+import {
+  formatSignedCurrency,
+  getWalletTransactionDirection,
+} from '../utils/transactionPresentation';
 
 const formatAmount = (value) => `${Number(value || 0).toLocaleString('vi-VN')}đ`;
 
@@ -249,8 +253,7 @@ const WalletPage = () => {
         ) : (
           <div className="wallet-transaction-list">
             {transactions.map((transaction) => {
-              const amount = Number(transaction.amount || 0);
-              const isDebit = ['WITHDRAW', 'BOOKING_PAYMENT'].includes(transaction.type);
+              const direction = getWalletTransactionDirection(transaction.type);
 
               return (
                 <article key={transaction.id} className="wallet-transaction-item">
@@ -259,9 +262,8 @@ const WalletPage = () => {
                     <p className="text-muted mb-0">{transaction.description || 'Giao dịch ví'}</p>
                   </div>
                   <div className="text-end">
-                    <strong className={isDebit ? 'wallet-amount is-debit' : 'wallet-amount is-credit'}>
-                      {isDebit ? '-' : '+'}
-                      {formatAmount(amount)}
+                    <strong className={`wallet-amount is-${direction}`}>
+                      {formatSignedCurrency(transaction.amount, direction)}
                     </strong>
                     <p className="text-muted mb-0">
                       {transaction.createdAt

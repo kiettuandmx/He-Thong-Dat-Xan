@@ -1708,6 +1708,7 @@
 }
 
 .owner-status-pill.is-success,
+.owner-finance-badge.is-credit,
 .owner-finance-badge.is-payment {
   background: var(--color-success-soft);
   color: var(--color-success);
@@ -1719,6 +1720,7 @@
 }
 
 .owner-status-pill.is-danger,
+.owner-finance-badge.is-debit,
 .owner-finance-badge.is-refund {
   background: rgba(220, 61, 66, 0.12);
   color: var(--color-danger);
@@ -2103,14 +2105,38 @@
   display: inline-flex;
   align-items: center;
   font-weight: 700;
+  padding: 0.32rem 0.7rem;
+  border-radius: 999px;
 }
 
 .wallet-amount.is-credit {
+  background: var(--color-success-soft);
   color: var(--color-success);
 }
 
 .wallet-amount.is-debit {
-  color: var(--color-accent-strong);
+  background: rgba(220, 61, 66, 0.12);
+  color: var(--color-danger);
+}
+
+.transaction-amount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 110px;
+  padding: 0.32rem 0.7rem;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.transaction-amount.is-credit {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.transaction-amount.is-debit {
+  background: rgba(220, 61, 66, 0.12);
+  color: var(--color-danger);
 }
 
 .wallet-payment-note {

@@ -296,9 +296,53 @@ exports.getUserPaymentHistory = async (req, res) => {
             ],
             order: [['createdAt', 'DESC']],
         });
+        const foodOrders = await db.FoodOrder.findAll({
+            where: {
+                user_id: userId,
+                order_source: 'post_booking',
+            },
+            include: [
+                {
+                    model: db.Booking,
+                    as: 'booking',
+                    include: [
+                        {
+                            model: Field,
+                            as: 'field',
+                            attributes: ['name'],
+                            include: [
+                                {
+                                    model: Stadium,
+                                    as: 'stadium',
+                                    attributes: ['name'],
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    model: Field,
+                    as: 'field',
+                    attributes: ['name'],
+                    include: [
+                        {
+                            model: Stadium,
+                            as: 'stadium',
+                            attributes: ['name'],
+                        },
+                    ],
+                },
+                {
+                    model: User,
+                    as: 'user',
+                    attributes: ['name', 'phone'],
+                },
+            ],
+            order: [['createdAt', 'DESC']],
+        });
 
         const filteredTransactions = filterTransactionsByDateRange(
-            buildPaymentHistoryTransactions(bookings),
+            buildPaymentHistoryTransactions(bookings, foodOrders),
             filters.startDate,
             filters.endDate,
         );
@@ -397,9 +441,42 @@ exports.getOwnerPaymentHistory = async (req, res) => {
             ],
             order: [['createdAt', 'DESC']],
         });
+        const foodOrders = await db.FoodOrder.findAll({
+            where: {
+                order_source: 'post_booking',
+            },
+            include: [
+                {
+                    model: db.Booking,
+                    as: 'booking',
+                },
+                {
+                    model: Field,
+                    as: 'field',
+                    attributes: ['name', 'stadium_id'],
+                    where: {
+                        stadium_id: stadiumIds,
+                    },
+                    include: [
+                        {
+                            model: Stadium,
+                            as: 'stadium',
+                            attributes: ['name'],
+                        },
+                    ],
+                    required: true,
+                },
+                {
+                    model: User,
+                    as: 'user',
+                    attributes: ['name', 'phone'],
+                },
+            ],
+            order: [['createdAt', 'DESC']],
+        });
 
         const filteredTransactions = filterTransactionsByDateRange(
-            buildPaymentHistoryTransactions(bookings),
+            buildPaymentHistoryTransactions(bookings, foodOrders),
             filters.startDate,
             filters.endDate,
         );

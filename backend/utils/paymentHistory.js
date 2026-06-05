@@ -161,14 +161,16 @@ function getPaymentTransactionDate(booking) {
   return booking.payment_recorded_at || booking.payment_completed_at || booking.createdAt;
 }
 
-function createTransaction(booking, type, transactionDate) {
+function createBookingTransaction(booking, type, transactionDate) {
   parseRequiredDate(transactionDate, 'transaction date');
   const stadiumName = booking?.stadium?.name || booking?.field?.stadium?.name || null;
   const fieldName = booking?.field?.name || null;
   const amount = toNumber(booking.amount_paid);
 
   return {
+    source: 'booking',
     bookingId: booking.id,
+    foodOrderId: null,
     bookingStatus: booking.status,
     type,
     amount,
@@ -185,18 +187,64 @@ function createTransaction(booking, type, transactionDate) {
   };
 }
 
-function buildPaymentHistoryTransactions(bookings) {
+function hasPostBookingFoodOrderPayment(foodOrder) {
+  return (
+    foodOrder?.order_source === 'post_booking' &&
+    toNumber(foodOrder.total_amount) > 0 &&
+    (foodOrder.payment_recorded_at != null || foodOrder.payment_status === 'paid')
+  );
+}
+
+function getFoodOrderPaymentTransactionDate(foodOrder) {
+  return foodOrder.payment_recorded_at || foodOrder.ordered_at || foodOrder.createdAt;
+}
+
+function createFoodOrderTransaction(foodOrder) {
+  const transactionDate = getFoodOrderPaymentTransactionDate(foodOrder);
+  parseRequiredDate(transactionDate, 'transaction date');
+
+  const booking = foodOrder?.booking;
+  const field = foodOrder?.field || booking?.field;
+  const stadium = field?.stadium || booking?.stadium || booking?.field?.stadium;
+
+  return {
+    source: 'food_order',
+    bookingId: foodOrder.booking_id || booking?.id || null,
+    foodOrderId: foodOrder.id,
+    bookingStatus: booking?.status || null,
+    type: 'payment',
+    amount: toNumber(foodOrder.total_amount),
+    refundAmount: 0,
+    actualRevenue: toNumber(foodOrder.total_amount),
+    transactionDate,
+    stadiumName: stadium?.name || null,
+    fieldName: field?.name || null,
+    paymentMethod: foodOrder.payment_method || null,
+    refundReason: null,
+    userName: foodOrder?.user?.name || booking?.user?.name || null,
+    userPhone: foodOrder?.user?.phone || booking?.user?.phone || null,
+    status: foodOrder.payment_status || 'paid',
+  };
+}
+
+function buildPaymentHistoryTransactions(bookings, foodOrders = []) {
   const transactions = [];
 
   for (const booking of bookings) {
     if (hasPaymentTransaction(booking)) {
       transactions.push(
-        createTransaction(booking, 'payment', getPaymentTransactionDate(booking)),
+        createBookingTransaction(booking, 'payment', getPaymentTransactionDate(booking)),
       );
     }
 
     if (hasRefundTransaction(booking)) {
-      transactions.push(createTransaction(booking, 'refund', booking.refunded_at));
+      transactions.push(createBookingTransaction(booking, 'refund', booking.refunded_at));
+    }
+  }
+
+  for (const foodOrder of foodOrders) {
+    if (hasPostBookingFoodOrderPayment(foodOrder)) {
+      transactions.push(createFoodOrderTransaction(foodOrder));
     }
   }
 
@@ -259,9 +307,11 @@ function getPaymentHistoryPage(bookings, options = {}) {
 
 module.exports = {
   buildPaymentHistoryTransactions,
+  createFoodOrderTransaction,
   filterTransactionsByDateRange,
   getPaymentHistoryPage,
   hasPaymentTransaction,
+  hasPostBookingFoodOrderPayment,
   hasRefundTransaction,
   paginateTransactions,
   resolveHistoryFilters,

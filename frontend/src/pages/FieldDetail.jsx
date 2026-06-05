@@ -13,6 +13,7 @@ import {
 import { getWalletSummary } from '../services/walletService';
 import { getStadiumMenu } from '../services/menuService';
 import FoodOrderPicker from '../components/FoodOrderPicker';
+import RecurringBookingPanel from '../components/RecurringBookingPanel';
 
 const TIME_SLOTS = [
   { id: 1, time: '05:00 - 06:00', start: '05:00', end: '06:00' },
@@ -674,6 +675,10 @@ const FieldDetail = () => {
             </button>
           </div>
         </aside>
+      </section>
+
+      <section className="detail-panel mt-4">
+        <RecurringBookingPanel field={field} embedded showSeries={false} />
       </section>
     </div>
   );

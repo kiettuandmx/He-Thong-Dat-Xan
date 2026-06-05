@@ -17,6 +17,13 @@ vi.mock('../services/walletService', () => ({
             description: 'Nap tien vao vi qua vnpay',
             createdAt: '2026-05-19T10:00:00.000Z',
           },
+          {
+            id: 2,
+            type: 'WITHDRAW',
+            amount: 20000,
+            description: 'Rut tien ve ngan hang',
+            createdAt: '2026-05-19T11:00:00.000Z',
+          },
         ],
       },
     },
@@ -39,5 +46,7 @@ describe('Ví tiền người dùng', () => {
     expect(screen.getByRole('button', { name: /^nạp tiền$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^rút tiền$/i })).toBeInTheDocument();
     expect(screen.getByText(/lịch sử giao dịch/i)).toBeInTheDocument();
+    expect(screen.getByText('+50.000đ')).toBeInTheDocument();
+    expect(screen.getByText('-20.000đ')).toBeInTheDocument();
   });
 });

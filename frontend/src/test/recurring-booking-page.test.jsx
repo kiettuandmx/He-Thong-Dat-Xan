@@ -1,20 +1,36 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import RecurringBookingPage from '../pages/RecurringBookingPage';
 
-vi.mock('../services/recurringBookingService', () => ({
-  previewRecurringBooking: vi.fn().mockResolvedValue({
+const { previewRecurringBookingMock } = vi.hoisted(() => ({
+  previewRecurringBookingMock: vi.fn(),
+}));
+
+previewRecurringBookingMock.mockResolvedValue({
+  data: {
     data: {
-      data: {
-        hasConflicts: false,
-        totalEstimatedAmount: 1000000,
-        depositAmount: 500000,
-        occurrenceCount: 4,
-      },
+      hasConflicts: false,
+      totalEstimatedAmount: 1000000,
+      depositAmount: 500000,
+      occurrenceCount: 4,
+      occurrences: [
+        {
+          sequenceNumber: 1,
+          scheduledDate: '2026-06-03',
+          startTime: '18:00',
+          endTime: '19:00',
+          isException: false,
+          isSkipped: false,
+        },
+      ],
     },
-  }),
+  },
+});
+
+vi.mock('../services/recurringBookingService', () => ({
+  previewRecurringBooking: previewRecurringBookingMock,
   createRecurringBooking: vi.fn().mockResolvedValue({
     data: {
       data: {
@@ -61,9 +77,74 @@ describe('Trang dat san dinh ky', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByRole('heading', { name: /dat san dinh ky/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/hinh thuc lap/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/tien coc/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /xem truoc chuoi dat/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /đặt sân định kỳ/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/hình thức lặp/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/tiền cọc/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /xem trước chuỗi đặt/i })).toBeInTheDocument();
+  });
+
+  it('renders weekday and repeat interval inputs for weekly recurring', async () => {
+    render(
+      <MemoryRouter>
+        <RecurringBookingPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByLabelText(/thứ trong tuần/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/lặp lại mỗi.*tuần/i)).toBeInTheDocument();
+  });
+
+  it('sends weekday and repeat interval in preview payload', async () => {
+    render(
+      <MemoryRouter>
+        <RecurringBookingPage />
+      </MemoryRouter>
+    );
+
+    fireEvent.change(await screen.findByLabelText(/thứ trong tuần/i), {
+      target: { value: '3' },
+    });
+    fireEvent.change(screen.getByLabelText(/lặp lại mỗi.*tuần/i), {
+      target: { value: '2' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /xem trước chuỗi đặt/i }));
+
+    await waitFor(() => expect(previewRecurringBookingMock).toHaveBeenCalled());
+    expect(previewRecurringBookingMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        weekday: 3,
+        repeat_interval_weeks: 2,
+      })
+    );
+  });
+
+  it('emits occurrence override payload from the review rows', async () => {
+    render(
+      <MemoryRouter>
+        <RecurringBookingPage />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /xem trước chuỗi đặt/i }));
+
+    expect(await screen.findByDisplayValue('2026-06-03')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/ngày cho buổi 1/i), {
+      target: { value: '2026-06-04' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /xem trước chuỗi đặt/i }));
+
+    await waitFor(() =>
+      expect(previewRecurringBookingMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          occurrence_overrides: [
+            expect.objectContaining({
+              sequence_number: 1,
+              scheduled_date: '2026-06-04',
+            }),
+          ],
+        })
+      )
+    );
   });
 });

@@ -46,6 +46,84 @@ test('buildWeeklyOccurrences creates a full weekly series between start and end 
   assert.equal(rows[4].scheduledDate, '2026-05-29');
 });
 
+test('buildWeeklyOccurrences supports repeat interval of 2 weeks', () => {
+  const rows = buildWeeklyOccurrences({
+    startDate: '2026-05-01',
+    occurrenceCount: 3,
+    weekday: 5,
+    repeatIntervalWeeks: 2,
+    startTime: '18:00',
+    endTime: '19:00',
+  });
+
+  assert.deepEqual(
+    rows.map((row) => row.scheduledDate),
+    ['2026-05-01', '2026-05-15', '2026-05-29']
+  );
+});
+
+test('buildWeeklyOccurrences marks an edited day as an exception', () => {
+  const rows = buildWeeklyOccurrences({
+    startDate: '2026-05-01',
+    occurrenceCount: 2,
+    weekday: 5,
+    startTime: '18:00',
+    endTime: '19:00',
+    occurrenceOverrides: [
+      {
+        sequenceNumber: 2,
+        scheduledDate: '2026-05-09',
+      },
+    ],
+  });
+
+  assert.equal(rows[1].scheduledDate, '2026-05-09');
+  assert.equal(rows[1].isException, true);
+  assert.equal(rows[1].isSkipped, false);
+});
+
+test('buildWeeklyOccurrences marks an edited time as an exception', () => {
+  const rows = buildWeeklyOccurrences({
+    startDate: '2026-05-01',
+    occurrenceCount: 2,
+    weekday: 5,
+    startTime: '18:00',
+    endTime: '19:00',
+    occurrenceOverrides: [
+      {
+        sequenceNumber: 2,
+        startTime: '19:00',
+        endTime: '20:00',
+      },
+    ],
+  });
+
+  assert.equal(rows[1].startTime, '19:00:00');
+  assert.equal(rows[1].endTime, '20:00:00');
+  assert.equal(rows[1].isException, true);
+});
+
+test('buildWeeklyOccurrences marks a skipped week as skipped and keeps it in the series', () => {
+  const rows = buildWeeklyOccurrences({
+    startDate: '2026-05-01',
+    occurrenceCount: 3,
+    weekday: 5,
+    startTime: '18:00',
+    endTime: '19:00',
+    occurrenceOverrides: [
+      {
+        sequenceNumber: 2,
+        isSkipped: true,
+      },
+    ],
+  });
+
+  assert.equal(rows.length, 3);
+  assert.equal(rows[1].scheduledDate, '2026-05-08');
+  assert.equal(rows[1].isSkipped, true);
+  assert.equal(rows[1].isException, false);
+});
+
 test('buildMonthlyOccurrences keeps the same day-of-month cadence', () => {
   const rows = buildMonthlyOccurrences({
     startDate: '2026-05-20',
